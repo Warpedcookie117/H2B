@@ -1,0 +1,118 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}
+  {% if form.rol.value == "dueño" %}
+    Registro de Dueños
+  {% else %}
+    Registro de Empleados
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="flex justify-center items-center min-h-screen py-10">
+  <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
+
+    <h2 class="text-2xl font-bold text-red-600 mb-6 text-center">
+      {% if form.rol.value == "dueño" %}
+        Registro de Dueños
+      {% else %}
+        Registro de Empleados
+      {% endif %}
+    </h2>
+
+    {% if messages %}
+      <div class="mb-4">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="POST" action="" autocomplete="off">
+      {% csrf_token %}
+
+      <div class="mb-4">
+        <label for="id_username">Nombre de Usuario</label>
+        {{ form.username }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_password1">Contraseña</label>
+        {{ form.password1 }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_password2">Confirmar Contraseña</label>
+        {{ form.password2 }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_first_name">Nombre(s)</label>
+        {{ form.first_name }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_last_name">Apellido(s)</label>
+        {{ form.last_name }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_email">Correo Electrónico</label>
+        {{ form.email }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_edad">Edad</label>
+        {{ form.edad }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_direccion">Dirección</label>
+        {{ form.direccion }}
+      </div>
+
+      <div class="mb-4">
+        <label for="id_numero_contacto">Número de Contacto</label>
+        {{ form.numero_contacto }}
+      </div>
+
+      {% if form.rol.value == "dueño" %}
+        {{ form.rol }}  <!-- Campo oculto -->
+      {% else %}
+        <div class="mb-4">
+          <label for="id_rol">Rol</label>
+          <select name="rol" id="id_rol" class="form-control" required>
+            <option value="" disabled selected>Selecciona un rol</option>
+            <option value="cajero">Cajero</option>
+            <option value="ayudante">Ayudante General</option>
+            <option value="almacenista">Almacenista</option>
+          </select>
+        </div>
+      {% endif %}
+
+      <div class="mb-4">
+        <label for="id_contacto_emergencia">Contacto de Emergencia</label>
+        {{ form.contacto_emergencia }}
+      </div>
+
+      <div class="mb-6">
+        <label for="id_descripcion_contacto_emergencia">Descripción del Contacto</label>
+        {{ form.descripcion_contacto_emergencia }}
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-submit">
+        <span>Registrar</span>
+        <div class="spinner" id="btn-spinner" style="display: none;"></div>
+      </button>
+    </form>
+
+    <div class="mt-4 text-sm text-center text-gray-600">
+      <p>¿Ya estás registrado?
+        <a href="{% url 'tienda_temp:login' %}" class="text-red-600 hover:underline">Inicia sesión</a>
+      </p>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

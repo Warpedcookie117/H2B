@@ -1,0 +1,115 @@
+{% if request.user.is_authenticated %}
+{% if request.user.is_superuser or request.user.empleado %}
+
+<!-- BOTÓN HAMBURGUESA (MÓVIL) -->
+<button id="sidebar-toggle"
+        class="md:hidden fixed bottom-6 left-4 z-50 bg-red-600 text-white p-3 rounded-full shadow-lg"
+        aria-label="Abrir menú lateral">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- SIDEBAR -->
+<aside id="sidebar"
+       class="fixed left-0 top-16 bg-white text-red-600 shadow-md transition-all duration-300 z-40
+              md:w-16 md:hover:w-64 md:pinned:w-64
+              transform -translate-x-full opacity-0
+              md:translate-x-0 md:opacity-100 md:pointer-events-auto">
+
+    <!-- PESTAÑA DE ANCLAJE (DESKTOP) -->
+    <div id="sidebar-tab"
+         class="hidden md:flex absolute top-3 -right-3 w-7 h-10 bg-red-600 text-white rounded-r-lg shadow-md
+                cursor-pointer items-center justify-center z-50">
+        <i id="tab-icon" class="fas fa-chevron-right text-sm"></i>
+    </div>
+
+    <!-- NAV -->
+    <nav class="p-4 space-y-4 font-semibold">
+
+        <!-- CATÁLOGO -->
+        <p class="text-xs text-gray-500 px-2 uppercase tracking-wider sidebar-text">Catálogo</p>
+
+        <a href="{% url 'inventario:categorias' %}" class="sidebar-link">
+            <i class="fas fa-tags"></i>
+            <span class="sidebar-text">Categorías</span>
+        </a>
+
+        <a href="{% url 'inventario:temporadas' %}" class="sidebar-link">
+            <i class="fa-regular fa-calendar-days"></i>
+            <span class="sidebar-text">Temporadas</span>
+        </a>
+
+        <a href="{% url 'inventario:configurar_atributos' %}" class="sidebar-link">
+            <i class="fa-solid fa-diagram-project"></i>   
+            <span class="sidebar-text">Atributos</span>
+        </a>
+
+        <div class="border-t border-gray-300 my-4"></div>
+
+        <!-- INVENTARIO (DESPLEGABLE JS PURO) -->
+        <div class="space-y-1">
+
+            <!-- BOTÓN PRINCIPAL -->
+            <button 
+                id="btn-inventario"
+                class="sidebar-link w-full flex items-center justify-between">
+
+                <span class="flex items-center gap-2">
+                    <i class="fas fa-warehouse"></i>
+                    <span class="sidebar-text">Inventario</span>
+                </span>
+
+                <!-- FLECHA (se oculta cuando sidebar está cerrado) -->
+                <i id="flecha-inventario" class="fas fa-chevron-down text-xs transition-transform"></i>
+            </button>
+
+            <!-- SUBMENÚ (con transición suave) -->
+            <div id="submenu-inventario"
+                 class="submenu-transition space-y-1 pl-6">
+
+                <a href="{% url 'inventario:dashboard_inventario' %}" class="sidebar-link">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+
+                {% for u in ubicaciones_sidebar %}
+                <a href="{% url 'inventario:productos_por_ubicacion' u.id %}"
+                class="sidebar-link"
+                style="
+                    --color-base: {{ u.color }};
+                    --color-hover: {{ u.color }}33;
+                ">
+                    <i class="fa-solid fa-building-circle-arrow-right"
+                    style="color: var(--color-base);"></i>
+                    <span class="sidebar-text">{{ u.nombre }}</span>
+                </a>
+                {% endfor %}
+
+            </div>
+        </div>
+
+        <!-- ⭐ POS (PARA TODOS LOS EMPLEADOS) -->
+        <a href="{% url 'ventas:pos' %}" class="sidebar-link">
+            <i class="fa-solid fa-cash-register"></i>
+            <span class="sidebar-text">Punto de Venta</span>
+        </a>
+
+        <div class="border-t border-gray-300 my-4"></div>
+
+        <!-- REPORTES -->
+        <a href="{% url 'inventario:reportes' %}" class="sidebar-link">
+            <i class="fas fa-chart-line"></i>
+            <span class="sidebar-text">Reportes</span>
+        </a>
+
+        <!-- BASE DE CONOCIMIENTOS -->
+        <a href="{% url 'tienda_temp:base_conocimientos' %}" class="sidebar-link">
+            <i class="fas fa-book"></i>
+            <span class="sidebar-text">Base de conocimientos</span>
+        </a>
+
+    </nav>
+
+</aside>
+
+{% endif %}
+{% endif %}

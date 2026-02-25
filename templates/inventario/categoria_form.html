@@ -1,0 +1,40 @@
+<form method="POST"
+      action="
+        {% if categoria %}
+            {% url 'inventario:categoria_guardar' categoria.id %}
+        {% else %}
+            {% url 'inventario:categoria_guardar_nueva' %}
+        {% endif %}
+      "
+      onsubmit="enviarCategoria(event)">
+
+    {% csrf_token %}
+
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        {% if categoria %}Editar categoría padre{% else %}Nueva categoría padre{% endif %}
+    </h2>
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+        {{ form.nombre }}
+    </div>
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700">Descripción</label>
+        {{ form.descripcion }}
+    </div>
+
+    <div class="flex justify-end gap-2 mt-6">
+        <button type="button"
+                onclick="closeModal('modalCategoria')"
+                class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">
+            Cancelar
+        </button>
+
+        <button type="submit"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition">
+            Guardar
+        </button>
+    </div>
+
+</form>

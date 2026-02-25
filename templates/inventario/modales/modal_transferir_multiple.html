@@ -1,0 +1,94 @@
+<!-- Modal Transferencia Múltiple -->
+<div id="modalTransferirMultiple"
+     class="modal-overlay hidden">
+
+    <div id="modalTransferirMultipleContent"
+         class="modal-content bg-white w-full max-w-4xl rounded-xl shadow-2xl p-6
+                transform transition-all duration-300 scale-95 opacity-0">
+
+        <!-- Header -->
+        <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">
+            Transferencia múltiple de productos
+        </h2>
+
+        <!-- Origen -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+            <p class="text-gray-700">
+                <span class="font-semibold text-gray-900">Ubicación origen:</span>
+                <span id="transferir_multiple_origen_nombre">{{ ubicacion.nombre }}</span>
+            </p>
+        </div>
+
+        <!-- Search bar -->
+        <div class="mb-6">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Escanear código o buscar producto en esta ubicación
+            </label>
+
+            <input id="transferir_multiple_search"
+                   type="text"
+                   placeholder="Escanea un código o escribe para buscar..."
+                   class="w-full border border-gray-300 rounded-lg shadow-sm px-4 py-2 text-lg
+                          focus:ring-blue-500 focus:border-blue-500"
+                   oninput="buscarProductoMultiple(event)">
+        </div>
+
+        <!-- Resultados de búsqueda -->
+        <div id="transferir_multiple_resultados"
+             class="hidden bg-white border border-gray-200 rounded-lg shadow p-3 mb-6 max-h-56 overflow-y-auto">
+        </div>
+
+        <!-- Tabla de productos seleccionados -->
+        <div class="mb-8 overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                    <tr class="border-b bg-gray-50">
+                        <th class="py-3 px-2 font-semibold">Producto</th>
+                        <th class="py-3 px-2 font-semibold">Disponible</th>
+                        <th class="py-3 px-2 font-semibold">Cantidad a transferir</th>
+                        <th class="py-3 px-2 font-semibold"></th>
+                    </tr>
+                </thead>
+                <tbody id="transferir_multiple_tabla"></tbody>
+            </table>
+        </div>
+
+        <!-- Destino -->
+        <div class="mb-6">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                Transferir a la ubicación
+            </label>
+
+            <select id="transferir_multiple_destino"
+                    class="w-full border-gray-300 rounded-lg shadow-sm px-4 py-2 text-lg
+                           focus:ring-blue-500 focus:border-blue-500">
+                {% for u in ubicaciones %}
+                    {% if u.id != ubicacion.id %}
+                        <option value="{{ u.id }}">{{ u.nombre }}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Hidden -->
+        <input type="hidden" id="transferir_multiple_origen_id" value="">
+
+        <!-- Botones -->
+        <div class="flex justify-end gap-3 pt-4">
+
+            <button type="button"
+                    onclick="cerrarModal('modalTransferirMultiple')"
+                    class="px-5 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition font-semibold">
+                Cancelar
+            </button>
+
+            <button type="button"
+                    onclick="confirmarTransferirMultiple(event)"
+                    class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-semibold">
+                Transferir
+            </button>
+
+        </div>
+
+    </div>
+</div>

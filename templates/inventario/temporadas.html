@@ -1,0 +1,180 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- Importa tu CSS azul -->
+<link rel="stylesheet" href="{% static 'css/temporadas.css' %}">
+
+<div class="container mx-auto px-4 py-6">
+
+  <!-- TÍTULO -->
+  <h2 class="text-2xl font-bold mb-6 text-center text-blue-700">
+    Temporadas
+  </h2>
+
+  <!-- GRID DE TEMPORADAS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for temporada in temporadas %}
+      <div class="temporada-card">
+
+        <h3 class="temporada-title">
+          {{ temporada.nombre }}
+        </h3>
+
+        {% if mostrar_formulario %}
+          <!-- FORMULARIO DE EDICIÓN -->
+          <form method="POST" action="{% url 'inventario:temporadas' %}" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="temporada_id" value="{{ temporada.id }}">
+
+            <div>
+              <label class="temporada-label">Descripción</label>
+              <textarea name="descripcion"
+                        rows="3"
+                        class="temporada-input">{{ temporada.descripcion }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="temporada-label">Inicio (mes)</label>
+                <input type="number" name="inicio_mes"
+                       value="{{ temporada.inicio_mes }}"
+                       min="1" max="12"
+                       class="temporada-input">
+              </div>
+
+              <div>
+                <label class="temporada-label">Inicio (día)</label>
+                <input type="number" name="inicio_dia"
+                       value="{{ temporada.inicio_dia }}"
+                       min="1" max="31"
+                       class="temporada-input">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="temporada-label">Fin (mes)</label>
+                <input type="number" name="fin_mes"
+                       value="{{ temporada.fin_mes }}"
+                       min="1" max="12"
+                       class="temporada-input">
+              </div>
+
+              <div>
+                <label class="temporada-label">Fin (día)</label>
+                <input type="number" name="fin_dia"
+                       value="{{ temporada.fin_dia }}"
+                       min="1" max="31"
+                       class="temporada-input">
+              </div>
+            </div>
+
+            <button type="submit" class="temporada-btn">
+              Guardar cambios
+            </button>
+          </form>
+
+        {% else %}
+          <!-- SOLO LECTURA -->
+          <p class="text-sm text-gray-700 mb-2">{{ temporada.descripcion }}</p>
+
+          {% if temporada.inicio_mes and temporada.inicio_dia and temporada.fin_mes and temporada.fin_dia %}
+            <p class="temporada-rango">
+              {{ temporada.inicio_dia }}/{{ temporada.inicio_mes }} → {{ temporada.fin_dia }}/{{ temporada.fin_mes }}
+            </p>
+          {% else %}
+            <p class="temporada-sin-rango">Sin rango definido</p>
+          {% endif %}
+        {% endif %}
+
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- FORMULARIO PARA CREAR TEMPORADA -->
+  {% if mostrar_formulario %}
+    <div class="max-w-lg mx-auto temporada-card mt-10">
+
+      <h3 class="text-xl font-semibold mb-4 text-center text-blue-700">
+        Registrar nueva temporada
+      </h3>
+
+      <form method="POST" action="{% url 'inventario:temporadas' %}" class="space-y-4">
+        {% csrf_token %}
+
+            <div>
+            <label class="temporada-label">Nombre</label>
+            <input type="text"
+                    name="{{ form.nombre.name }}"
+                    value="{{ form.nombre.value|default:'' }}"
+                    class="temporada-input">
+            </div>
+
+            <div>
+            <label class="temporada-label">Descripción</label>
+            <textarea name="{{ form.descripcion.name }}"
+                        class="temporada-input"
+                        rows="3">{{ form.descripcion.value|default:'' }}</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="temporada-label">Inicio (mes)</label>
+                <input type="number"
+                    name="{{ form.inicio_mes.name }}"
+                    value="{{ form.inicio_mes.value|default:'' }}"
+                    min="1" max="12"
+                    class="temporada-input">
+            </div>
+
+            <div>
+                <label class="temporada-label">Inicio (día)</label>
+                <input type="number"
+                    name="{{ form.inicio_dia.name }}"
+                    value="{{ form.inicio_dia.value|default:'' }}"
+                    min="1" max="31"
+                    class="temporada-input">
+            </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="temporada-label">Fin (mes)</label>
+                <input type="number"
+                    name="{{ form.fin_mes.name }}"
+                    value="{{ form.fin_mes.value|default:'' }}"
+                    min="1" max="12"
+                    class="temporada-input">
+            </div>
+
+            <div>
+                <label class="temporada-label">Fin (día)</label>
+                <input type="number"
+                    name="{{ form.fin_dia.name }}"
+                    value="{{ form.fin_dia.value|default:'' }}"
+                    min="1" max="31"
+                    class="temporada-input">
+            </div>
+            </div>
+
+        <button type="submit" class="temporada-btn">
+          Guardar temporada
+        </button>
+      </form>
+
+    </div>
+
+  {% else %}
+    <!-- MODO SOLO LECTURA -->
+    <div class="max-w-lg mx-auto temporada-card mt-10">
+      <h3 class="text-sm font-semibold text-center text-blue-600 mb-2">Modo solo lectura</h3>
+      <p class="text-xs text-gray-600 text-center">
+        Puedes consultar las temporadas, pero no tienes permisos para modificarlas ni registrar nuevas.
+      </p>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

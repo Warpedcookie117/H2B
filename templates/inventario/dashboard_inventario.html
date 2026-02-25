@@ -1,0 +1,193 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10">
+
+  <!-- Encabezado -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-2">
+      📊 Centro de Inventario
+    </h1>
+    <span class="text-xs sm:text-sm text-gray-500">
+      Última actualización: {{ ahora|date:"d/m/Y H:i" }}
+    </span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow p-5 text-center">
+      <p class="text-xs sm:text-sm opacity-80">Productos totales</p>
+      <p class="text-2xl sm:text-3xl font-bold">{{ productos_total }}</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow p-5 text-center">
+      <p class="text-xs sm:text-sm opacity-80">Inventario total</p>
+      <p class="text-2xl sm:text-3xl font-bold">{{ stock_total }}</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow p-5 text-center">
+      <p class="text-xs sm:text-sm opacity-80">Ubicaciones</p>
+      <p class="text-2xl sm:text-3xl font-bold">{{ ubicaciones|length }}</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow p-5 text-center">
+      <p class="text-xs sm:text-sm opacity-80">Críticos</p>
+      <p class="text-2xl sm:text-3xl font-bold">{{ bajos|length }}</p>
+    </div>
+
+  </div>
+
+  <!-- Alertas -->
+  {% if bajos|length > 0 %}
+  <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg text-sm sm:text-base">
+    ⚠️ Atención: Hay {{ bajos|length }} productos con inventario crítico.
+  </div>
+  {% endif %}
+
+  <!-- Gráficas -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+
+    <div class="bg-white shadow rounded-xl p-6">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        📉 Productos con bajo inventario
+      </h2>
+      <div class="relative w-full h-[300px] sm:h-[380px]">
+        <canvas id="chartBajoStock"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-xl p-6">
+      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+        🏆 Productos más vendidos
+      </h2>
+      <div class="relative w-full h-[300px] sm:h-[380px]">
+        <canvas id="chartMasVendidos"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tabla de críticos -->
+  <div class="mt-6">
+    <h3 class="text-lg font-semibold mb-4">📋 Productos críticos</h3>
+
+    <div class="overflow-x-auto rounded-lg shadow">
+      <table class="min-w-full border border-gray-200 rounded-lg">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Producto</th>
+            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Inventario</th>
+            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Ubicación</th>
+            <th class="px-4 py-2 text-center text-xs sm:text-sm font-medium text-gray-700">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          {% for inv in bajos %}
+          <tr class="border-t">
+
+            <td class="px-4 py-2 text-sm">{{ inv.producto.nombre }}</td>
+
+            <td class="px-4 py-2">
+              <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs sm:text-sm">
+                🔴 {{ inv.cantidad_actual }}
+              </span>
+            </td>
+
+            <td class="px-4 py-2 text-sm">{{ inv.ubicacion.nombre }}</td>
+
+            <td class="px-4 py-2 text-center whitespace-nowrap">
+              <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
+                 class="inline-block bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm hover:bg-blue-700 transition">
+                Ver en ubicación
+              </a>
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="px-4 py-2 text-center text-gray-500 text-sm">
+              No hay productos críticos registrados.
+            </td>
+          </tr>
+          {% endfor %}
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div>
+    <h2 class="text-lg font-semibold mb-4">⚡ Acciones rápidas</h2>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+
+      <a href="{% url 'inventario:nuevo_producto' %}"
+         class="bg-blue-600 text-white p-6 rounded-xl shadow hover:scale-105 transform transition text-center text-sm sm:text-base">
+        ➕ Registrar producto nuevo
+      </a>
+
+      <a href="{% url 'inventario:lista_productos' %}"
+         class="bg-orange-600 text-white p-6 rounded-xl shadow hover:scale-105 transform transition text-center text-sm sm:text-base">
+        Inventario Global 🌍
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const bajoStockLabels = [{% for inv in bajos %}'{{ inv.producto.nombre|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+  const bajoStockData = [{% for inv in bajos %}{{ inv.cantidad_actual }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+  new Chart(document.getElementById('chartBajoStock'), {
+    type: 'bar',
+    data: {
+      labels: bajoStockLabels,
+      datasets: [{
+        label: 'Inventario actual',
+        data: bajoStockData,
+        backgroundColor: '#ef4444',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  const masVendidosLabels = [{% for p in mas_vendidos %}'{{ p.producto__nombre|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+  const masVendidosData = [{% for p in mas_vendidos %}{{ p.total|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+
+  new Chart(document.getElementById('chartMasVendidos'), {
+    type: 'bar',
+    data: {
+      labels: masVendidosLabels,
+      datasets: [{
+        label: 'Ventas',
+        data: masVendidosData,
+        backgroundColor: '#3b82f6',
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+</script>
+
+{% endblock %}

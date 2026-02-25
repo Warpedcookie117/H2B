@@ -1,0 +1,16 @@
+{% extends "partials/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-body text-center">
+            <h2 class="text-danger">⛔ Permiso denegado</h2>
+            <p>No tienes permiso para realizar esta acción.</p>
+
+            <a href="/dashboard/" class="btn btn-primary mt-3">
+                Volver al dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

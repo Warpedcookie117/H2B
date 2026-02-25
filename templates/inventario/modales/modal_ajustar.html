@@ -1,0 +1,94 @@
+<!-- Modal Ajustar Inventario -->
+<div id="modalAjustar_{{ inv.producto.id }}" class="modal-overlay hidden">
+
+    <div id="modalAjustar_{{ inv.producto.id }}Content"
+         class="modal-content modal-box opacity-0 scale-95 transition-all duration-300">
+
+        <!-- Encabezado -->
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 text-center">
+            Ajustar inventario
+        </h2>
+
+        <!-- Información del producto -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 space-y-2">
+            <p><strong>Producto:</strong> {{ inv.producto.nombre }}</p>
+
+            <p><strong>Cantidad total del producto:</strong>
+                {{ inv.producto.cantidad_total }}
+            </p>
+
+            <p><strong>Cantidad en esta ubicación:</strong>
+                <span class="cantidad-actual">{{ inv.cantidad_actual }}</span>
+            </p>
+        </div>
+
+        <!-- Formulario -->
+        <form id="formAjustar_{{ inv.producto.id }}"
+              method="POST"
+              action="{% url 'inventario:ajustar_inventario' inv.producto.id ubicacion.id %}"
+              class="space-y-5"
+              onsubmit="event.preventDefault(); submitAjuste({{ inv.producto.id }}, {{ es_dueno|yesno:'true,false' }});">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="producto_id" value="{{ inv.producto.id }}">
+            <input type="hidden" name="ubicacion_id" value="{{ ubicacion.id }}">
+
+            <!-- Cantidad -->
+            <div>
+                <label class="font-semibold mb-1 block">Nueva cantidad en esta ubicación</label>
+
+                <input type="number"
+                       id="ajustar_cantidad_{{ inv.producto.id }}"
+                       name="cantidad"
+                       min="0"
+                       required
+                       data-producto="{{ inv.producto.id }}"
+                       data-ubicacion="{{ ubicacion.id }}"
+                       class="input-ajustar-cantidad w-full border border-gray-300 rounded-lg px-3 py-2 text-lg
+                              focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Motivo -->
+            <div>
+                <label class="font-semibold mb-1 block">Motivo del ajuste</label>
+
+                <select name="motivo"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-lg
+                               focus:ring-blue-500 focus:border-blue-500">
+
+                    <option value="correccion">Corrección de inventario</option>
+                    <option value="conteo">Conteo físico</option>
+
+                </select>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-3 pt-4">
+
+                <button type="button"
+                        onclick="cerrarModal('modalAjustar_{{ inv.producto.id }}')"
+                        class="modal-btn modal-btn-cancel">
+                    Cancelar
+                </button>
+
+                {% if es_dueno %}
+                    <!-- Dueño: Ajuste directo -->
+                    <button type="submit"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow">
+                        Guardar ajuste
+                    </button>
+                {% else %}
+                    <!-- Empleado: Botón dinámico -->
+                    <button id="btnAjustar_{{ inv.producto.id }}"
+                            type="submit"
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow">
+                        Enviar solicitud
+                    </button>
+                {% endif %}
+
+            </div>
+
+        </form>
+    </div>
+</div>

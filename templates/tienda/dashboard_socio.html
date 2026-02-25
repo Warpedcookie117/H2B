@@ -1,0 +1,146 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Panel del Socio - Comercializadora Modelo{% endblock %}
+
+{% block content %}
+<section class="py-10">
+  <div class="max-w-7xl mx-auto px-6">
+
+    <!-- Encabezado -->
+    <header class="mb-12 text-center">
+      <h2 class="text-4xl md:text-5xl font-extrabold text-red-600 tracking-tight drop-shadow">
+        Panel del Socio
+      </h2>
+      <p class="mt-2 text-gray-700 text-lg">Información general del negocio</p>
+    </header>
+
+    <!-- MÉTRICAS PRINCIPALES (SOLO LO QUE SÍ PUEDEN VER) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-14">
+
+      <!-- Movimientos recientes -->
+      <div class="p-6 rounded-2xl shadow-lg bg-gradient-to-br from-blue-500 to-blue-700 text-white">
+        <div class="flex items-center justify-between">
+          <p class="text-sm opacity-90">Movimientos recientes</p>
+          <i class="fas fa-exchange-alt text-3xl opacity-80"></i>
+        </div>
+        <p class="text-4xl font-extrabold mt-2">
+          {{ movimientos|length }}
+        </p>
+      </div>
+
+      <!-- Alertas -->
+      <div class="p-6 rounded-2xl shadow-lg bg-gradient-to-br from-yellow-500 to-yellow-700 text-white">
+        <div class="flex items-center justify-between">
+          <p class="text-sm opacity-90">Alertas activas</p>
+          <i class="fas fa-bell text-3xl opacity-80"></i>
+        </div>
+        <p class="text-4xl font-extrabold mt-2">
+          {{ alertas|length }}
+        </p>
+      </div>
+
+    </div>
+
+    <!-- BOTÓN INVENTARIO GLOBAL (A LISTA DE PRODUCTOS) -->
+    <div class="text-center mb-14">
+      <a href="{% url 'inventario:lista_productos' %}"
+         class="inline-block bg-gradient-to-r from-red-600 to-red-700 text-white px-12 py-4 rounded-2xl text-xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition">
+        Ver Inventario Global
+      </a>
+    </div>
+
+    <!-- GRÁFICA: INVENTARIO POR CATEGORÍA -->
+    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200 mb-14">
+      <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-chart-pie text-red-500"></i>
+        Inventario por categoría
+      </h3>
+      <canvas id="chartCategorias" class="w-full h-64"></canvas>
+    </div>
+
+    <!-- ALERTAS DETALLADAS -->
+    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200 mb-14">
+      <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
+        <i class="fas fa-exclamation-circle text-red-500"></i>
+        Alertas importantes
+      </h3>
+
+      {% if alertas %}
+        <ul class="space-y-3">
+          {% for alerta in alertas %}
+            <li class="flex items-center gap-3 text-gray-700 bg-red-50 p-3 rounded-lg border border-red-200">
+              <i class="fas fa-exclamation-triangle text-red-500"></i>
+              {{ alerta }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600 italic">No hay alertas por el momento.</p>
+      {% endif %}
+    </div>
+
+    <!-- MOVIMIENTOS RECIENTES -->
+    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200">
+      <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <i class="fas fa-history text-gray-600"></i>
+        Movimientos recientes
+      </h3>
+
+      {% if movimientos %}
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="text-gray-600 border-b bg-gray-50">
+                <th class="py-2 px-2">Producto</th>
+                <th class="py-2 px-2">Tipo</th>
+                <th class="py-2 px-2">Cantidad</th>
+                <th class="py-2 px-2">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for mov in movimientos %}
+                <tr class="border-b hover:bg-gray-50 transition">
+                  <td class="py-2 px-2">{{ mov.producto.nombre }}</td>
+                  <td class="py-2 px-2 capitalize">{{ mov.tipo }}</td>
+                  <td class="py-2 px-2">{{ mov.cantidad }}</td>
+                  <td class="py-2 px-2">{{ mov.fecha|date:"d/m/Y H:i" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-gray-600 italic">No hay movimientos recientes.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+
+<!-- CHART.JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const catLabels = {{ graf_categorias_labels|safe }};
+  const catData = {{ graf_categorias_data|safe }};
+
+  new Chart(document.getElementById('chartCategorias'), {
+    type: 'bar',
+    data: {
+      labels: catLabels,
+      datasets: [{
+        label: 'Cantidad total',
+        data: catData,
+        backgroundColor: '#ef4444'
+      }]
+    },
+    options: {
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
+
+{% endblock %}

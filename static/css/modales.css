@@ -1,0 +1,77 @@
+/* ============================
+   ESTILOS PARA MODALES
+   ============================ */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+}
+
+.modal-box {
+    background: white;
+    width: 100%;
+    max-width: 480px;
+    padding: 24px;
+    border-radius: 14px;
+    box-shadow: 0 10px 35px rgba(0,0,0,0.25);
+}
+
+/* Inputs grandes */
+.modal-input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color .2s;
+}
+
+.modal-input:focus {
+    border-color: #2563eb;
+}
+
+/* Select */
+.modal-select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    outline: none;
+}
+
+.modal-select:focus {
+    border-color: #2563eb;
+}
+
+/* Botones */
+.modal-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.modal-btn-cancel {
+    background: #4b5563;
+    color: white;
+}
+
+.modal-btn-cancel:hover {
+    background: #374151;
+}
+
+.modal-btn-primary {
+    background: #2563eb;
+    color: white;
+}
+
+.modal-btn-primary:hover {
+    background: #1d4ed8;
+}

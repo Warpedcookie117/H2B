@@ -1,0 +1,290 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.querySelector("form");
+
+  // Campos principales
+  const codigoInput = document.getElementById("id_codigo_barras");
+  const nombreInput = document.getElementById("id_nombre");
+  const descripcionInput = document.getElementById("id_descripcion");
+  const mayoreoInput = document.getElementById("id_precio_mayoreo");
+  const menudeoInput = document.getElementById("id_precio_menudeo");
+  const docenaInput = document.getElementById("id_precio_docena");
+  const tipoCodigoInput = document.getElementById("id_tipo_codigo");
+  const duenioSelect = document.getElementById("id_dueño");
+
+  // Categorías
+  const categoriaPadreSelect = document.getElementById("id_categoria_padre");
+  const subcategoriaSelect = document.getElementById("id_subcategoria");
+
+  // Atributos dinámicos
+  const atributosContainer = document.getElementById("atributos-container");
+
+  // Ubicación e inventario
+  const ubicacionSelect = document.getElementById("id_ubicacion");
+  const submitBtn = document.getElementById("submit-btn");
+
+  // ============================
+  // 1. BUSCAR PRODUCTO POR CÓDIGO
+  // ============================
+
+  codigoInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      buscarYCompletar(codigoInput.value);
+    }
+  });
+
+  codigoInput.addEventListener("change", () => buscarYCompletar(codigoInput.value));
+
+  codigoInput.addEventListener("blur", () => {
+    if (!nombreInput.value && codigoInput.value) buscarYCompletar(codigoInput.value);
+  });
+
+  // Si el usuario cambia el código manualmente → limpiar estado
+  codigoInput.addEventListener("input", () => {
+    const hiddenId = document.getElementById("id_producto_id");
+    if (hiddenId) hiddenId.remove();
+
+    categoriaPadreSelect.disabled = false;
+    subcategoriaSelect.disabled = false;
+  });
+
+  async function buscarYCompletar(codigo) {
+    if (!codigo) return;
+
+    codigoInput.classList.add("opacity-50");
+
+    try {
+      const url = `/inventario/buscar_producto/?codigo=${encodeURIComponent(codigo)}`;
+      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+
+      // Producto NO existe → limpiar estado
+      if (!data.existe) {
+        alert("Producto no encontrado por código de barras.");
+
+        const hiddenId = document.getElementById("id_producto_id");
+        if (hiddenId) hiddenId.remove();
+
+        categoriaPadreSelect.disabled = false;
+        subcategoriaSelect.disabled = false;
+
+        return;
+      }
+
+      // Producto EXISTE → llenar campos
+      nombreInput.value = data.nombre || "";
+      descripcionInput.value = data.descripcion || "";
+      mayoreoInput.value = data.precio_mayoreo ?? "";
+      menudeoInput.value = data.precio_menudeo ?? "";
+      docenaInput.value = data.precio_docena ?? "";
+      tipoCodigoInput.value = data.tipo_codigo ?? "";
+
+      if (duenioSelect && data.dueño_id) {
+        duenioSelect.value = String(data.dueño_id);
+      }
+
+      // Categoría padre
+      if (categoriaPadreSelect && data.categoria_padre_id) {
+          categoriaPadreSelect.value = String(data.categoria_padre_id);
+
+          // Esperar a que el DOM actualice antes de cargar subcategorías
+          setTimeout(() => {
+              cargarSubcategorias(data.categoria_padre_id, data.subcategoria_id);
+          }, 0);
+      }
+
+      // Subcategoría
+      if (subcategoriaSelect && data.subcategoria_id) {
+        subcategoriaSelect.value = String(data.subcategoria_id);
+      }
+
+      // Atributos dinámicos
+      renderAtributos(data.atributos);
+
+      // Bloquear campos SOLO si el producto existe
+      setReadOnlyTrue([
+        nombreInput,
+        descripcionInput,
+        mayoreoInput,
+        menudeoInput,
+        docenaInput,
+        duenioSelect,
+        categoriaPadreSelect,
+        subcategoriaSelect,
+      ]);
+
+      // Guardar ID del producto
+      let hiddenId = document.getElementById("id_producto_id");
+      if (!hiddenId) {
+        hiddenId = document.createElement("input");
+        hiddenId.type = "hidden";
+        hiddenId.id = "id_producto_id";
+        hiddenId.name = "producto_id";
+        form.appendChild(hiddenId);
+      }
+      hiddenId.value = data.producto_id;
+
+      // Verificar inventario si ya hay ubicación
+      if (ubicacionSelect && ubicacionSelect.value) {
+        verificarInventario(data.producto_id, ubicacionSelect.value);
+      }
+
+      const cantInput = document.getElementById("id_cantidad_inicial");
+      if (cantInput) cantInput.focus();
+
+    } catch (err) {
+      console.error("Error buscando producto:", err);
+      alert("Ocurrió un error al buscar el producto.");
+    } finally {
+      codigoInput.classList.remove("opacity-50");
+    }
+  }
+
+  // ============================================
+  // 2. CAMBIO DE BOTÓN SEGÚN EXISTENCIA EN STOCK
+  // ============================================
+
+  async function verificarInventario(productoId, ubicacionId) {
+    if (!productoId || !ubicacionId) return;
+
+    try {
+      const url = `/inventario/verificar_inventario/?producto=${productoId}&ubicacion=${ubicacionId}`;
+      const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+
+      if (data.existe) {
+        form.action = `/inventario/agregar_inventario/${productoId}/${ubicacionId}/`;
+        submitBtn.textContent = "Agregar inventario";
+
+        submitBtn.classList.replace("bg-red-600", "bg-green-600");
+        submitBtn.classList.replace("hover:bg-red-700", "hover:bg-green-700");
+      } else {
+        form.action = `/inventario/nuevo_producto/`;
+        submitBtn.textContent = "Registrar producto";
+
+        submitBtn.classList.replace("bg-green-600", "bg-red-600");
+        submitBtn.classList.replace("hover:bg-green-700", "hover:bg-red-700");
+      }
+
+    } catch (err) {
+      console.error("Error verificando inventario:", err);
+    }
+  }
+
+  ubicacionSelect?.addEventListener("change", () => {
+    const productoId = document.getElementById("id_producto_id")?.value;
+    if (productoId) {
+      verificarInventario(productoId, ubicacionSelect.value);
+    }
+  });
+
+  // ============================================
+  // 3. CARGAR SUBCATEGORÍAS AL SELECCIONAR PADRE
+  // ============================================
+
+  categoriaPadreSelect.addEventListener("change", () => {
+    const padreId = categoriaPadreSelect.value;
+    cargarSubcategorias(padreId);
+  });
+
+  function cargarSubcategorias(padreId, subId = null) {
+      subcategoriaSelect.innerHTML = "";
+
+      const subData = document.querySelectorAll("#subcategorias-data div");
+
+      subData.forEach((sub) => {
+          if (String(sub.dataset.padre) === String(padreId)) {
+              const opt = document.createElement("option");
+              opt.value = sub.dataset.id;
+              opt.textContent = sub.dataset.nombre;
+              subcategoriaSelect.appendChild(opt);
+          }
+      });
+
+      if (subId) {
+          subcategoriaSelect.value = String(subId);
+      }
+  }
+
+  // Cuando el usuario elige una subcategoría → mostrar atributos
+subcategoriaSelect.addEventListener("change", () => {
+    const subId = subcategoriaSelect.value;
+    mostrarAtributosDeSubcategoria(subId);
+});
+
+function mostrarAtributosDeSubcategoria(subId) {
+    atributosContainer.innerHTML = "";
+
+    const allAtributos = document.querySelectorAll("#atributos-data div");
+
+    allAtributos.forEach(attr => {
+        if (String(attr.dataset.categoria) === String(subId)) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "mb-2";
+
+            const label = document.createElement("label");
+            label.className = "block font-semibold mb-1";
+            label.textContent = attr.dataset.nombre;
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.name = `atributo_${attr.dataset.id}`;
+            input.className = "form-control";
+            input.value = "";
+
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            atributosContainer.appendChild(wrapper);
+        }
+    });
+}
+
+  // ============================
+  // UTILIDADES
+  // ============================
+
+  function renderAtributos(atributos = []) {
+    atributosContainer.innerHTML = "";
+    atributos.forEach((attr) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "mb-2";
+
+      const label = document.createElement("label");
+      label.className = "block font-semibold mb-1";
+      label.textContent = attr.nombre;
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "form-control bg-gray-100";
+      input.value = attr.valor || "";
+      input.readOnly = true;
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(input);
+      atributosContainer.appendChild(wrapper);
+    });
+  }
+
+  function setReadOnlyTrue(elements) {
+    const productoId = document.getElementById("id_producto_id")?.value;
+
+    // Solo bloquear si el producto YA EXISTE
+    if (!productoId) return;
+
+    elements.forEach((el) => {
+      if (!el) return;
+
+      if (el.tagName === "SELECT") {
+        el.disabled = true;
+        el.classList.add("bg-gray-100");
+      } else {
+        el.setAttribute("readonly", "true");
+        el.classList.add("bg-gray-100");
+      }
+    });
+  }
+}); este si jala para nv producto

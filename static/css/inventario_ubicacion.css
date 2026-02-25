@@ -1,0 +1,17 @@
+.highlight-yellow {
+    animation: flashYellow 1.5s ease-out 1 forwards;
+}
+@keyframes flashYellow {
+    0%   { background-color: #fef08a; }
+    50%  { background-color: #fde047; }
+    100% { background-color: white; }
+}
+
+.highlight-green {
+    animation: flashGreen 1.5s ease-out 1 forwards;
+}
+@keyframes flashGreen {
+    0%   { background-color: #bbf7d0; }
+    50%  { background-color: #86efac; }
+    100% { background-color: white; }
+}

@@ -1,0 +1,42 @@
+<div class="space-y-4">
+
+    <h2 class="text-xl font-semibold mb-4">
+        {% if ubicacion %}Editar ubicación{% else %}Nueva ubicación{% endif %}
+    </h2>
+
+    <form id="formUbicacion" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+            <label class="font-medium text-gray-700 mb-1">Nombre</label>
+            {{ form.nombre }}
+            {% if form.nombre.errors %}
+                <p class="text-red-600 text-sm">{{ form.nombre.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label class="font-medium text-gray-700 mb-1">Dirección</label>
+            {{ form.direccion }}
+            {% if form.direccion.errors %}
+                <p class="text-red-600 text-sm">{{ form.direccion.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+            <button type="button"
+                    class="bg-gray-400 text-white px-4 py-2 rounded"
+                    onclick="cerrarModalUbicacion()">
+                Cancelar
+            </button>
+
+            <button type="button"
+                    class="bg-green-600 text-white px-4 py-2 rounded"
+                    onclick="guardarUbicacion({{ ubicacion.id|default:'null' }})">
+                Guardar
+            </button>
+        </div>
+
+    </form>
+
+</div>

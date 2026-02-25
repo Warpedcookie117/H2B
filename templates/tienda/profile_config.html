@@ -1,0 +1,95 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Configuración de Perfil{% endblock %}
+
+{% block content %}
+<section class="py-10">
+  <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-10 border border-gray-200">
+
+    <h2 class="text-3xl font-extrabold text-gray-800 mb-8 text-center tracking-tight">
+      Configuración de Perfil
+    </h2>
+
+    <form method="POST" class="space-y-8">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+        <!-- Username -->
+        <div class="flex flex-col gap-1 md:col-span-2">
+          <label class="font-semibold text-gray-700">Nombre de usuario</label>
+          <input type="text" name="{{ form.username.name }}" value="{{ form.username.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Nombre -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Nombre</label>
+          <input type="text" name="{{ form.first_name.name }}" value="{{ form.first_name.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Apellidos -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Apellidos</label>
+          <input type="text" name="{{ form.last_name.name }}" value="{{ form.last_name.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Email -->
+        <div class="md:col-span-2 flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Correo electrónico</label>
+          <input type="email" name="{{ form.email.name }}" value="{{ form.email.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Dirección -->
+        <div class="md:col-span-2 flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Dirección</label>
+          <input type="text" name="{{ form.direccion.name }}" value="{{ form.direccion.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Número de contacto -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Número de contacto</label>
+          <input type="text" name="{{ form.numero_contacto.name }}" value="{{ form.numero_contacto.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Edad -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Edad</label>
+          <input type="number" name="{{ form.edad.name }}" value="{{ form.edad.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Contacto emergencia -->
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Contacto de emergencia</label>
+          <input type="text" name="{{ form.contacto_emergencia.name }}" value="{{ form.contacto_emergencia.value|default:'' }}"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
+        </div>
+
+        <!-- Descripción contacto emergencia -->
+        <div class="md:col-span-2 flex flex-col gap-1">
+          <label class="font-semibold text-gray-700">Descripción del contacto de emergencia</label>
+          <textarea name="{{ form.descripcion_contacto_emergencia.name }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none h-24">{{ form.descripcion_contacto_emergencia.value|default:'' }}</textarea>
+        </div>
+
+      </div>
+
+      <div class="text-center">
+        <button type="submit"
+                class="bg-red-600 hover:bg-red-700 text-white px-10 py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02]">
+          Guardar cambios
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+</section>
+{% endblock %}

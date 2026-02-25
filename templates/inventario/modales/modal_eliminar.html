@@ -1,0 +1,38 @@
+<div id="modalEliminar"
+     class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden 
+            flex items-center justify-center z-50 p-4">
+
+    <div id="modalEliminarContent"
+         class="modal-content bg-white rounded-xl shadow-xl w-full max-w-sm p-6
+                transform transition-all duration-200
+                opacity-0 scale-95">
+
+        <h2 id="modalEliminarTitulo"
+            class="text-lg font-bold text-red-600 mb-3">
+            Confirmar eliminación
+        </h2>
+
+        <p id="modalEliminarMensaje"
+           class="text-sm text-gray-700 mb-4">
+        </p>
+
+        <input type="hidden" id="eliminar_producto_id">
+        <input type="hidden" id="eliminar_ubicacion_id">
+        <input type="hidden" id="eliminar_tipo">
+
+        <div class="flex justify-end gap-2 mt-4">
+            <button onclick="cerrarModal('modalEliminar')"
+                    class="px-3 py-1.5 bg-gray-300 hover:bg-gray-400 
+                           rounded text-sm transition">
+                Cancelar
+            </button>
+
+            <button onclick="confirmarEliminar()"
+                    class="px-3 py-1.5 bg-red-600 hover:bg-red-700 
+                           text-white rounded text-sm transition">
+                Eliminar
+            </button>
+        </div>
+
+    </div>
+</div>

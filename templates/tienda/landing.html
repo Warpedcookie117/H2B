@@ -1,0 +1,59 @@
+{% extends 'partials/base.html' %}
+{% block title %}Landing Page{% endblock %}
+{% load static %}
+
+{% block content %}
+<!-- Sección de bienvenida con video llamativo y mensaje visible -->
+<section class="relative flex justify-center items-center min-h-[60vh] mt-4 mb-4">
+  <video 
+    autoplay muted loop playsinline 
+    class="mx-auto rounded-2xl ring-4 ring-green-500 shadow-green-500 shadow-lg w-full max-w-5xl transition duration-500 ease-in-out hover:shadow-[0_0_40px_#22c55e] hover:scale-105">
+    <source src="{% static 'videos/landing.mp4' %}" type="video/mp4">
+    Tu navegador no soporta video HTML5.
+  </video>
+  <div class="absolute z-10 text-center px-4">
+    <h1 class="text-5xl font-extrabold text-white drop-shadow-lg">Bienvenido a Comercializadora Modelo</h1>
+    <p class="mt-4 text-lg text-white font-medium drop-shadow-md">Confianza, calidad y atención personalizada desde el primer clic.</p>
+  </div>
+</section>
+
+<!-- Beneficios con cards responsivas y espacio ajustado -->
+<section id="productos" class="pt-10 pb-2">
+  <div class="max-w-6xl mx-auto px-4 text-center">
+    <h2 class="text-3xl font-bold mb-12" data-aos="fade-up">¿Por qué elegirnos?</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-left">
+        <h3 class="text-xl font-semibold mb-2">🚚 Envíos rápidos</h3>
+        <p>Recibe tu pedido en tiempo récord, sin complicaciones.</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-up">
+        <h3 class="text-xl font-semibold mb-2">✅ Calidad garantizada</h3>
+        <p>Productos seleccionados con los más altos estándares.</p>
+      </div>
+      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-right">
+        <h3 class="text-xl font-semibold mb-2">📞 Atención personalizada</h3>
+        <p>Estamos aquí para ayudarte en cada paso.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonios con animación AOS -->
+<section class="py-20">
+  <div class="max-w-4xl mx-auto text-center px-4">
+    <h2 class="text-3xl font-bold mb-6" data-aos="fade-up">Lo que dicen nuestros clientes</h2>
+    <blockquote class="italic text-lg text-gray-700" data-aos="fade-in">
+      "Excelente servicio y productos de calidad. ¡Recomendado!"
+    </blockquote>
+  </div>
+</section>
+
+<!-- AOS Script -->
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script>
+  AOS.init({
+    once: true,
+    duration: 800
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+# Archivos de Python
+*.pyc
+__pycache__/
+
+# Entorno virtual
+venv/
+
+# Base de datos local
+db.sqlite3
+
+# ArchivosConf.
+.env
+
+# Archivos del sistema
+.DS_Store
+
+#fotos de prueba
+media/productos/ 

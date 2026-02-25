@@ -1,0 +1,69 @@
+<!-- Modal Agregar Inventario -->
+<div id="modalAgregar_{{ inv.producto.id }}" class="modal-overlay hidden">
+
+    <div id="modalAgregar_{{ inv.producto.id }}Content"
+         class="modal-content modal-box opacity-0 scale-95 transition-all duration-300">
+
+        <!-- Encabezado -->
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 text-center">
+            Agregar inventario
+        </h2>
+
+        <!-- Información del producto -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 space-y-2">
+
+            <p><strong>Producto:</strong> {{ inv.producto.nombre }}</p>
+
+            <p><strong>Cantidad total del producto:</strong>
+                {{ inv.producto.cantidad_total }}
+            </p>
+
+            <p><strong>Cantidad en esta ubicación:</strong>
+                <span class="cantidad-actual">{{ inv.cantidad_actual }}</span>
+            </p>
+
+        </div>
+
+        <!-- Formulario -->
+        <form id="formAgregar_{{ inv.producto.id }}"
+              method="POST"
+              action="{% url 'inventario:agregar_inventario' inv.producto.id ubicacion.id %}"
+              class="space-y-5">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="producto_id" value="{{ inv.producto.id }}">
+            <input type="hidden" name="ubicacion_id" value="{{ ubicacion.id }}">
+
+            <!-- Cantidad -->
+            <div>
+                <label class="font-semibold mb-1 block">Cantidad a agregar</label>
+
+                <input type="number"
+                       name="cantidad"
+                       min="1"
+                       required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-lg
+                              focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end gap-3 pt-4">
+
+                <button type="button"
+                        onclick="cerrarModal('modalAgregar_{{ inv.producto.id }}')"
+                        class="modal-btn modal-btn-cancel">
+                    Cancelar
+                </button>
+
+                <button type="button"
+                        onclick="confirmarAgregar(event)"
+                        class="modal-btn modal-btn-primary">
+                    Guardar
+                </button>
+
+            </div>
+
+        </form>
+    </div>
+</div>

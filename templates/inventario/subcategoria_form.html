@@ -1,0 +1,40 @@
+<form method="POST"
+      action="
+        {% if subcategoria %}
+            {% url 'inventario:subcategoria_guardar' padre.id subcategoria.id %}
+        {% else %}
+            {% url 'inventario:subcategoria_guardar_nueva' padre.id %}
+        {% endif %}
+      "
+      onsubmit="enviarSubcategoria(event)">
+
+    {% csrf_token %}
+
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">
+        {% if subcategoria %}Editar subcategoría{% else %}Nueva subcategoría{% endif %}
+    </h2>
+
+    <p class="text-sm text-gray-600 mb-4">
+        Categoría padre: <strong>{{ padre.nombre }}</strong>
+    </p>
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+        {{ form.nombre }}
+    </div>
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700">Descripción</label>
+        {{ form.descripcion }}
+    </div>
+
+    <div class="flex justify-end gap-2 mt-6">
+        <button type="button"
+                onclick="closeModal('modalSubcategoria')"
+                class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">
+            Cancelar
+        </button>
+
+        <button type="submit"
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition">
+            Guard

@@ -1,0 +1,181 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <h2 class="text-3xl font-bold mb-8 text-center text-gray-800">📊 Reportes de Inventario</h2>
+
+  <!-- Formulario de filtros -->
+  <form method="get"
+        id="form-reportes"
+        data-api-url="{% url 'inventario:api_categorias' %}"
+        class="mb-8 max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+    <!-- Tipo de reporte -->
+    <div>
+      <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo de reporte</label>
+      <select name="tipo" id="tipo" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Selecciona tipo</option>
+        <option value="general" {% if tipo_reporte == 'general' %}selected{% endif %}>Inventario general</option>
+        <option value="movimientos" {% if tipo_reporte == 'movimientos' %}selected{% endif %}>Movimientos</option>
+        <option value="resumen_movimientos" {% if tipo_reporte == 'resumen_movimientos' %}selected{% endif %}>Resumen de movimientos</option>
+      </select>
+    </div>
+
+    <!-- Categoría padre -->
+    <div>
+      <label for="categoria" class="block text-sm font-medium text-gray-700 mb-1">Categoría padre</label>
+      <select name="categoria" id="categoria" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Todas</option>
+        {% for cat in categorias_padre %}
+          <option value="{{ cat.id }}" {% if filtro_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
+            {{ cat.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Subcategoría -->
+    <div>
+      <label for="subcategoria" class="block text-sm font-medium text-gray-700 mb-1">Subcategoría</label>
+      <select name="subcategoria" id="subcategoria"
+              class="form-control w-full px-3 py-2 border rounded-md"
+              data-selected="{{ filtro_subcategoria|default:'' }}">
+        <option value="">Todas</option>
+      </select>
+    </div>
+
+    <!-- Temporada -->
+    <div>
+      <label for="temporada" class="block text-sm font-medium text-gray-700 mb-1">Temporada</label>
+      <select name="temporada" id="temporada" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Todas</option>
+        {% for temporada in temporadas %}
+          <option value="{{ temporada.id }}" {% if filtro_temporada == temporada.id|stringformat:"s" %}selected{% endif %}>
+            {{ temporada.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Ubicación -->
+    <div>
+      <label for="ubicacion" class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+      <select name="ubicacion" id="ubicacion" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Todas</option>
+        {% for ubicacion in ubicaciones %}
+          <option value="{{ ubicacion.id }}" {% if filtro_ubicacion == ubicacion.id|stringformat:"s" %}selected{% endif %}>
+            {{ ubicacion.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Dueño -->
+    <div>
+      <label for="dueño" class="block text-sm font-medium text-gray-700 mb-1">Dueño</label>
+      <select name="dueño" id="dueño" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Todos</option>
+        {% for emp in dueños %}
+          <option value="{{ emp.id }}" {% if filtro_dueno == emp.id|stringformat:"s" %}selected{% endif %}>
+            {{ emp.user.get_full_name|default:emp.user.username }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Movimiento -->
+    <div>
+      <label for="movimiento" class="block text-sm font-medium text-gray-700 mb-1">Tipo de movimiento</label>
+      <select name="movimiento" id="movimiento" class="form-control w-full px-3 py-2 border rounded-md">
+        <option value="">Todos</option>
+        <option value="entrada" {% if filtro_movimiento == 'entrada' %}selected{% endif %}>Entrada</option>
+        <option value="salida" {% if filtro_movimiento == 'salida' %}selected{% endif %}>Salida</option>
+        <option value="transferencia" {% if filtro_movimiento == 'transferencia' %}selected{% endif %}>Transferencia</option>
+        <option value="ajuste" {% if filtro_movimiento == 'ajuste' %}selected{% endif %}>Ajuste</option>
+      </select>
+    </div>
+
+    <!-- Botones -->
+    <div class="sm:col-span-2 flex flex-col gap-4">
+      <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+        Generar reporte
+      </button>
+
+      <!-- PDF con TODOS los filtros -->
+      <a href="{% url 'inventario:reporte_pdf' %}?tipo={{ tipo_reporte }}
+          &categoria={{ filtro_categoria|default_if_none:'' }}
+          &subcategoria={{ filtro_subcategoria|default_if_none:'' }}
+          &temporada={{ filtro_temporada|default_if_none:'' }}
+          &ubicacion={{ filtro_ubicacion|default_if_none:'' }}
+          &dueño={{ filtro_dueno|default_if_none:'' }}
+          &movimiento={{ filtro_movimiento|default_if_none:'' }}"
+         target="_blank"
+         class="w-full bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-center">
+        Descargar PDF del reporte
+      </a>
+    </div>
+  </form>
+
+{% if datos %}
+  <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in datos %}
+      <div class="card opacity-0 translate-y-4 bg-white rounded-md shadow-sm p-4 border border-gray-200 hover:shadow-md transition duration-700 ease-out">
+        <h3 class="text-base font-semibold text-red-600 mb-2">{{ item.producto_nombre }}</h3>
+
+        {% if item.ubicacion_nombre %}
+          <p class="text-sm text-gray-700">Ubicación: <strong>{{ item.ubicacion_nombre }}</strong></p>
+        {% endif %}
+
+        {% if item.dueño_nombre %}
+          <p class="text-sm text-gray-700">Dueño: <strong>{{ item.dueño_nombre }}</strong></p>
+        {% endif %}
+
+        <p class="text-sm text-gray-700">Cantidad: <strong>{{ item.total }}</strong></p>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-center text-gray-500 mt-8">No se encontraron resultados para los filtros seleccionados.</p>
+{% endif %}
+
+  <!-- Movimientos -->
+  {% if movimientos %}
+    <div class="mt-12">
+      <h3 class="text-xl font-semibold mb-4 text-center text-gray-800">📦 Movimientos registrados</h3>
+      <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200 rounded-md">
+          <thead class="bg-gray-100 text-sm text-gray-700">
+            <tr>
+              <th class="px-4 py-2 text-left">Producto</th>
+              <th class="px-4 py-2 text-left">Tipo</th>
+              <th class="px-4 py-2 text-left">Cantidad</th>
+              <th class="px-4 py-2 text-left">Origen</th>
+              <th class="px-4 py-2 text-left">Destino</th>
+              <th class="px-4 py-2 text-left">Fecha</th>
+            </tr>
+          </thead>
+          <tbody class="text-sm text-gray-600">
+            {% for mov in movimientos %}
+              <tr class="border-t"> 
+                <td class="px-4 py-2">{{ mov.producto_nombre }}</td>
+                <td class="px-4 py-2 capitalize">{{ mov.tipo_valor }}</td>
+                <td class="px-4 py-2">{{ mov.cantidad_valor }}</td>
+                <td class="px-4 py-2">{{ mov.origen_nombre|default:"-" }}</td>
+                <td class="px-4 py-2">{{ mov.destino_nombre|default:"-" }}</td>
+                <td class="px-4 py-2">{{ mov.fecha_valor|date:" d/m/Y H:i" }}</td>
+              </tr> 
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <p class="text-center text-gray-500 mt-8">No se encontraron movimientos para los filtros seleccionados.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/reportes.js' %}"></script>
+{% endblock %}

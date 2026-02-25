@@ -1,0 +1,61 @@
+{% extends 'partials/base.html' %}
+
+{% block title %}Base de Conocimientos{% endblock %}
+
+{% block content %}
+<section class="py-10 px-6">
+  <div class="max-w-6xl mx-auto">
+
+    <!-- Título -->
+    <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+      Base de Conocimientos
+    </h1>
+
+    <p class="text-gray-600 mb-10 text-base md:text-lg">
+      Encuentra guías, procedimientos y documentación para operar el sistema y las tareas del negocio.
+    </p>
+
+    <!-- Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Inventario -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Inventario</h2>
+        <p class="text-gray-600 text-sm">Guías para agregar productos, ajustar stock y transferencias.</p>
+      </a>
+
+      <!-- Caja -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Caja</h2>
+        <p class="text-gray-600 text-sm">Cortes de caja, ventas y manejo de efectivo.</p>
+      </a>
+
+      <!-- Proveedores -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Proveedores</h2>
+        <p class="text-gray-600 text-sm">Cómo registrar proveedores y gestionar compras.</p>
+      </a>
+
+      <!-- Sistema -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Uso del Sistema</h2>
+        <p class="text-gray-600 text-sm">Manual del ERP, accesos, roles y configuraciones.</p>
+      </a>
+
+      <!-- Preguntas frecuentes -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Preguntas Frecuentes</h2>
+        <p class="text-gray-600 text-sm">Solución a problemas comunes.</p>
+      </a>
+
+      <!-- Políticas -->
+      <a href="#" class="block bg-white shadow-md rounded-xl p-6 border border-gray-200 hover:shadow-xl hover:border-red-500 transition">
+        <h2 class="text-xl font-semibold text-red-600 mb-2">Políticas Internas</h2>
+        <p class="text-gray-600 text-sm">Reglas y procedimientos oficiales del negocio.</p>
+      </a>
+
+    </div>
+
+  </div>
+</section>
+{% endblock %}

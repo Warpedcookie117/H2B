@@ -1,0 +1,176 @@
+/* === BASE === */
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Contenido principal (NO se mueve nunca) */
+#main-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-right: 1rem;
+  transition: padding-left 0.3s ease;
+}
+
+/* === SIDEBAR DESKTOP === */
+#sidebar {
+  position: fixed;
+  top: 4rem;
+  left: 0;
+  width: 4rem;
+  height: calc(100vh - 4rem);
+  background-color: #fff;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.3s ease-in-out;
+  z-index: 30;
+}
+
+/* Sidebar anclado */
+#sidebar.pinned {
+  width: 16rem;
+}
+
+/* Hover expand */
+@media (min-width: 768px) {
+  #sidebar:not(.pinned):hover {
+    width: 16rem;
+  }
+}
+
+/* === TEXTO DEL SIDEBAR === */
+#sidebar:not(.pinned):not(:hover) .sidebar-text {
+  display: none;
+}
+
+#sidebar.pinned .sidebar-text,
+#sidebar:hover .sidebar-text {
+  display: inline-block;
+}
+
+/* === LINKS (CON COLOR DINÁMICO) === */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+
+  /* COLOR DINÁMICO */
+  color: var(--color-base, #dc2626);
+
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* HOVER DINÁMICO */
+.sidebar-link:hover {
+  background-color: var(--color-hover, #fee2e2);
+  color: var(--color-base, #b91c1c);
+}
+
+/* === PESTAÑA DE ANCLAJE === */
+#sidebar-tab {
+  position: absolute;
+  top: 0.75rem;
+  right: -0.9rem;
+  width: 1.8rem;
+  height: 2.5rem;
+  background-color: #dc2626;
+  color: white;
+  border-radius: 0 8px 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+  z-index: 101;
+  transition: background 0.2s ease;
+}
+
+#sidebar-tab:hover {
+  background-color: #b91c1c;
+}
+
+#sidebar.pinned #tab-icon {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+
+#tab-icon {
+  transition: transform 0.3s ease;
+}
+
+/* Ocultar pestaña en móvil */
+@media (max-width: 767px) {
+  #sidebar-tab {
+    display: none;
+  }
+}
+
+/* === SIDEBAR MÓVIL === */
+@media (max-width: 767px) {
+  #sidebar {
+    top: 4rem;
+    width: 16rem;
+    height: calc(100vh - 4rem);
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-text {
+    display: inline-block !important;
+  }
+}
+
+/* === BOTÓN HAMBURGUESA === */
+#sidebar-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1rem;
+  z-index: 60 !important;
+  background-color: #dc2626;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Transición suave del submenú */
+.submenu-transition {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.submenu-open {
+  max-height: 500px;
+}
+
+/* Flecha oculta cuando sidebar está cerrado */
+#sidebar:not(.pinned):not(:hover) #flecha-inventario {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#sidebar.pinned #flecha-inventario,
+#sidebar:hover #flecha-inventario {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease;
+}
