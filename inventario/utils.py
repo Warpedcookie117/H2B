@@ -3,18 +3,19 @@ from barcode import EAN13, Code128
 from barcode.writer import ImageWriter
 import io
 import base64
-from pylibdmtx.pylibdmtx import encode
+import segno
 import hashlib
 
 
 
 
-def generar_datamatrix_base64(codigo):
-    encoded = encode(codigo.encode("utf-8"))
-    img = Image.frombytes('RGB', (encoded.width, encoded.height), encoded.pixels)
+def generar_datamatrix_base64(data: str):
+    qr = segno.helpers.make_datamatrix(data)
     buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    qr.save(buffer, kind='png', scale=5)
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
 
 
 def generar_base64(codigo, clase_barcode):
