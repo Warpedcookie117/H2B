@@ -23,7 +23,7 @@ from .views.registro_de_empleados import (
 
 
 
-app_name = 'tienda'
+app_name = 'tienda_temp'
 
 urlpatterns = [
     path('login/', login_user, name='login'),

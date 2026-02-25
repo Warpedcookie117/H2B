@@ -30,7 +30,7 @@ ALLOWED_HOSTS = [
     "192.168.100.21",
     "192.168.137.122",
     "192.168.0.56",
-    "h2b-ulx9.onrender.com",
+    "https://h2b-ulx9.onrender.com",
 ]
 
 # ⭐ Render necesita esto

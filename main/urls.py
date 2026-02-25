@@ -13,8 +13,7 @@ from tienda_temp.views.login import (
 
 urlpatterns = [
     # Página principal (landing)
-    path('', TemplateView.as_view(template_name='tienda_temp/landing.html'), name='landing'),
-
+    path('', TemplateView.as_view(template_name='tienda/landing.html'), name='landing'),
     # Admin
     path('admin/', admin.site.urls),
 
