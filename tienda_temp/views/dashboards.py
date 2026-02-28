@@ -73,13 +73,12 @@ def dashboard_socio(request):
         "graf_valor_data": graf_valor_data,
     }
 
-    return render(request, 'tienda_temp/dashboard_socio.html', context)
-
+    return render(request, 'tienda/dashboard_socio.html', context)
 
 
 def dashboard_dueno(request):
-    return render(request, 'tienda_temp/dashboard_dueno.html')
+    return render(request, 'tienda/dashboard_dueno.html')
 
 
 def base_conocimientos(request):
-    return render(request, 'tienda_temp/base_conocimientos.html')
+    return render(request, 'tienda/base_conocimientos.html')

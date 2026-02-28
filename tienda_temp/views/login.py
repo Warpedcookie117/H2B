@@ -5,7 +5,6 @@ from tienda_temp.forms import ContactoForm, PerfilConfigForm
 from tienda_temp.models import Usuario, Empleado
 
 
-
 def landing(request):
     user = request.user
 
@@ -16,9 +15,10 @@ def landing(request):
         if empleado:
             rol = empleado.rol
             if rol == 'dueño' or user.is_superuser:
-                return redirect('tienda:dashboard_dueno')
+                return redirect('tienda_temp:dashboard_dueno')
             elif rol in ['cajero', 'almacenista', 'ayudante']:
-                return redirect('tienda:dashboard_socio')
+                return redirect('tienda_temp:dashboard_socio')
+
         elif cliente:
             return render(request, 'tienda/landing.html', {'cliente': cliente})
 
@@ -50,21 +50,22 @@ def obtener_usuario_por_identificador(identificador):
 
 def redirigir_por_rol(user):
     if user.is_superuser:
-        return 'tienda:dashboard_dueno'
+        return 'tienda_temp:dashboard_dueno'
 
     if hasattr(user, 'empleado'):
         rol = user.empleado.rol
 
         if rol == 'dueño':
-            return 'tienda:dashboard_dueno'
+            return 'tienda_temp:dashboard_dueno'
 
         if rol in ['cajero', 'almacenista', 'ayudante']:
-            return 'tienda:dashboard_socio'
+            return 'tienda_temp:dashboard_socio'
 
     if hasattr(user, 'cliente'):
-        return 'tienda:landing'
+        return 'landing'  # landing global
 
     return None
+
 
 def login_user(request):
     if request.method == 'POST':
@@ -86,20 +87,19 @@ def login_user(request):
                     return redirect(destino)
 
                 messages.error(request, "⚠️ Tu cuenta no tiene un rol válido.")
-                return redirect('tienda:login')
+                return redirect('tienda_temp:login')
 
         messages.error(request, "❌ Usuario, correo o número incorrecto")
-        return redirect('tienda:login')
+        return redirect('tienda_temp:login')
 
     return render(request, 'tienda/login.html')
 
-# Vista de logout
+
 def logout_user(request):
     logout(request)
-    return redirect('tienda:login')
+    return redirect('tienda_temp:login')
 
 
-# Vista de contacto
 def contacto(request):
     puede_enviar = False
     form = ContactoForm()
@@ -115,13 +115,10 @@ def contacto(request):
         'form': form,
         'puede_enviar': puede_enviar
     })
-    
-    
-    
-# Vista de "Sobre nosotros"
+
+
 def aboutus(request):
     return render(request, 'tienda/about-us.html')
-
 
 
 def configuracion_perfil(request):
@@ -135,7 +132,7 @@ def configuracion_perfil(request):
         )
         if form.is_valid():
             form.save()
-            return redirect("tienda:configuracion_perfil")
+            return redirect("tienda_temp:profile_settings")
     else:
         form = PerfilConfigForm(
             usuario=request.user,
@@ -143,4 +140,3 @@ def configuracion_perfil(request):
         )
 
     return render(request, "tienda/profile_config.html", {"form": form})
-

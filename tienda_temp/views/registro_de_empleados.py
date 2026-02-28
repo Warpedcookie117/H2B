@@ -1,29 +1,22 @@
-
 from django.contrib.auth.models import Group
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from django.shortcuts import redirect
 from django.db import transaction
 from tienda_temp.forms import RegistroEmpleadoForm
 from tienda_temp.models import Cliente, Empleado, Usuario
 
 
+# -----------------------------
+# REGISTRO DE EMPLEADOS
+# -----------------------------
 def registro_empleado(request):
-    # Si viene ?rol=dueño → se registra un dueño
-    # Si no viene nada → se registra un empleado normal
     rol = request.GET.get("rol", None)
 
-    # Si no viene rol en GET, el formulario usará el select del template
     initial_data = {"rol": rol} if rol else {}
-
     form = RegistroEmpleadoForm(request.POST or None, initial=initial_data)
 
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
-
-        # El rol final viene del formulario:
-        # - Si es empleado normal → viene del select
-        # - Si es dueño → viene del initial={"rol": "dueño"}
         rol_final = data["rol"]
 
         with transaction.atomic():
@@ -35,7 +28,7 @@ def registro_empleado(request):
                 last_name=data["last_name"],
             )
 
-            # LÓGICA DE ROL
+            # Lógica de rol
             if rol_final == "dueño":
                 usuario.is_superuser = True
                 usuario.is_staff = True
@@ -58,16 +51,12 @@ def registro_empleado(request):
         messages.success(request, f"{rol_final.capitalize()} registrado exitosamente.")
         return redirect("tienda_temp:login")
 
-    return render(request, "tienda_temp/registro_empleado.html", {"form": form})
+    return render(request, "tienda/registro_empleado.html", {"form": form})
 
 
-
-
-
-
-
-
-# Registro de clientes usando formulario manual
+# -----------------------------
+# REGISTRO DE CLIENTES
+# -----------------------------
 def registro_cliente(request):
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -80,6 +69,7 @@ def registro_cliente(request):
         numero_contacto = request.POST.get('numero_contacto')
 
         errores = []
+
         if password1 != password2:
             errores.append("Las contraseñas no coinciden.")
         if Usuario.objects.filter(username=username).exists():
@@ -88,7 +78,7 @@ def registro_cliente(request):
             errores.append("Este correo ya está registrado.")
 
         if errores:
-            return render(request, 'tienda_temp/registro_cliente.html', {'errores': errores})
+            return render(request, 'tienda/registro_cliente.html', {'errores': errores})
 
         # Crear usuario sin permisos administrativos
         user = Usuario.objects.create_user(
@@ -109,8 +99,8 @@ def registro_cliente(request):
         # Crear instancia de Cliente
         cliente = Cliente(user=user, direccion=direccion, numero_contacto=numero_contacto)
         cliente.save()
-        
+
         messages.success(request, "Cliente registrado exitosamente ✅.")
         return redirect('tienda_temp:login')
-    
-    return render(request, 'tienda_temp/registro_cliente.html')
+
+    return render(request, 'tienda/registro_cliente.html')
