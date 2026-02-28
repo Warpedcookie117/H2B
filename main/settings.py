@@ -38,8 +38,9 @@ ALLOWED_HOSTS = [
 
 # ⭐ Render necesita esto
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.onrender.com",
+    "https://h2b-ulx9.onrender.com",
 ]
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -92,11 +93,11 @@ WSGI_APPLICATION = 'main.wsgi.application'
 # ⭐ BASE DE DATOS PARA RENDER
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
-        ssl_require=False
+        ssl_require=True
     )
 }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
