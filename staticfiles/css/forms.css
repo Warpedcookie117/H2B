@@ -1,0 +1,140 @@
+/* Estilos generales para campos de formulario */
+.form-control {
+  padding-right: 2.5rem; /* mínimo para dejar espacio */
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #fca5a5; /* Borde rojo tenue inicial */
+  border-radius: 0.5rem;
+  background-color: #fff;
+  font-size: 1rem;
+  color: #1f2937;
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.form-control:focus {
+  border-color: #4ade80;
+  background-color: #f0fdf4;
+  animation: pulse-focus 0.8s ease-out;
+  outline: none;
+}
+
+
+.form-control:hover {
+  border-color: #3ee77c;
+}
+
+
+/* Textareas */
+textarea.form-control {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+
+/* boton submit de formulario de registro de usuario*/
+.btn-submit {
+  position: relative;
+  width: 100%;
+  background-color: #f50909;
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-submit {
+  width: 100%;
+  background-color: #f50909; /* rojo machete */
+  color: white;
+  font-weight: bold;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
+}
+
+/* 💥 Brillo reactivo */
+.btn-submit::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 60%);
+  transform: translateX(-100%) rotate(45deg);
+  transition: transform 0.6s ease;
+  z-index: 0;
+}
+
+.btn-submit:hover::before {
+  transform: translateX(0) rotate(45deg);
+}
+
+.btn-submit:hover {
+  background-color: #d00000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* 🛡️ Texto siempre por encima del brillo */
+.btn-submit span {
+  position: relative;
+  z-index: 2;
+}
+
+/* 🌀 Spinner de carga */
+.spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  animation: spin 0.6s linear infinite;
+  margin-left: 0.5rem;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.alert-success {
+  background-color: #4ade80; /* verde suave */
+}
+
+.alert-error {
+  background-color: #f50606; /* rojo claro */
+}
+
