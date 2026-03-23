@@ -1,0 +1,133 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard — {{ sucursal.nombre }}{% endblock %}
+
+{% block content %}
+
+<div class="p-8 space-y-12">
+
+    <!-- TÍTULO -->
+    <h1 class="text-4xl font-black flex items-center gap-3 text-purple-700">
+        <i class="fa-solid fa-shop"></i>
+        {{ sucursal.nombre }}
+    </h1>
+
+    <!-- TARJETAS PRINCIPALES -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <!-- STOCK TOTAL -->
+        <div class="p-6 border-4 border-black text-white"
+             style="background: #FF0066; box-shadow: 6px 6px 0 0 black;">
+            <p class="text-sm font-bold uppercase opacity-90">Stock total</p>
+            <p class="text-5xl font-black mt-2">{{ stock_total }}</p>
+        </div>
+
+        <!-- TOTAL VENDIDO -->
+        <div class="p-6 border-4 border-black text-white"
+             style="background: #0099FF; box-shadow: 6px 6px 0 0 black;">
+            <p class="text-sm font-bold uppercase opacity-90">Total vendido</p>
+            <p class="text-5xl font-black mt-2">${{ total_vendido }}</p>
+        </div>
+
+        <!-- CAJAS -->
+        <div class="p-6 border-4 border-black text-white"
+             style="background: #FFCC00; box-shadow: 6px 6px 0 0 black;">
+            <p class="text-sm font-bold uppercase opacity-90">Cajas</p>
+
+            <ul id="listaCajas" class="mt-4 space-y-3">
+                {% for caja in cajas %}
+                <li id="caja-{{ caja.id }}"
+                    class="flex items-center justify-between p-3 border-2 border-black bg-white text-black"
+                    style="box-shadow: 3px 3px 0 0 black;">
+
+                    <span class="font-bold">{{ caja.nombre }}</span>
+
+                    <button class="btn-entrar-caja px-4 py-1 font-black border-2 border-black text-white"
+                            style="background: #FF0066; box-shadow: 3px 3px 0 0 black;"
+                            data-caja-id="{{ caja.id }}"
+                            data-caja-nombre="{{ caja.nombre }}">
+                        Entrar
+                    </button>
+                </li>
+                {% empty %}
+                <li id="noCajas" class="text-white opacity-90">No hay cajas registradas.</li>
+                {% endfor %}
+            </ul>
+
+            {% if request.user.empleado.rol == "dueño" %}
+            <button id="btnAbrirModalCrearCaja"
+                    data-url-modal="{% url 'sucursales:modal_crear_caja' sucursal.id %}"
+                    data-url-crear="{% url 'sucursales:crear_caja' sucursal.id %}"
+                    class="mt-4 w-full py-3 font-black border-4 border-black text-white text-xl tracking-wide"
+                    style="background: #000000; box-shadow: 4px 4px 0 0 white;">
+                + CREAR CAJA
+            </button>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- PRODUCTOS MÁS VENDIDOS (CHART) -->
+    <div class="mt-12">
+        <h2 class="text-3xl font-black mb-4 text-purple-700">Productos más vendidos</h2>
+
+        <div class="p-6 border-4 border-black bg-white"
+             style="box-shadow: 6px 6px 0 0 black; background:#FFEE88;">
+            <canvas id="chartMasVendidos" height="120"></canvas>
+        </div>
+    </div>
+
+    <!-- INVENTARIO BAJO (CHART) -->
+    <div class="mt-12">
+        <h2 class="text-3xl font-black mb-4 text-purple-700">Inventario bajo</h2>
+
+        <div class="p-6 border-4 border-black bg-white"
+             style="box-shadow: 6px 6px 0 0 black; background:#FFEE88;">
+            <canvas id="chartInventarioBajo" height="120"></canvas>
+        </div>
+    </div>
+
+    <!-- VENTAS RECIENTES -->
+    <div class="mt-12">
+        <h2 class="text-3xl font-black mb-4 text-purple-700">Ventas recientes</h2>
+
+        <div class="space-y-3">
+            {% for v in ventas %}
+            <div class="p-4 border-4 border-black text-black"
+                 style="background: #FFEE88; box-shadow: 4px 4px 0 0 black;">
+                <p class="font-bold">{{ v.fecha }}</p>
+                <p class="font-black text-xl">${{ v.total }}</p>
+                <p class="text-sm">Ubicación: {{ v.ubicacion.nombre }}</p>
+            </div>
+            {% empty %}
+            <p class="text-gray-700">No hay ventas recientes.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL VACÍO (se llena por AJAX) -->
+<div id="modalCrearCaja"
+     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+
+    <div id="modalCrearCajaContent"
+         class="bg-white p-6 border-4 border-black shadow-[8px_8px_0_0_black] w-80">
+        <!-- Aquí se carga el form -->
+    </div>
+
+</div>
+
+<!-- PASAR DATOS A JS -->
+<script>
+    window.productosMasVendidos = {{ productos_mas_vendidos|safe }};
+    window.productosBajos = {{ productos_bajos|safe }};
+</script>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/sucursales/dashboard_sucursal.js' %}" defer></script>
+{% endblock %}

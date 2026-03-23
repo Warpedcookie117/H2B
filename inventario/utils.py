@@ -9,23 +9,8 @@ import hashlib
 
 
 
-def generar_datamatrix_base64(data: str):
-    qr = segno.helpers.make_datamatrix(data)
-    buffer = io.BytesIO()
-    qr.save(buffer, kind='png', scale=5)
-    return base64.b64encode(buffer.getvalue()).decode()
 
 
-
-
-def generar_base64(codigo, clase_barcode):
-    """
-    Genera una imagen PNG del código de barras y la devuelve en base64.
-    """
-    buffer = io.BytesIO()
-    barcode = clase_barcode(codigo, writer=ImageWriter())
-    barcode.write(buffer)
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
 def color_from_name(name):

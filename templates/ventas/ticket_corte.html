@@ -1,0 +1,97 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block content %}
+
+<div id="ticket-area" class="max-w-md mx-auto bg-white shadow-lg rounded-xl p-6 mt-10">
+
+    <!-- ENCABEZADO -->
+    <div class="text-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Corte del Día</h2>
+        <p class="text-sm text-gray-500">{{ fecha|date:"d/m/Y H:i" }}</p>
+    </div>
+
+    <!-- INFO CAJA -->
+    <div class="mb-4">
+        <p class="text-gray-700"><strong>Caja:</strong> {{ caja.nombre }}</p>
+        <p class="text-gray-700"><strong>Empleado:</strong> {{ empleado.nombre }}</p>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- TOTAL GENERAL -->
+    <div class="mb-4">
+        <h3 class="text-xl font-bold text-gray-800">Total General</h3>
+        <p class="text-3xl font-bold text-green-600 mt-2">
+            ${{ total_general }}
+        </p>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- TOTALES POR DUEÑO -->
+    <div class="mb-4">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Ventas por dueño</h3>
+
+        {% for dueno, total in totales_dueno.items %}
+        <div class="flex justify-between py-1">
+            <span class="font-semibold text-gray-700">{{ dueno }}</span>
+            <span class="font-bold text-gray-900">${{ total }}</span>
+        </div>
+        {% empty %}
+        <p class="text-gray-500 text-sm">No hubo ventas hoy.</p>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- BOTONES -->
+<div class="max-w-md mx-auto flex justify-center gap-4 mt-6">
+
+    <!-- IMPRIMIR -->
+    <button onclick="window.print()"
+            class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow">
+        Imprimir
+    </button>
+
+    <!-- DESCARGAR PDF -->
+    <button onclick="descargarPDF()"
+            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow">
+        Descargar
+    </button>
+
+</div>
+
+
+<!-- SCRIPT PARA DESCARGAR PDF -->
+<script>
+function descargarPDF() {
+    const ticket = document.getElementById("ticket-area").innerText;
+
+    const contenido = `
+Corte del Día
+Fecha: {{ fecha|date:"d/m/Y H:i" }}
+Caja: {{ caja.nombre }}
+Empleado: {{ empleado.nombre }}
+
+Total General: ${{ total_general }}
+
+Ventas por dueño:
+{% for dueno, total in totales_dueno.items %}
+- {{ dueno }}: ${{ total }}
+{% endfor %}
+`;
+
+    const blob = new Blob([contenido], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "corte_del_dia_{{ fecha|date:'Ymd_His' }}.pdf";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
+
+{% endblock %}

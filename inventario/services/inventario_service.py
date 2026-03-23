@@ -1,7 +1,8 @@
-from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
-from inventario.models import Inventario, MovimientoInventario, TransferenciaInventario, Ubicacion
+from inventario.models import Inventario, MovimientoInventario, TransferenciaInventario
+from inventario.models import Ubicacion
 
 
 class InventarioService:
@@ -58,7 +59,6 @@ class InventarioService:
             mov.save()
 
             return inv_dest
-        
 
     @staticmethod
     def salida(producto, cantidad, origen, empleado=None, motivo="venta"):
@@ -88,27 +88,42 @@ class InventarioService:
             mov.full_clean()
             mov.save()
 
-            return inv_orig      
-        
+            return inv_orig
+
     @staticmethod
-    def salida_inteligente(producto, cantidad, empleado=None, ubicacion_sucursal=None):
-        piso = Ubicacion.objects.get(nombre="Piso")
-        bodega = Ubicacion.objects.get(nombre="Bodega Interna")
+    def salida_inteligente(producto, cantidad, empleado=None, sucursal=None):
+        """
+        Salida inteligente por sucursal:
+        - Primero intenta desde Piso <Sucursal>
+        - Luego desde Bodega Interna <Sucursal>
+        - Si no hay stock suficiente → AVISA (NO fallback automático a CEDIS)
+        """
+
+        if sucursal is None:
+            raise ValidationError("Se requiere la sucursal para salida inteligente.")
+
+        # Ubicaciones internas de la sucursal
+        piso = Ubicacion.objects.get(sucursal=sucursal, tipo="piso")
+        bodega = Ubicacion.objects.get(sucursal=sucursal, tipo="bodega_interna")
 
         stock_piso = InventarioService.get_stock(producto, piso)
         stock_bodega = InventarioService.get_stock(producto, bodega)
 
+        # 1. Piso
         if cantidad <= stock_piso:
             InventarioService.salida(producto, cantidad, piso, empleado, "venta")
             return "piso"
 
+        # 2. Bodega interna
         if cantidad <= stock_bodega:
             InventarioService.salida(producto, cantidad, bodega, empleado, "venta")
             return "bodega"
 
+        # 3. No hay suficiente stock → AVISAR
         raise ValidationError(
-            f"No hay suficiente inventario para {producto.nombre}. "
-            f"Piso: {stock_piso}, Bodega: {stock_bodega}, Pedido: {cantidad}"
+            f"No hay suficiente inventario en la sucursal {sucursal.nombre}. "
+            f"Piso: {stock_piso}, Bodega: {stock_bodega}, Pedido: {cantidad}. "
+            f"Revisar disponibilidad en CEDIS (Moderna)."
         )
 
     @staticmethod
@@ -157,19 +172,9 @@ class InventarioService:
             inv.save()
 
             return inv
-        
+
     @staticmethod
     def aplicar_ajuste(solicitud, empleado_responsable):
-        """
-        Aplica un ajuste aprobado desde el sistema (correo o panel).
-        La solicitud contiene:
-        - producto
-        - ubicacion
-        - cantidad (nueva cantidad)
-        - motivo
-        - usuario que solicitó el ajuste
-        """
-
         with transaction.atomic():
             inv = Inventario.objects.select_for_update().get(
                 producto=solicitud.producto,
@@ -192,7 +197,7 @@ class InventarioService:
                     cantidad=diferencia,
                     origen=None,
                     destino=solicitud.ubicacion,
-                    realizado_por=empleado_responsable,  # ✔ FIX
+                    realizado_por=empleado_responsable,
                 )
                 mov.full_clean()
                 mov.save()
@@ -206,7 +211,7 @@ class InventarioService:
                     cantidad=abs(diferencia),
                     origen=solicitud.ubicacion,
                     destino=None,
-                    realizado_por=empleado_responsable,  # ✔ FIX
+                    realizado_por=empleado_responsable,
                 )
                 mov.full_clean()
                 mov.save()
@@ -292,17 +297,9 @@ class InventarioService:
                 "remove_card": inv_orig.cantidad_actual == 0,
                 "add_card": True,
             }
-            
-            
+
     @staticmethod
     def transferencia_multiple(origen, destino, productos, empleado=None):
-        """
-        productos = [
-            {"producto": Producto, "cantidad": int},
-            ...
-        ]
-        """
-
         resultados = []
 
         with transaction.atomic():
@@ -310,7 +307,6 @@ class InventarioService:
                 producto = item["producto"]
                 cantidad = item["cantidad"]
 
-                # Reutilizamos la lógica de transferencia simple
                 resultado = InventarioService.transferencia(
                     producto=producto,
                     cantidad=cantidad,
@@ -322,6 +318,7 @@ class InventarioService:
                 resultados.append(resultado)
 
         return resultados
+
     # -----------------------------
     # INTERNOS
     # -----------------------------
@@ -337,13 +334,9 @@ class InventarioService:
                 f"pero se esperaba '{esperado}'."
             )
         return tipo
-    
+
     @staticmethod
     def get_stock(producto, ubicacion):
-        """
-        Regresa el stock actual de un producto en una ubicación específica.
-        """
-
         registro = Inventario.objects.filter(
             producto=producto,
             ubicacion=ubicacion

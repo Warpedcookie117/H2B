@@ -26,10 +26,10 @@ class RegistroEmpleadoForm(forms.Form):
         widget=forms.Textarea(attrs={"class": "form-control", "rows": 3})
     )
 
-    # Campo oculto para dueño
-    rol = forms.CharField(
-        widget=forms.HiddenInput(),
-        initial="empleado"
+    # 🔥 Campo de rol: válido y coherente
+    rol = forms.ChoiceField(
+        choices=Empleado.ROL_CHOICES,
+        widget=forms.HiddenInput()  # si quieres que venga desde la URL
     )
 
     def clean(self):

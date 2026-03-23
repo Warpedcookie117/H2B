@@ -2,9 +2,13 @@
 // PRODUCTO EXISTENTE (AJAX)
 // ============================
 //
-// Este módulo detecta si el código existe y trae sus datos.
-// No bloquea campos aquí — eso lo hace el orquestador.
-//
+// Esta versión:
+// - NO cambia el action del form
+// - NO toca enctype
+// - NO destruye el input file
+// - Solo llena campos si el producto existe
+// - Solo desbloquea si el usuario borra el código
+// ============================
 
 export function initProductoExistente({
     form,
@@ -25,11 +29,30 @@ export function initProductoExistente({
     onProductoNoEncontrado,
 }) {
 
-    // Flag para evitar que "input" limpie mientras estamos buscando
     let buscando = false;
 
     // ============================
-    // EVENTO PRINCIPAL: ENTER
+    // MINI MENSAJE ELEGANTE
+    // ============================
+    function mostrarMensaje(msg) {
+        let box = document.getElementById("msg-producto-existente");
+
+        if (!box) {
+            box = document.createElement("div");
+            box.id = "msg-producto-existente";
+            box.className = "bg-yellow-100 text-yellow-800 p-2 rounded mb-3 text-sm font-semibold";
+            form.prepend(box);
+        }
+
+        box.textContent = msg;
+
+        setTimeout(() => {
+            if (box) box.remove();
+        }, 2500);
+    }
+
+    // ============================
+    // ENTER → BUSCAR PRODUCTO
     // ============================
     codigoInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -39,78 +62,47 @@ export function initProductoExistente({
     });
 
     // ============================
-    // LIMPIEZA AL ESCRIBIR
+    // INPUT → SOLO LIMPIAR SI HABÍA PRODUCTO CARGADO
     // ============================
     codigoInput.addEventListener("input", () => {
 
-        if (buscando) return; // ← NO limpiar mientras se busca
+        if (buscando) return;
 
-        // 1. Borrar hiddenId
         const hiddenId = document.getElementById("id_producto_id");
-        if (hiddenId) hiddenId.remove();
 
-        // 2. Limpiar campos del producto
-        nombreInput.value = "";
-        descripcionInput.value = "";
-        mayoreoInput.value = "";
-        menudeoInput.value = "";
-        docenaInput.value = "";
-        tipoCodigoInput.value = "";
-        duenioSelect.value = "";
-        categoriaPadreSelect.value = "";
-        subcategoriaSelect.innerHTML = "";
+        // 🔥 SOLO limpiar si antes había un producto cargado
+        if (hiddenId) {
+            hiddenId.remove();
 
-        // 3. Limpiar atributos dinámicos
-        atributosContainer.innerHTML = "";
+            // Desbloquear campos, pero NO borrar valores
+            nombreInput.removeAttribute("readonly");
+            descripcionInput.removeAttribute("readonly");
+            mayoreoInput.removeAttribute("readonly");
+            menudeoInput.removeAttribute("readonly");
+            docenaInput.removeAttribute("readonly");
+            tipoCodigoInput.removeAttribute("readonly");
 
-        // 4. Desbloquear campos
-        nombreInput.removeAttribute("readonly");
-        descripcionInput.removeAttribute("readonly");
-        mayoreoInput.removeAttribute("readonly");
-        menudeoInput.removeAttribute("readonly");
-        docenaInput.removeAttribute("readonly");
-        tipoCodigoInput.removeAttribute("readonly");
+            duenioSelect.disabled = false;
+            categoriaPadreSelect.disabled = false;
+            subcategoriaSelect.disabled = false;
 
-        duenioSelect.disabled = false;
-        categoriaPadreSelect.disabled = false;
-        subcategoriaSelect.disabled = false;
+            nombreInput.classList.remove("bg-gray-100");
+            descripcionInput.classList.remove("bg-gray-100");
+            mayoreoInput.classList.remove("bg-gray-100");
+            menudeoInput.classList.remove("bg-gray-100");
+            docenaInput.classList.remove("bg-gray-100");
+            tipoCodigoInput.classList.remove("bg-gray-100");
+            duenioSelect.classList.remove("bg-gray-100");
+            categoriaPadreSelect.classList.remove("bg-gray-100");
+            subcategoriaSelect.classList.remove("bg-gray-100");
 
-        nombreInput.classList.remove("bg-gray-100");
-        descripcionInput.classList.remove("bg-gray-100");
-        mayoreoInput.classList.remove("bg-gray-100");
-        menudeoInput.classList.remove("bg-gray-100");
-        docenaInput.classList.remove("bg-gray-100");
-        tipoCodigoInput.classList.remove("bg-gray-100");
-        duenioSelect.classList.remove("bg-gray-100");
-        categoriaPadreSelect.classList.remove("bg-gray-100");
-        subcategoriaSelect.classList.remove("bg-gray-100");
+            // 🔥 YA NO CAMBIAMOS EL ACTION DEL FORM
+            // El form SIEMPRE se envía a /nuevo_producto/
+            submitBtn.textContent = "Registrar producto";
 
-        // 5. Resetear botón y acción del form
-        form.action = "/inventario/nuevo_producto/";
-        submitBtn.textContent = "Registrar producto";
-
-        submitBtn.classList.remove("bg-green-600", "hover:bg-green-700");
-        submitBtn.classList.add("bg-red-600", "hover:bg-red-700");
-        
-        // 6. Limpiar temporadas
-        const checkboxes = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
-        checkboxes.forEach(cb => {
-            cb.checked = false;
-            cb.disabled = false;
-        });
-
-        // 7. Limpiar y habilitar foto
-        const fotoInput = document.getElementById("id_foto_url");
-        if (fotoInput) {
-            fotoInput.disabled = false;
-            fotoInput.value = ""; // limpia selección de archivo
+            submitBtn.classList.remove("bg-green-600", "hover:bg-green-700");
+            submitBtn.classList.add("bg-red-600", "hover:bg-red-700");
         }
-
-        const previewFoto = document.getElementById("preview-foto");
-        if (previewFoto) {
-            previewFoto.innerHTML = "";
-        }
-
     });
 
     // ============================
@@ -119,20 +111,23 @@ export function initProductoExistente({
     async function buscarYCompletar(codigo) {
         if (!codigo) return;
 
-        buscando = true; // ← ACTIVAMOS FLAG
-
+        buscando = true;
         codigoInput.classList.add("opacity-50");
 
         try {
             const url = `/inventario/buscar_producto/?codigo=${encodeURIComponent(codigo)}`;
             const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+            if (!resp.ok) {
+                mostrarMensaje("Error consultando el servidor.");
+                return;
+            }
 
             const data = await resp.json();
 
             // NO EXISTE
             if (!data.existe) {
-                alert("No encontré ninguna coincidencia con ese código.");
+                mostrarMensaje("No encontré ningún producto con ese código.");
                 onProductoNoEncontrado();
                 return;
             }
@@ -164,15 +159,22 @@ export function initProductoExistente({
             }
             hiddenId.value = data.producto_id;
 
-            // Callback final
+            // 🔥 YA NO CAMBIAMOS EL ACTION DEL FORM
+            // El backend decide si redirige a seleccionar_etiqueta_temp
+
+            // Cambiar estilo del botón
+            submitBtn.textContent = "Actualizar producto";
+            submitBtn.classList.remove("bg-red-600", "hover:bg-red-700");
+            submitBtn.classList.add("bg-green-600", "hover:bg-green-700");
+
             onProductoEncontrado(data);
 
         } catch (err) {
             console.error("Error buscando producto:", err);
-            alert("Ocurrió un error al buscar el producto.");
+            mostrarMensaje("Error inesperado al buscar el producto.");
         } finally {
             codigoInput.classList.remove("opacity-50");
-            buscando = false; // ← DESACTIVAMOS FLAG
+            buscando = false;
         }
     }
 }

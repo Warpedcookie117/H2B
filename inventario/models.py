@@ -2,6 +2,11 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from tienda_temp.models import Empleado, Usuario
 from django.db.models import Sum
+from django.db.models import JSONField
+from sucursales.models import Sucursal
+
+
+
 
 
 class Categoria(models.Model):
@@ -51,30 +56,61 @@ class Temporada(models.Model):
         return "Sin rango definido"
     
 
-
 class Ubicacion(models.Model):
-    nombre = models.CharField(max_length=50, unique=True)
-    direccion = models.CharField(max_length=255, )
+    nombre = models.CharField(max_length=50)
+    direccion = models.CharField(max_length=255)
+
+    sucursal = models.ForeignKey(
+        Sucursal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ubicaciones"
+    )
+
+    TIPO_CHOICES = [
+        ("piso", "Piso de Venta"),
+        ("bodega", "Bodega Interna"),
+        ("global", "Global / Almacén Central"),
+    ]
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default="global")
+
+    activa = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.nombre
-    
+        # Si pertenece a una sucursal → mostrar "(sucursal)"
+        if self.sucursal:
+            return f"{self.nombre} (sucursal)"
+
+        # Si es global → mostrar "(global)"
+        return f"{self.nombre} (Almacen)"
+
+
 
 
 class Producto(models.Model):
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField()
+    embedding = JSONField(null=True, blank=True)
     precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=2)
     precio_menudeo = models.DecimalField(max_digits=10, decimal_places=2)
-    precio_docena = models.DecimalField(max_digits=10, decimal_places=2)
+
+    precio_docena = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        help_text="Opcional. Solo si el dueño decide manejar precio por docena."
+    )
+
     foto_url = models.ImageField(upload_to='productos/', blank=True, null=True)
 
     codigo_barras = models.CharField(
         max_length=50,
         blank=True,
         null=True,
-        help_text="Código de barras escaneado o generado automáticamente",
-        unique=True
+        unique=True,
+        help_text="Código de barras escaneado o generado automáticamente"
     )
 
     tipo_codigo = models.CharField(
@@ -92,8 +128,18 @@ class Producto(models.Model):
         help_text="Tipo de código de barras usado",
     )
 
+    tamano_etiqueta = models.CharField(
+        max_length=20,
+        choices=[
+            ('chica', 'Chica'),
+            ('mediana', 'Mediana'),
+            ('grande', 'Grande'),
+        ],
+        default='mediana'
+    )
+
     categoria_padre = models.ForeignKey(
-        Categoria,
+        "inventario.Categoria",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -101,7 +147,7 @@ class Producto(models.Model):
     )
 
     categoria = models.ForeignKey(
-        Categoria,
+        "inventario.Categoria",
         on_delete=models.CASCADE,
         blank=True,
         null=True,
@@ -109,7 +155,7 @@ class Producto(models.Model):
     )
 
     temporada = models.ManyToManyField(
-        Temporada,
+        "inventario.Temporada",
         blank=True,
         related_name='productos'
     )
@@ -132,57 +178,100 @@ class Producto(models.Model):
 
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
+    firma_unica = models.CharField(
+        max_length=600,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Huella digital interna para evitar duplicados"
+    )
+
+    # ============================================================
+    # REPRESENTACIÓN
+    # ============================================================
     def __str__(self):
         return self.nombre
 
     # ============================================================
-    # PROPIEDADES DE INVENTARIO (LAS QUE NECESITAS PARA LOS MODALES)
+    # PROPIEDADES DE INVENTARIO
     # ============================================================
-
     @property
     def cantidad_total(self):
-        """
-        Cantidad total del producto en TODAS las ubicaciones.
-        """
         return self.inventarios.aggregate(
             total=Sum("cantidad_actual")
         )["total"] or 0
 
     def cantidad_en_ubicacion(self, ubicacion):
-        """
-        Cantidad del producto en UNA ubicación específica.
-        """
         inv = self.inventarios.filter(ubicacion=ubicacion).first()
         return inv.cantidad_actual if inv else 0
 
-    # ============================================================
-    # VALIDACIONES
-    # ============================================================
     def clean(self):
+        # Llamamos al clean() del padre para mantener consistencia interna
+        super().clean()
+
+        # ============================================================
+        # VALIDACIONES EXISTENTES
+        # ============================================================
         if not self.dueño:
             raise ValidationError({'dueño': 'Todo producto debe tener un dueño asignado.'})
 
         if self.precio_mayoreo < 0:
             raise ValidationError({'precio_mayoreo': 'El precio de mayoreo no puede ser negativo.'})
+
         if self.precio_menudeo < 0:
             raise ValidationError({'precio_menudeo': 'El precio de menudeo no puede ser negativo.'})
-        if self.precio_docena < 0:
-            raise ValidationError({'precio_docena': 'El precio por docena no puede ser negativo.'})
+
+        if self.precio_docena is not None:
+            if self.precio_docena < 0:
+                raise ValidationError({'precio_docena': 'El precio por docena no puede ser negativo.'})
+
+            if self.precio_docena > self.precio_mayoreo:
+                raise ValidationError({'precio_docena': 'El precio por docena no puede ser mayor que el precio de mayoreo.'})
+
         if self.precio_mayoreo > self.precio_menudeo:
             raise ValidationError({'precio_mayoreo': 'El precio de mayoreo no puede ser mayor que el precio de menudeo.'})
-        if self.precio_docena > self.precio_mayoreo:
-            raise ValidationError({'precio_docena': 'El precio por docena no puede ser mayor que el precio de mayoreo.'})
+
+        # ============================================================
+        # 🔥 VALIDACIÓN CLIP — DETECCIÓN DE PRODUCTO DUPLICADO POR IMAGEN
+        # ============================================================
+        # Solo si hay imagen nueva o si el producto no tiene embedding aún
+        if self.foto_url and not self.embedding:
+            from .services.vision import generar_embedding
+            from .services.similaridad import buscar_producto_similar
+
+            # Generar embedding temporal
+            embedding_nuevo = generar_embedding(self.foto_url)
+
+            # Buscar coincidencias
+            similares = buscar_producto_similar(embedding_nuevo)
+
+            if similares:
+                producto, score = similares[0]
+
+                mensaje = (
+                    "Hey we, el sistema detectó que intentas registrar un producto que ya existe "
+                    "a partir de su imagen.\n\n"
+                    "Verifica el producto guardado:\n"
+                    f"- Coincidencia: {producto.id} – {producto.nombre}"
+                )
+
+                raise ValidationError(mensaje)
+
+            # Si no hay coincidencias → asignar embedding
+            self.embedding = embedding_nuevo
 
     # ============================================================
-    # ASIGNACIÓN AUTOMÁTICA
+    # META
     # ============================================================
-    def save(self, *args, **kwargs):
-        if self.categoria and self.categoria.padre:
-            self.categoria_padre = self.categoria.padre
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['firma_unica'],
+                name='unique_producto_por_firma'
+            )
+        ]
 
-        super().save(*args, **kwargs)
 
-        
 
     # Define los atributos que existen para cada subcategoría.
 class Atributo(models.Model):

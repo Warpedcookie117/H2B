@@ -10,9 +10,9 @@ from .views.productos import (
     buscar_producto_por_codigo,
     codigo_base64,
     productos_por_ubicacion,
-    seleccionar_etiqueta_temp,
     temporada_view,
     mis_productos,
+
 )
 
 # Categorías
@@ -22,6 +22,7 @@ from .views.categorias import (
     configurar_atributos,
     eliminar_atributo,
     nuevo_atributo,
+    fuzzy_atributo,
 
     # NUEVAS VIEWS AJAX
     modal_categoria_view,
@@ -81,7 +82,6 @@ urlpatterns = [
     path('detalle_producto/<int:producto_id>/', detalle_producto, name='detalle_producto'),
     path("ubicacion/<int:ubicacion_id>/", productos_por_ubicacion, name="productos_por_ubicacion"),
     path('producto/<int:producto_id>/codigo_base64/', codigo_base64, name='codigo_base64'),
-    path('seleccionar_etiqueta_temp/', seleccionar_etiqueta_temp, name='seleccionar_etiqueta_temp'),
     path('api/producto/<int:producto_id>/', eliminar_producto_completo, name='eliminar_producto_completo'),
 
     # ============================
@@ -108,6 +108,9 @@ urlpatterns = [
     # CATEGORÍAS (AJAX + MODALES)
     # ============================
 
+
+    #API para nuevo_producto fuzzy para atributos
+    path("fuzzy/<int:atributo_id>/", fuzzy_atributo, name="fuzzy_atributo"),
     # Modal categoría padre
     path("categorias/modal-categoria/", modal_categoria_view, name="modal_categoria_nueva"),
     path("categorias/modal-categoria/<int:categoria_id>/", modal_categoria_view, name="modal_categoria_editar"),

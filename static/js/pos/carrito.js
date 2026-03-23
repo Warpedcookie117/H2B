@@ -19,6 +19,7 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega) {
             modo_precio: "AUTO",
             precios,
             precio_aplicado: precios.men,
+            modo_resuelto: "MEN",
             stock_piso: stock_piso ?? 0,
             stock_bodega: stock_bodega ?? 0
         };
@@ -65,6 +66,17 @@ export function renderCarrito() {
             `;
         }
 
+        const precioSeguro = Number(item.precio_aplicado || 0);
+
+        const colores = {
+            AUTO: "bg-blue-600 text-white",
+            MEN: "bg-pink-300 text-black",
+            MAY: "bg-green-500 text-white",
+            DOC: "bg-purple-500 text-white"
+        };
+
+        const tieneDoc = item.precios.doc && item.precios.doc > 0;
+
         const div = document.createElement("div");
         div.className = "bg-gray-100 p-3 rounded-lg shadow flex flex-col gap-2";
 
@@ -82,24 +94,66 @@ export function renderCarrito() {
             ${aviso}
 
             <div class="flex gap-2">
-                ${["MEN", "MAY", "DOC", "AUTO"].map(m => `
-                    <button class="px-2 py-1 rounded text-xs font-bold
-                        ${item.modo_precio === m ? "bg-blue-600 text-white" : "bg-gray-300"}"
-                        data-idx="${index}" data-modo="${m}">
-                        ${m}
-                    </button>
-                `).join("")}
+                ${["MEN", "MAY", "DOC", "AUTO"].map(m => {
+
+                    // 🔒 DOC deshabilitado si no existe precio DOC
+                    if (m === "DOC" && !tieneDoc) {
+                        return `
+                            <button class="px-2 py-1 rounded text-xs font-bold bg-gray-400 opacity-50 cursor-not-allowed"
+                                disabled>
+                                DOC
+                            </button>
+                        `;
+                    }
+
+                    // 1) Si el cajero eligió manualmente
+                    if (item.modo_precio === m) {
+                        return `
+                            <button class="px-2 py-1 rounded text-xs font-bold ${colores[m]}"
+                                data-idx="${index}" data-modo="${m}">
+                                ${m}
+                            </button>
+                        `;
+                    }
+
+                    // 2) Si está en AUTO, AUTO es el activo
+                    if (item.modo_precio === "AUTO" && m === "AUTO") {
+                        return `
+                            <button class="px-2 py-1 rounded text-xs font-bold ${colores.AUTO}"
+                                data-idx="${index}" data-modo="AUTO">
+                                AUTO
+                            </button>
+                        `;
+                    }
+
+                    // 3) Si está en AUTO y este botón es el modo aplicado → borde negro
+                    if (item.modo_precio === "AUTO" && item.modo_resuelto === m) {
+                        return `
+                            <button class="px-2 py-1 rounded text-xs font-bold ${colores[m]} border-4 border-black"
+                                data-idx="${index}" data-modo="${m}">
+                                ${m}
+                            </button>
+                        `;
+                    }
+
+                    // 4) Botón normal
+                    return `
+                        <button class="px-2 py-1 rounded text-xs font-bold bg-gray-300"
+                            data-idx="${index}" data-modo="${m}">
+                            ${m}
+                        </button>
+                    `;
+                }).join("")}
             </div>
 
             <div class="text-right font-bold text-lg text-red-600">
-                $${item.precio_aplicado.toFixed(2)}
+                $${precioSeguro.toFixed(2)}
             </div>
         `;
 
         carritoLista.appendChild(div);
     });
 
-    // Eventos de botones
     carritoLista.querySelectorAll("button").forEach(btn => {
         const idx = parseInt(btn.dataset.idx);
 

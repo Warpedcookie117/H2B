@@ -3,6 +3,8 @@ from inventario.services.codigo_service import CodigoService
 from inventario.services.codigo_service import CodigoService
 from tienda_temp.models import Empleado
 from .models import Atributo, Categoria, Temporada, TransferenciaInventario, Producto, Categoria, Ubicacion, Inventario
+from tienda_temp.models import Empleado
+
 
 #ACCIONES DE INVENTARIO
 
@@ -145,12 +147,14 @@ class UbicacionForm(forms.ModelForm):
         }
 
 
-
-
-
 class ProductoForm(forms.ModelForm):
 
     tipo_codigo = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput()
+    )
+
+    tamano_etiqueta = forms.CharField(
         required=False,
         widget=forms.HiddenInput()
     )
@@ -177,11 +181,18 @@ class ProductoForm(forms.ModelForm):
         help_text="Número de piezas al registrar el producto"
     )
 
+    # 🔥🔥🔥 CAMBIO IMPORTANTE: queryset vacío
     ubicacion = forms.ModelChoiceField(
-        queryset=Ubicacion.objects.all(),
+        queryset=Ubicacion.objects.none(),
         required=True,
         label="Ubicación de registro",
         widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    precio_docena = forms.DecimalField(
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0'})
     )
 
     class Meta:
@@ -192,30 +203,31 @@ class ProductoForm(forms.ModelForm):
             'foto_url', 'temporada', 'dueño',
             'codigo_barras',
             'tipo_codigo',
+            'tamano_etiqueta',
         ]
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
             'precio_mayoreo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'precio_menudeo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
-            'precio_docena': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
-            'foto_url': forms.ClearableFileInput(attrs={
+            'foto_url': forms.FileInput(attrs={
                 'class': 'form-control',
-                'accept': 'image/*',
-                'capture': 'environment'
+                'accept': 'image/*'
             }),
             'temporada': forms.CheckboxSelectMultiple(),
             'dueño': forms.Select(attrs={'class': 'form-control'}),
             'codigo_barras': forms.TextInput(attrs={'class': 'form-control'}),
             'tipo_codigo': forms.HiddenInput(),
+            'tamano_etiqueta': forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
-        self.from_etiqueta = kwargs.pop("from_etiqueta", False)
         super().__init__(*args, **kwargs)
 
+        # Dueños
         self.fields['dueño'].queryset = Empleado.objects.filter(rol='dueño')
 
+        # Subcategorías dinámicas
         if 'categoria_padre' in self.data:
             try:
                 padre_id = int(self.data.get('categoria_padre'))
@@ -229,6 +241,46 @@ class ProductoForm(forms.ModelForm):
 
         else:
             self.fields['subcategoria'].queryset = Categoria.objects.none()
+
+        # Campos dinámicos de atributos
+        sub_id = (
+            self.data.get("subcategoria")
+            or (self.instance.categoria.id if self.instance.pk else None)
+        )
+
+        atributos = []
+        if sub_id:
+            try:
+                sub_id = int(sub_id)
+                atributos = Atributo.objects.filter(categoria_id=sub_id)
+            except:
+                atributos = []
+
+        for atributo in atributos:
+            key = f"atributo_{atributo.id}"
+            self.fields[key] = forms.CharField(
+                required=True,
+                label=atributo.nombre,
+                widget=forms.TextInput(attrs={'class': 'form-control'})
+            )
+
+        # ============================================================
+        # 🔥 NUEVA LÓGICA: SIEMPRE MOSTRAR TODAS LAS UBICACIONES
+        # ============================================================
+
+        sucursal_id = self.initial.get("sucursal_actual") or self.data.get("sucursal_actual")
+
+        ubicaciones_globales = Ubicacion.objects.filter(sucursal__isnull=True)
+        ubicaciones_sucursal = Ubicacion.objects.filter(sucursal_id=sucursal_id) if sucursal_id else Ubicacion.objects.none()
+
+        # Combinar ambas
+        self.fields["ubicacion"].queryset = (
+            ubicaciones_sucursal | ubicaciones_globales
+        ).order_by("sucursal__nombre", "tipo")
+
+        # 🔥 Preseleccionar ubicación si estás en caja
+        if hasattr(self, "request") and getattr(self.request, "caja_actual", None):
+            self.fields["ubicacion"].initial = self.request.caja_actual.ubicacion_id
 
     def clean_foto_url(self):
         foto = self.cleaned_data.get("foto_url")
@@ -245,9 +297,6 @@ class ProductoForm(forms.ModelForm):
     def clean_codigo_barras(self):
         codigo = self.cleaned_data.get("codigo_barras")
 
-        if self.from_etiqueta:
-            return codigo
-
         if codigo:
             codigo = str(codigo).strip()
 
@@ -263,7 +312,6 @@ class ProductoForm(forms.ModelForm):
 
         return None
 
-    # 🔥 VALIDACIÓN DE ATRIBUTOS DINÁMICOS
     def clean(self):
         cleaned = super().clean()
 
@@ -271,13 +319,16 @@ class ProductoForm(forms.ModelForm):
         if not sub:
             return cleaned
 
-        from inventario.models import Atributo
         atributos = Atributo.objects.filter(categoria=sub)
 
         errores = []
 
         for atributo in atributos:
             key = f"atributo_{atributo.id}"
+
+            if key not in self.fields:
+                continue
+
             valor = (self.data.get(key) or "").strip()
 
             if valor == "":
@@ -292,14 +343,7 @@ class ProductoForm(forms.ModelForm):
 
         return cleaned
 
-    def save(self, commit=True):
-        producto = super().save(commit=False)
 
-        if commit:
-            producto.save()
-            self.save_m2m()
-
-        return producto
 
 
 

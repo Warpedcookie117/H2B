@@ -28,6 +28,7 @@ urlpatterns = [
     # Otras apps
     path('inventario/', include('inventario.urls')),
     path('ventas/', include('ventas.urls')),
+    path('sucursales/',include('sucursales.urls'))
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Personalización del panel de administración

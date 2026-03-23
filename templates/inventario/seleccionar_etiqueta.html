@@ -21,7 +21,6 @@
   </div>
 {% endif %}
 
-<!-- INFO BOX -->
 <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded mb-8 shadow-sm">
   <p class="text-sm md:text-base leading-relaxed">
     Este producto aún no tiene código de barras. Selecciona el tipo de etiqueta que mejor se adapte al tamaño del empaque.  
@@ -29,7 +28,6 @@
   </p>
 </div>
 
-<!-- GRID RESPONSIVE -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
   {% for etiqueta in etiquetas %}
@@ -50,7 +48,8 @@
       </p>
     </div>
 
-    <input type="hidden" name="tipo_codigo" value="{{ etiqueta.tipo }}">
+    <!-- CORRECTO: enviar tamaño de etiqueta -->
+    <input type="hidden" name="tamaño" value="{{ etiqueta.tipo }}">
 
     <button type="submit"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition">

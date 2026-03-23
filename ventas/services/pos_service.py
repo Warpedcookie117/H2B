@@ -8,12 +8,17 @@ class POSService:
 
     @staticmethod
     @transaction.atomic
-    def crear_venta(empleado, ubicacion, carrito, pagado_efectivo, pagado_tarjeta, descuento_10=False):
+    def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_10=False):
         """
         carrito = [
             {"producto_id": int, "cantidad": int, "precio_aplicado": float},
             ...
         ]
+
+        NOTA IMPORTANTE:
+        - 'sucursal' es un OBJETO Sucursal (no un ID)
+        - La ubicación de la venta se determina automáticamente como Piso <Sucursal>
+        - 'caja_id' es la caja activa en sesión
         """
 
         detalles = []
@@ -21,7 +26,7 @@ class POSService:
 
         # 1) Calcular subtotal usando precio_aplicado del POS
         for item in carrito:
-            producto_id = item["producto_id"]              # 🔥 VIENE DEL FETCH
+            producto_id = item["producto_id"]
             producto = Producto.objects.get(pk=producto_id)
 
             cantidad = item["cantidad"]
@@ -53,10 +58,14 @@ class POSService:
         if cambio < 0:
             cambio = 0
 
-        # 4) Crear Venta
+        # 4) Determinar ubicación de la venta (siempre Piso <Sucursal>)
+        ubicacion_venta = sucursal.ubicacion_set.get(tipo="piso")
+
+        # 5) Crear Venta (🔥 ahora incluye caja_id)
         venta = Venta.objects.create(
             empleado=empleado,
-            ubicacion=ubicacion,
+            ubicacion=ubicacion_venta,
+            caja_id=caja_id,  # 🔥 clave para reportes por caja
             subtotal=subtotal,
             descuento=descuento,
             total=total,
@@ -66,7 +75,7 @@ class POSService:
             cambio=cambio,
         )
 
-        # 5) Crear detalles + descontar inventario
+        # 6) Crear detalles + descontar inventario
         for d in detalles:
 
             # A) Crear detalle
@@ -78,17 +87,17 @@ class POSService:
                 subtotal=d["subtotal"],
             )
 
-            # B) Salida inteligente de inventario
+            # B) Salida inteligente de inventario (por sucursal)
             origen = InventarioService.salida_inteligente(
                 producto=d["producto"],
                 cantidad=d["cantidad"],
                 empleado=empleado,
-                ubicacion_sucursal=ubicacion   # 🔥 ESTA ES LA CLAVE
+                sucursal=sucursal  # 🔥 clave para descontar solo de esa sucursal
             )
 
             d["origen_inventario"] = origen
 
-        # 6) Regresar venta + detalles
+        # 7) Regresar venta + detalles
         return {
             "venta": venta,
             "detalles": detalles

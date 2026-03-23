@@ -25,53 +25,59 @@
 
   {% block extra_head %}{% endblock %}
 </head>
-<body class="sidebar-open min-h-screen flex flex-col bg-gradient-to-br from-white to-red-50 text-gray-800">
 
-  <!-- Navbar fijo arriba -->
-  {% include 'partials/navvar.html' %}
+<body 
+  class="sidebar-open min-h-screen flex flex-col bg-gradient-to-br from-white to-red-50 text-gray-800"
+  data-mostrar-modal="{{ mostrar_modal_etiqueta|default:'false' }}"
+>
 
-  <!-- Sidebar fijo a la izquierda -->
-  {% include 'partials/sidebar.html' %}
+{% include 'partials/navvar.html' %}
+{% include 'partials/sidebar.html' %}
 
+{% if messages %}
+<div id="messages-container" class="max-w-4xl mx-auto mt-4 px-4 space-y-2">
+    {% for message in messages %}
+        <div class="
+            message-item
+            px-4 py-3 rounded text-white shadow transition-opacity duration-700
+            {% if message.tags == 'success' %} bg-green-600
+            {% elif message.tags == 'error' %} bg-red-600
+            {% else %} bg-blue-600 {% endif %}
+        ">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
 
-      {% if messages %}
-      <div id="messages-container" class="max-w-4xl mx-auto mt-4 px-4 space-y-2">
-          {% for message in messages %}
-              <div class="
-                  message-item
-                  px-4 py-3 rounded text-white shadow transition-opacity duration-700
-                  {% if message.tags == 'success' %} bg-green-600
-                  {% elif message.tags == 'error' %} bg-red-600
-                  {% else %} bg-blue-600 {% endif %}
-              ">
-                  {{ message }}
-              </div>
-          {% endfor %}
-      </div>
-      {% endif %}
+<!-- Layout principal con espacio para navbar fijo -->
+<div class="pt-16 flex flex-col md:flex-row flex-1 transition-all duration-300" id="layout">
+  <main id="main-content" class="w-full p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] transition-all duration-300">
+      {% block content %}{% endblock %}
+  </main>
+</div>
 
+<!-- Footer -->
+{% include 'partials/footer.html' %}
 
+<!-- Scripts -->
 
+<!-- 🔥 Variable global para saber en qué caja está el usuario -->
+<script>
+    window.cajaActual = "{{ request.session.caja_actual|default:'' }}";
+</script>
 
-  <!-- Layout principal con espacio para navbar fijo -->
-  <div class="pt-16 flex flex-col md:flex-row flex-1 transition-all duration-300" id="layout">
-    <main id="main-content" class="w-full p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] transition-all duration-300">      {% block content %}{% endblock %}
-    </main>
-  </div>
+<script src="{% static 'js/sidebar.js' %}" defer></script>
+<script src="{% static 'js/navbar.js' %}" defer></script>
+<script src="{% static 'js/form-handler.js' %}" defer></script>
+<script src="{% static 'js/layout.js' %}" defer></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
-  <!-- Footer -->
-  {% include 'partials/footer.html' %}
+<script>
+  AOS.init({ once: true, duration: 800 });
+</script>
 
-  <!-- Scripts -->
-  <script src="{% static 'js/sidebar.js' %}" defer></script>
-  <script src="{% static 'js/navbar.js' %}" defer></script>
-  <script src="{% static 'js/form-handler.js' %}" defer></script>
-  <script src="{% static 'js/layout.js' %}" defer></script>
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-  <script>
-    AOS.init({ once: true, duration: 800 });
-  </script>
-  <script>
+<script>
 document.addEventListener("DOMContentLoaded", () => {
     const messages = document.querySelectorAll(".message-item");
 
@@ -87,6 +93,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-  {% block scripts %}{% endblock %}
+<div id="modalEntrarCaja"
+     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div id="modalEntrarCajaContent"></div>
+</div>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

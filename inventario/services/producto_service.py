@@ -1,60 +1,87 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 from inventario.services.atributo_service import AtributoService
-from inventario.services.codigo_service import CodigoService
-from inventario.services.etiqueta_service import EtiquetaService
 from inventario.services.inventario_service import InventarioService
 
 
 class ProductService:
 
     @staticmethod
-    def crear_producto_desde_formulario(form, request):
-        """
-        Decide si el flujo es:
-        - NORMAL (producto con código)
-        - ETIQUETA (producto sin código → seleccionar etiqueta)
-        """
-        codigo = form.cleaned_data.get("codigo_barras")
-
-        if codigo:
-            return ProductService._crear_producto_normal(form, request)
-
-        return EtiquetaService.preparar_producto_sin_codigo(form, request)
-
-    @staticmethod
     @transaction.atomic
-    def _crear_producto_normal(form, request):
+    def crear_producto_desde_formulario(
+        form,
+        request,
+        codigo_generado=None,
+        tipo_codigo=None,
+        tamano_etiqueta=None
+    ):
         """
-        Crea un producto REAL (con código ya asignado),
-        guarda atributos dinámicos y registra inventario inicial.
+        Flujo unificado compatible con la vista:
+        - Si viene codigo_generado → usarlo
+        - Si no viene → usar el del form
+        - tipo_codigo puede venir desde la vista o desde el form
+        - tamano_etiqueta puede venir desde la vista o desde el form
         """
+
         cleaned = form.cleaned_data
 
+        # Crear producto base
         producto = form.save(commit=False)
         producto.registrado_por = getattr(request.user, "empleado", None)
 
+        # Categoría / subcategoría
         sub = cleaned.get("subcategoria")
         if sub:
             producto.categoria = sub
             producto.categoria_padre = sub.padre
 
-        # Validar y asignar código real
-        codigo = cleaned.get("codigo_barras")
-        tipo = CodigoService.validar_codigo_real(codigo)
+        # ============================================================
+        # TAMAÑO DE ETIQUETA (prioridad: vista → form → default)
+        # ============================================================
+        producto.tamano_etiqueta = (
+            tamano_etiqueta or
+            cleaned.get("tamano_etiqueta") or
+            "mediana"
+        )
 
-        producto.codigo_barras = codigo
-        producto.tipo_codigo = tipo
+        # ============================================================
+        # ASIGNAR CÓDIGO Y TIPO (real o generado)
+        # ============================================================
+        if codigo_generado:
+            producto.codigo_barras = codigo_generado
+            producto.tipo_codigo = tipo_codigo or "code128"
+        else:
+            producto.codigo_barras = cleaned.get("codigo_barras")
+            producto.tipo_codigo = cleaned.get("tipo_codigo")
+
+        if not producto.codigo_barras:
+            raise ValueError("Error crítico: no se asignó código de barras.")
 
         if not producto.tipo_codigo:
-            raise ValueError("tipo_codigo no fue asignado antes de crear el producto.")
+            raise ValueError("Error crítico: no se asignó tipo_codigo.")
 
-        producto.save()
+        # Guardar producto (sin firma)
+        try:
+            producto.save()
+        except IntegrityError:
+            raise ValidationError("Este producto ya existe (firma única).")
+
+        # Guardar M2M
         form.save_m2m()
 
-        # Guardar atributos dinámicos (ya validados por el Form)
+        # Guardar atributos dinámicos
         AtributoService.guardar_valores(producto, request.POST)
+
+        # Generar firma única
+        firma = ProductService._generar_firma(producto)
+        producto.firma_unica = firma
+
+        try:
+            producto.save(update_fields=["firma_unica"])
+        except IntegrityError:
+            raise ValidationError("Este producto ya existe (firma única).")
 
         # Inventario inicial
         cantidad = cleaned.get("cantidad_inicial")
@@ -72,47 +99,19 @@ class ProductService:
 
         return producto, ubicacion
 
+    # ============================================================
+    # FIRMA ÚNICA (limpia)
+    # ============================================================
     @staticmethod
-    @transaction.atomic
-    def crear_producto_sin_codigo(form, request):
-        """
-        Crea un producto cuyo código fue generado internamente
-        y cuyo tipo_codigo viene de la selección de etiqueta.
-        NO se valida como código de barras real.
-        """
-        cleaned = form.cleaned_data
+    def _generar_firma(producto):
+        partes = []
 
-        producto = form.save(commit=False)
-        producto.registrado_por = getattr(request.user, "empleado", None)
+        valores = producto.valores_atributo.all()
 
-        sub = cleaned.get("subcategoria")
-        if sub:
-            producto.categoria = sub
-            producto.categoria_padre = sub.padre
+        for valor in valores:
+            nombre = valor.atributo.nombre.lower().strip()
+            val = str(valor.valor).lower().strip()
+            partes.append(f"{nombre}={val}")
 
-        if not producto.codigo_barras:
-            raise ValueError("Error crítico: código interno no asignado.")
-
-        if not producto.tipo_codigo:
-            raise ValueError("Error crítico: tipo_codigo no asignado.")
-
-        producto.save()
-        form.save_m2m()
-
-        # Guardar atributos dinámicos (ya validados por el Form)
-        AtributoService.guardar_valores(producto, form.data)
-
-        cantidad = cleaned.get("cantidad_inicial")
-        ubicacion = cleaned.get("ubicacion")
-        empleado = getattr(request.user, "empleado", None)
-
-        if cantidad and ubicacion:
-            InventarioService.entrada(
-                producto=producto,
-                cantidad=cantidad,
-                destino=ubicacion,
-                empleado=empleado,
-                motivo="nuevo"
-            )
-
-        return producto, ubicacion
+        partes.sort()
+        return "|".join(partes)

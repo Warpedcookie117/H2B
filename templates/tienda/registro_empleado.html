@@ -77,16 +77,23 @@
         {{ form.numero_contacto }}
       </div>
 
+      {# 🔥 LÓGICA DE ROLES #}
       {% if form.rol.value == "dueño" %}
-        {{ form.rol }}  <!-- Campo oculto -->
+        {# DUEÑO: campo oculto, no editable #}
+        {{ form.rol }}
       {% else %}
+        {# EMPLEADO NORMAL: menú de roles válidos #}
         <div class="mb-4">
           <label for="id_rol">Rol</label>
           <select name="rol" id="id_rol" class="form-control" required>
             <option value="" disabled selected>Selecciona un rol</option>
-            <option value="cajero">Cajero</option>
-            <option value="ayudante">Ayudante General</option>
-            <option value="almacenista">Almacenista</option>
+
+            {# Se generan dinámicamente desde el formulario #}
+            {% for value, label in form.fields.rol.choices %}
+              {% if value != "dueño" %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endif %}
+            {% endfor %}
           </select>
         </div>
       {% endif %}

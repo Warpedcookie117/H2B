@@ -7,10 +7,14 @@ from tienda_temp.models import Cliente, Empleado, Usuario
 
 
 # -----------------------------
-# REGISTRO DE EMPLEADOS
+# REGISTRO DE EMPLEADOS (CORREGIDO)
 # -----------------------------
 def registro_empleado(request):
     rol = request.GET.get("rol", None)
+
+    roles_validos = [r[0] for r in Empleado.ROL_CHOICES]
+    if rol not in roles_validos:
+        rol = None
 
     initial_data = {"rol": rol} if rol else {}
     form = RegistroEmpleadoForm(request.POST or None, initial=initial_data)
@@ -20,24 +24,20 @@ def registro_empleado(request):
         rol_final = data["rol"]
 
         with transaction.atomic():
-            usuario = Usuario.objects.create_user(
+
+            # 🔥 Crear usuario correctamente (sin create_user)
+            usuario = Usuario(
                 username=data["username"],
                 email=data["email"],
-                password=data["password1"],
                 first_name=data["first_name"],
                 last_name=data["last_name"],
+                is_superuser=False,
+                is_staff=True,  # si quieres acceso al admin
             )
-
-            # Lógica de rol
-            if rol_final == "dueño":
-                usuario.is_superuser = True
-                usuario.is_staff = True
-            else:
-                usuario.is_superuser = False
-                usuario.is_staff = True
-
+            usuario.set_password(data["password1"])
             usuario.save()
 
+            # 🔥 Crear empleado
             Empleado.objects.create(
                 user=usuario,
                 edad=data["edad"],
@@ -52,6 +52,8 @@ def registro_empleado(request):
         return redirect("tienda_temp:login")
 
     return render(request, "tienda/registro_empleado.html", {"form": form})
+
+
 
 
 # -----------------------------
@@ -80,7 +82,7 @@ def registro_cliente(request):
         if errores:
             return render(request, 'tienda/registro_cliente.html', {'errores': errores})
 
-        # Crear usuario sin permisos administrativos
+        # Crear usuario normal (sin permisos administrativos)
         user = Usuario.objects.create_user(
             username=username,
             password=password1,
@@ -88,17 +90,18 @@ def registro_cliente(request):
             first_name=first_name,
             last_name=last_name,
         )
+
+        # 🔥 Corrección: ningún cliente es staff o superuser
         user.is_staff = False
         user.is_superuser = False
         user.save()
 
-        # Asignar al grupo "Cliente"
-        grupo_cliente, _ = Group.objects.get_or_create(name='Cliente')
-        user.groups.add(grupo_cliente)
-
-        # Crear instancia de Cliente
-        cliente = Cliente(user=user, direccion=direccion, numero_contacto=numero_contacto)
-        cliente.save()
+        # Crear perfil de Cliente
+        Cliente.objects.create(
+            user=user,
+            direccion=direccion,
+            numero_contacto=numero_contacto
+        )
 
         messages.success(request, "Cliente registrado exitosamente ✅.")
         return redirect('tienda_temp:login')

@@ -1,0 +1,39 @@
+<div id="modalEntrarCaja"
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+
+    <div class="bg-white p-6 border-4 border-black shadow-[8px_8px_0_0_black] w-80">
+
+        <h2 class="text-xl font-black mb-4">Entrar a caja</h2>
+
+        <p class="font-bold mb-2">Caja: {{ nombre }}</p>
+
+        <form id="formEntrarCaja" method="POST">
+            {% csrf_token %}
+
+            <!-- 🔥 Caja ID oculto -->
+            <input type="hidden" name="caja_id" value="{{ caja_id }}">
+
+            <!-- 🔥 Contraseña del usuario logueado -->
+            <input name="password"
+                   type="password"
+                   class="w-full border-2 border-black p-2 mb-2"
+                   placeholder="Tu contraseña">
+
+            <p id="modalCajaError"
+               class="text-red-600 text-sm mb-2 hidden"></p>
+
+            <button type="submit"
+                    class="w-full py-2 font-black border-2 border-black text-white"
+                    style="background: #0099FF;">
+                Entrar
+            </button>
+
+            <button type="button"
+                    id="modalCajaCancelar"
+                    class="w-full mt-2 bg-gray-300 py-2 font-bold border-2 border-black">
+                Cancelar
+            </button>
+        </form>
+
+    </div>
+</div>

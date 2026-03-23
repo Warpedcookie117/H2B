@@ -2,11 +2,9 @@
 // BOTÓN + INVENTARIO (nuevo producto / existente)
 // ============================================
 //
-// Responsabilidad ÚNICA:
-// - Verificar inventario por producto + ubicación
-// - Cambiar el texto del botón
-// - Cambiar la acción del formulario
-// - Activar/desactivar campos del producto
+// Validación completa ANTES de abrir el modal
+// Sin alerts, sin popups feos
+// Mensaje elegante + highlight de campos faltantes
 //
 
 export function initBotonInventario({
@@ -14,7 +12,6 @@ export function initBotonInventario({
     submitBtn,
     ubicacionSelect,
 
-    // CAMPOS DEL PRODUCTO
     codigoInput,
     nombreInput,
     descripcionInput,
@@ -28,65 +25,158 @@ export function initBotonInventario({
 }) {
 
     // ============================
-    // DESACTIVAR CAMPOS DEL PRODUCTO
+    // CONTENEDOR DE MENSAJES
     // ============================
-    function desactivarCamposProducto() {
-        const campos = [
-            codigoInput,
-            nombreInput,
-            descripcionInput,
-            mayoreoInput,
-            menudeoInput,
-            docenaInput,
-            tipoCodigoInput,
-            duenioSelect,
-            categoriaPadreSelect,
-            subcategoriaSelect
-        ];
+    let msgBox = document.getElementById("msg-validacion");
+    if (!msgBox) {
+        msgBox = document.createElement("div");
+        msgBox.id = "msg-validacion";
+        msgBox.className = "hidden bg-red-100 text-red-700 p-3 rounded mb-4";
+        form.prepend(msgBox);
+    }
 
-        campos.forEach(campo => {
-            campo.disabled = true;
-            campo.removeAttribute("name");
-        });
+    function mostrarError(msg) {
+        msgBox.textContent = msg;
+        msgBox.classList.remove("hidden");
+    }
+
+    function limpiarError() {
+        msgBox.classList.add("hidden");
+        msgBox.textContent = "";
+    }
+
+    function marcarCampo(el) {
+        el.classList.add("border-red-500", "ring-2", "ring-red-300");
+    }
+
+    function limpiarCampo(el) {
+        el.classList.remove("border-red-500", "ring-2", "ring-red-300");
     }
 
     // ============================
-    // ACTIVAR CAMPOS DEL PRODUCTO
+    // BOTÓN SEGÚN SI HAY CÓDIGO
     // ============================
-    function activarCamposProducto() {
-        codigoInput.disabled = false;
-        codigoInput.name = "codigo_barras";
+    function actualizarBotonSegunCodigo() {
+        const codigo = codigoInput.value.trim();
 
-        nombreInput.disabled = false;
-        nombreInput.name = "nombre";
+        if (!codigo) {
+            submitBtn.textContent = "Continuar para seleccionar etiqueta";
+            submitBtn.classList.remove("bg-red-600", "hover:bg-red-700");
+            submitBtn.classList.add("bg-blue-600", "hover:bg-blue-700");
+            return;
+        }
 
-        descripcionInput.disabled = false;
-        descripcionInput.name = "descripcion";
-
-        mayoreoInput.disabled = false;
-        mayoreoInput.name = "precio_mayoreo";
-
-        menudeoInput.disabled = false;
-        menudeoInput.name = "precio_menudeo";
-
-        docenaInput.disabled = false;
-        docenaInput.name = "precio_docena";
-
-        tipoCodigoInput.disabled = false;
-        tipoCodigoInput.name = "tipo_codigo";
-
-        duenioSelect.disabled = false;
-        duenioSelect.name = "dueño";
-
-        categoriaPadreSelect.disabled = false;
-        categoriaPadreSelect.name = "categoria_padre";
-
-        subcategoriaSelect.disabled = false;
-        subcategoriaSelect.name = "subcategoria";
+        submitBtn.textContent = "Registrar producto";
+        submitBtn.classList.remove("bg-blue-600", "hover:bg-blue-700");
+        submitBtn.classList.add("bg-red-600", "hover:bg-red-700");
     }
 
+    codigoInput.addEventListener("input", actualizarBotonSegunCodigo);
+    actualizarBotonSegunCodigo();
+
+
     // ============================
-    // CAMBIO DE UBICACIÓN
+    // VALIDACIÓN COMPLETA ANTES DE ABRIR MODAL
+    // ============================
+    submitBtn.addEventListener("click", (e) => {
+
+        const botonEsAzul = submitBtn.classList.contains("bg-blue-600");
+
+        // ============================
+        // FLUJO DE ETIQUETA (botón azul)
+        // ============================
+        if (botonEsAzul) {
+            e.preventDefault();
+            limpiarError();
+
+            let errores = false;
+
+            // ============================
+            // VALIDAR CAMPOS OBLIGATORIOS
+            // ============================
+            const obligatorios = [
+                nombreInput,
+                descripcionInput,
+                mayoreoInput,
+                menudeoInput,
+                duenioSelect,
+                categoriaPadreSelect,
+                subcategoriaSelect,
+                ubicacionSelect
+            ];
+
+            obligatorios.forEach(el => {
+                limpiarCampo(el);
+                if (!el.value || el.value.trim() === "") {
+                    marcarCampo(el);
+                    errores = true;
+                }
+            });
+
+            if (errores) {
+                mostrarError("Completa todos los campos obligatorios antes de seleccionar el tamaño de etiqueta.");
+                return;
+            }
+
+            // ============================
+            // VALIDAR TEMPORADAS (si existen)
+            // ============================
+            const temporadaChecks = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
+            if (temporadaChecks.length > 0) {
+                const alguna = Array.from(temporadaChecks).some(cb => cb.checked);
+                if (!alguna) {
+                    mostrarError("Selecciona al menos una temporada.");
+                    return;
+                }
+            }
+
+            // ============================
+            // VALIDAR ATRIBUTOS DINÁMICOS
+            // ============================
+            const atributosInputs = document.querySelectorAll("#atributos-container input, #atributos-container select");
+            for (let el of atributosInputs) {
+                limpiarCampo(el);
+                if (!el.value || el.value.trim() === "") {
+                    marcarCampo(el);
+                    errores = true;
+                }
+            }
+
+            if (errores) {
+                mostrarError("Completa todos los atributos del producto antes de continuar.");
+                return;
+            }
+
+            // ============================
+            // VALIDAR FOTO (si es obligatoria)
+            // ============================
+            const fotoInput = document.getElementById("id_foto_url");
+            if (fotoInput && fotoInput.required && fotoInput.files.length === 0) {
+                marcarCampo(fotoInput);
+                mostrarError("Debes subir una foto del producto.");
+                return;
+            }
+
+            // ============================
+            // TODO OK → ABRIR MODAL
+            // ============================
+            const modal = document.getElementById("modal-etiqueta");
+            if (modal) modal.showModal();
+
+            return;
+        }
+
+        // ============================
+        // FLUJO NORMAL (botón rojo)
+        // ============================
+        // Aquí NO se abre modal
+        // Aquí NO se valida otra vez
+        // Aquí se hace POST directo
+    });
+
+
+    // ============================
+    // CAMBIO DE UBICACIÓN (inventario existente)
     // ============================
     ubicacionSelect?.addEventListener("change", () => {
         const productoId = document.getElementById("id_producto_id")?.value;
@@ -108,52 +198,29 @@ export function initBotonInventario({
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
             const data = await resp.json();
-
             const { producto_existe, inventario_existe } = data;
 
-            // ============================
-            // ESTADO 1: PRODUCTO NO EXISTE
-            // ============================
             if (!producto_existe) {
                 form.action = `/inventario/nuevo_producto/`;
                 submitBtn.textContent = "Registrar producto";
-
-                submitBtn.classList.replace("bg-green-600", "bg-red-600");
-                submitBtn.classList.replace("hover:bg-green-700", "hover:bg-red-700");
-
-                activarCamposProducto();
+                submitBtn.classList.remove("bg-green-600", "hover:bg-green-700");
+                submitBtn.classList.add("bg-red-600", "hover:bg-red-700");
                 return;
             }
 
-            // ============================
-            // ESTADO 2: PRODUCTO EXISTE PERO INVENTARIO NO
-            // ============================
             if (producto_existe && !inventario_existe) {
-                const cantidad = document.querySelector("#id_cantidad_inicial")?.value || "";
                 form.action = `/inventario/agregar_inventario/${productoId}/${ubicacionId}/`;
-
                 submitBtn.textContent = "Crear inventario en esta ubicación";
-
-                submitBtn.classList.replace("bg-red-600", "bg-green-600");
-                submitBtn.classList.replace("hover:bg-red-700", "hover:bg-green-700");
-
-                desactivarCamposProducto();
+                submitBtn.classList.remove("bg-red-600", "hover:bg-red-700");
+                submitBtn.classList.add("bg-green-600", "hover:bg-green-700");
                 return;
             }
 
-            // ============================
-            // ESTADO 3: INVENTARIO EXISTE
-            // ============================
             if (producto_existe && inventario_existe) {
-                const cantidad = document.querySelector("#id_cantidad_inicial")?.value || "";
                 form.action = `/inventario/agregar_inventario/${productoId}/${ubicacionId}/`;
-
                 submitBtn.textContent = "Agregar inventario";
-
-                submitBtn.classList.replace("bg-red-600", "bg-green-600");
-                submitBtn.classList.replace("hover:bg-red-700", "hover:bg-green-700");
-
-                desactivarCamposProducto();
+                submitBtn.classList.remove("bg-red-600", "hover:bg-red-700");
+                submitBtn.classList.add("bg-green-600", "hover:bg-green-700");
                 return;
             }
 

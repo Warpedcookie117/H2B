@@ -1,165 +1,213 @@
 {% extends 'partials/base.html' %}
-
-{% block title %}Panel del Dueño - Comercializadora Modelo{% endblock %}
+{% load static %}
 
 {% block content %}
-<section class="py-16">
-  <div class="max-w-6xl mx-auto px-6">
 
-    <!-- Encabezado -->
-    <header class="mb-12 text-center">
-      <h2 class="text-4xl md:text-5xl font-extrabold text-red-600 tracking-tight">
-        Panel del Dueño
-      </h2>
-      <p class="mt-3 text-gray-600">Control total de inventario y operaciones</p>
-    </header>
+<div class="max-w-7xl mx-auto p-6 space-y-12 relative overflow-hidden">
 
-    <!-- KPIs principales -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-14">
+  <!-- PATRONES THE NANNY (sobrios pero coloridos) -->
+  <div class="absolute inset-0 pointer-events-none opacity-25">
+    <div class="absolute top-10 left-10 w-24 h-24 bg-[#B33951] rotate-12"></div>
+    <div class="absolute top-40 right-20 w-16 h-16 bg-[#2C4C7A] rotate-45"></div>
+    <div class="absolute bottom-20 left-1/3 w-20 h-20 bg-[#E3B23C] rounded-full"></div>
+    <div class="absolute bottom-10 right-1/4 w-24 h-4 bg-[#3C8D7A] rotate-12"></div>
+    <div class="absolute top-1/2 left-1/4 w-20 h-4 bg-[#D6458C] rotate-[-20deg]"></div>
+  </div>
 
-      <!-- Inventario total -->
-      <div class="relative bg-white/60 backdrop-blur-sm border rounded-2xl p-6 shadow-md hover:shadow-xl transition">
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-green-400 to-green-600 text-white">
-            <i class="fas fa-box-open text-2xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">Inventario total</h3>
-            <p class="mt-1 text-3xl font-extrabold text-gray-900">{{ total_productos }}</p>
-            <span class="text-sm text-gray-500">Productos registrados</span>
-          </div>
-        </div>
-      </div>
+  <!-- Encabezado -->
+  <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
+      Panel del Dueño
+    </h1>
+    <span class="text-xs sm:text-sm text-gray-500">
+      Última actualización: {{ ahora|date:"d/m/Y H:i" }}
+    </span>
+  </div>
 
-      <!-- Ventas totales -->
-      <div class="relative bg-white/60 backdrop-blur-sm border rounded-2xl p-6 shadow-md hover:shadow-xl transition">
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-            <i class="fas fa-dollar-sign text-2xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">Ventas totales</h3>
-            <p class="mt-1 text-3xl font-extrabold text-gray-900">${{ ventas_totales|default:0 }} MXN</p>
-            <span class="text-sm text-gray-500">Histórico acumulado</span>
-          </div>
-        </div>
-      </div>
+  <!-- KPIs estilo The Nanny -->
+  <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-      <!-- Ubicaciones activas -->
-      <div class="relative bg-white/60 backdrop-blur-sm border rounded-2xl p-6 shadow-md hover:shadow-xl transition">
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-400 to-pink-500 text-white">
-            <i class="fas fa-map-marker-alt text-2xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">Ubicaciones activas</h3>
-            <p class="mt-1 text-3xl font-extrabold text-gray-900">{{ ubicaciones_sidebar|length }}</p>
-            <span class="text-sm text-gray-500">Sucursales / almacenes</span>
-          </div>
-        </div>
-      </div>
-
+    <!-- KPI 1 — Rojo vino -->
+    <div class="bg-[#B33951] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#E3B23C] rotate-45 opacity-40"></div>
+      <p class="text-sm font-black text-black uppercase">Productos registrados</p>
+      <p class="text-5xl font-black text-black mt-2">{{ total_productos }}</p>
     </div>
 
-    <!-- Acciones rápidas -->
-    <h3 class="text-2xl md:text-3xl font-bold text-red-600 mb-6">Acciones rápidas</h3>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-
-      <!-- Registrar nuevo producto -->
-      <a href="{% url 'inventario:nuevo_producto' %}"
-         class="group block rounded-2xl bg-white/60 backdrop-blur-sm p-6 shadow-sm hover:shadow-lg transition">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-green-100 text-green-600 group-hover:bg-green-200">
-            <i class="fas fa-plus text-lg"></i>
-          </div>
-          <div>
-            <h4 class="text-lg font-semibold text-gray-800">Registrar producto</h4>
-            <p class="mt-1 text-sm text-gray-500">Agregar un nuevo artículo al inventario</p>
-          </div>
-        </div>
-      </a>
-
-      <!-- Inventario global -->
-      <a href="{% url 'inventario:lista_productos' %}"
-         class="group block rounded-2xl bg-white/60 backdrop-blur-sm p-6 shadow-sm hover:shadow-lg transition">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-100 text-blue-600 group-hover:bg-blue-200">
-            <i class="fas fa-warehouse text-lg"></i>
-          </div>
-          <div>
-            <h4 class="text-lg font-semibold text-gray-800">Inventario global</h4>
-            <p class="mt-1 text-sm text-gray-500">Consulta todos los productos</p>
-          </div>
-        </div>
-      </a>
-
-      <!-- Agregar ubicación -->
-      <a href="{% url 'inventario:ubicaciones' %}"
-         class="group block rounded-2xl bg-white/60 backdrop-blur-sm p-6 shadow-sm hover:shadow-lg transition">
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-red-100 text-red-600 group-hover:bg-red-200">
-            <i class="fas fa-map-marker-alt text-lg"></i>
-          </div>
-          <div>
-            <h4 class="text-lg font-semibold text-gray-800">Agregar ubicación</h4>
-            <p class="mt-1 text-sm text-gray-500">Crear o Eliminar una nueva sucursal o almacén</p>
-          </div>
-        </div>
-      </a>
-
+    <!-- KPI 2 — Azul petróleo -->
+    <div class="bg-[#2C4C7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#D6458C] rounded-full opacity-40"></div>
+      <p class="text-sm font-black uppercase">Ventas totales</p>
+      <p class="text-5xl font-black mt-2">${{ ventas_totales|default:0 }} MXN</p>
     </div>
 
-    <!-- Charts -->
-    <div class="mt-16 grid grid-cols-1 md:grid-cols-2 gap-10">
-
-      <!-- Productos más vendidos -->
-      <div class="bg-white/60 backdrop-blur-sm p-6 rounded-2xl shadow">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800">Productos más vendidos</h3>
-        <canvas id="chartMasVendidos"></canvas>
-      </div>
-
-      <!-- Ventas totales por mes -->
-      <div class="bg-white/60 backdrop-blur-sm p-6 rounded-2xl shadow">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800">Ventas totales por mes</h3>
-        <canvas id="chartVentasMes"></canvas>
-      </div>
-
+    <!-- KPI 3 — Verde esmeralda apagado -->
+    <div class="bg-[#3C8D7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute top-1/2 right-0 w-24 h-4 bg-[#B33951] rotate-12 opacity-40"></div>
+      <p class="text-sm font-black uppercase">Ubicaciones activas</p>
+      <p class="text-5xl font-black mt-2">{{ ubicaciones|length }}</p>
     </div>
 
   </div>
-</section>
+
+  <!-- Gráficas -->
+  <div class="relative grid grid-cols-1 md:grid-cols-2 gap-10">
+
+    <!-- Chart 1 — Rosa fucsia -->
+    <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-3 left-3 w-10 h-10 bg-[#D6458C] rotate-45 opacity-40"></div>
+      <h2 class="text-xl font-black text-black mb-4 uppercase">Productos más vendidos</h2>
+      <div class="relative w-full h-[320px] bg-white">
+        <canvas id="chartMasVendidos"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2 — Amarillo mostaza -->
+    <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute bottom-3 right-3 w-12 h-12 bg-[#E3B23C] rounded-full opacity-40"></div>
+      <h2 class="text-xl font-black text-black mb-4 uppercase">Ventas totales por mes</h2>
+      <div class="relative w-full h-[320px] bg-white">
+        <canvas id="chartVentasMes"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Acciones rápidas -->
+  <div class="relative space-y-4">
+    <h2 class="text-xl font-extrabold text-gray-900 uppercase">Acciones rápidas</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Acción 1 — Registrar producto -->
+      <a href="{% url 'inventario:nuevo_producto' %}"
+         class="bg-[#2C4C7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute -top-4 right-4 w-12 h-12 bg-[#E3B23C] rotate-45 opacity-40"></div>
+        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
+          +
+        </div>
+        <p class="mt-4 font-black text-lg uppercase">Registrar producto</p>
+        <p class="text-sm font-semibold">Agregar un nuevo artículo</p>
+      </a>
+
+      <!-- Acción 2 — Inventario Global -->
+      <a href="{% url 'inventario:lista_productos' %}"
+         class="bg-[#E8A2A8] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute bottom-2 left-2 w-10 h-10 bg-[#3C8D7A] rounded-full opacity-40"></div>
+        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
+          📦
+        </div>
+        <p class="mt-4 font-black text-lg uppercase">Inventario Global</p>
+        <p class="text-sm font-semibold">Consulta todos los productos</p>
+      </a>
+
+      <!-- Acción 3 — Administrar ubicaciones -->
+      <a href="{% url 'inventario:ubicaciones' %}"
+         class="bg-[#F4C095] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute top-3 right-3 w-12 h-4 bg-[#B33951] rotate-12 opacity-40"></div>
+        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
+          📍
+        </div>
+        <p class="mt-4 font-black text-lg uppercase">Administrar ubicaciones</p>
+        <p class="text-sm font-semibold">Editar sucursales y almacenes</p>
+      </a>
+
+      <!-- Acción 4 — Crear sucursal -->
+      <a href="{% url 'sucursales:crear_sucursal' %}"
+         class="bg-[#D6458C] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute top-3 left-3 w-12 h-12 bg-[#2C4C7A] rotate-45 opacity-40"></div>
+        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
+          🏬
+        </div>
+        <p class="mt-4 font-black text-lg uppercase">Crear sucursal</p>
+        <p class="text-sm font-semibold">Abrir una nueva ubicación</p>
+      </a>
+
+    </div>
+  </div>
+
+</div>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-  // Datos dummy por ahora (cuando hagas la app de ventas, los llenamos)
   const masVendidos = {{ mas_vendidos|default:"[]"|safe }};
   const ventasMes = {{ ventas_mes_data|default:"[]"|safe }};
 
-  new Chart(document.getElementById("chartMasVendidos"), {
-    type: "bar",
+  const palette = {
+    blue: "#2C4C7A",
+    yellow: "#E3B23C",
+    red: "#B33951",
+    redLight: "rgba(179,57,81,0.25)",
+    text: "#000000"
+  };
+
+  new Chart(document.getElementById('chartMasVendidos'), {
+    type: 'bar',
     data: {
       labels: masVendidos.map(x => x.nombre),
       datasets: [{
-        label: "Ventas",
+        label: 'Ventas',
         data: masVendidos.map(x => x.cantidad),
-        backgroundColor: "#ef4444"
+        backgroundColor: palette.blue,
+        borderRadius: 0
       }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 1200, easing: "easeOutBounce" },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: palette.text } },
+        y: { ticks: { color: palette.text }, beginAtZero: true }
+      }
     }
   });
 
-  new Chart(document.getElementById("chartVentasMes"), {
-    type: "line",
+  new Chart(document.getElementById('chartVentasMes'), {
+    type: 'line',
     data: {
       labels: ventasMes.map(x => x.mes),
       datasets: [{
-        label: "Ventas",
+        label: 'Ventas',
         data: ventasMes.map(x => x.total),
-        borderColor: "#3b82f6",
-        fill: false
+        borderColor: palette.red,
+        backgroundColor: palette.redLight,
+        tension: 0.1,
+        borderWidth: 4,
+        pointRadius: 6,
+        pointBackgroundColor: palette.red
       }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 1200, easing: "easeOutBounce" },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: palette.text } },
+        y: { ticks: { color: palette.text }, beginAtZero: true }
+      }
     }
   });
 </script>

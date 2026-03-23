@@ -1,7 +1,9 @@
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from inventario.forms import  ProductoForm, TemporadaForm
 from inventario.models import Atributo, Categoria, Inventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
+from inventario.services.barcode_render_service import BarcodeRenderService
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
 from inventario.services.codigo_service import CodigoService
@@ -11,9 +13,12 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from tienda_temp.models import Empleado
 from inventario.models import Categoria
-from django.http import QueryDict
 from inventario.utils import color_from_name
 from django.urls import reverse
+from rapidfuzz import process, fuzz
+from inventario.services.atributo_service import AtributoService
+from inventario.models import ValorAtributo, Atributo, Categoria
+import re
 
 
 
@@ -208,7 +213,8 @@ def lista_productos(request):
         'ubicaciones': ubicaciones,
     })
     
-    
+
+   
 @login_required
 def mis_productos(request):
     empleado = request.user.empleado
@@ -237,50 +243,164 @@ def mis_productos(request):
         'ubicaciones': ubicaciones,
     })
     
-
+    
+    
 @login_required
 def nuevo_producto(request):
 
+    # ============================
+    # Helpers internos
+    # ============================
+
+    def agrupar_fuzzy_global(valores):
+        grupos = []
+        for v in valores:
+            agregado = False
+            for g in grupos:
+                mejor, score, _ = process.extractOne(v, g, scorer=fuzz.WRatio)
+                if score >= 85:
+                    g.append(v)
+                    agregado = True
+                    break
+            if not agregado:
+                grupos.append([v])
+        return [g[0] for g in grupos]
+
+    def valores_unicos_por_atributo(atributo):
+        valores = (
+            ValorAtributo.objects
+            .filter(atributo=atributo)
+            .values_list("valor", flat=True)
+        )
+
+        normalizados = []
+        tipo_attr = (atributo.tipo or "").strip().lower()
+
+        for v in valores:
+            if v is None:
+                continue
+
+            s = str(v).strip()
+
+            if tipo_attr == "numero":
+                solo_num = re.findall(r"[0-9]+(?:\.[0-9]+)?", s)
+                if solo_num:
+                    try:
+                        num = float(solo_num[0])
+                        s = str(int(num)) if num.is_integer() else str(num)
+                    except:
+                        s = AtributoService.normalizar_texto(s)
+                else:
+                    s = AtributoService.normalizar_texto(s)
+            else:
+                s = AtributoService.normalizar_texto(s)
+
+            normalizados.append(s)
+
+        agrupados = agrupar_fuzzy_global(normalizados)
+        return sorted(set(agrupados))
+
     def contexto(form):
+        atributos = Atributo.objects.all()
+        for atributo in atributos:
+            atributo.valores_unicos = valores_unicos_por_atributo(atributo)
+
         return {
             "form": form,
             "categorias_padre": Categoria.objects.filter(padre__isnull=True),
             "subcategorias": Categoria.objects.all(),
-            "atributos": Atributo.objects.all(),
+            "atributos": atributos,
+            "ETIQUETAS": EtiquetaService.ETIQUETAS,
         }
 
-    # GET → mostrar formulario vacío
+    # ============================
+    # GET → mostrar formulario
+    # ============================
+
     if request.method == "GET":
-        form = ProductoForm()
+        sucursal_actual = request.session.get("sucursal_actual")
+        form = ProductoForm(initial={"sucursal_actual": sucursal_actual})
+        form.request = request
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
+    # ============================
     # POST → procesar formulario
-    form = ProductoForm(request.POST, request.FILES)
+    # ============================
 
-    if form.is_valid():
+    sucursal_actual = request.session.get("sucursal_actual")
 
-        resultado = ProductService.crear_producto_desde_formulario(form, request)
+    form = ProductoForm(
+        request.POST,
+        request.FILES,
+        initial={"sucursal_actual": sucursal_actual}
+    )
+    form.request = request
 
-        # ⭐ Si es flujo de etiqueta → resultado es un redirect
-        if hasattr(resultado, "status_code"):
-            return resultado
+    if not form.is_valid():
+        return render(request, "inventario/nuevo_producto.html", contexto(form))
 
-        # ⭐ Si es flujo normal → resultado es (producto, ubicacion)
-        producto, ubicacion = resultado
+    # ============================
+    # CASO 1: Código externo
+    # ============================
+
+    codigo_usuario = form.cleaned_data.get("codigo_barras")
+
+    if codigo_usuario:
+        tipo = form.cleaned_data.get("tipo_codigo")
+        tam = CodigoService.tamano_por_tipo(tipo)
+
+        try:
+            producto, ubicacion = ProductService.crear_producto_desde_formulario(
+                form,
+                request,
+                codigo_generado=codigo_usuario,
+                tipo_codigo=tipo,
+                tamano_etiqueta=tam
+            )
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return render(request, "inventario/nuevo_producto.html", contexto(form))
 
         messages.success(request, "Producto registrado correctamente.")
-
-        # ⭐ REDIRECT CORRECTO CON HIGHLIGHT + NEW=1
-        from django.urls import reverse
         url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
         return redirect(f"{url}?highlight={producto.id}&new=1")
 
-    # Si el form no es válido, recargar con errores
-    padre = request.POST.get("categoria_padre")
-    if padre:
-        form.initial["categoria_padre"] = padre
+    # ============================
+    # CASO 2: Código interno
+    # ============================
 
-    return render(request, "inventario/nuevo_producto.html", contexto(form))
+    tam = form.cleaned_data.get("tamano_etiqueta")
+    if not tam:
+        messages.error(request, "Debes seleccionar un tamaño de etiqueta.")
+        return render(request, "inventario/nuevo_producto.html", contexto(form))
+
+    sub = form.cleaned_data["subcategoria"]
+    dueño = request.user.empleado
+
+    codigo, tipo = CodigoService.generar_codigo_interno(
+        tamaño=tam,
+        dueño=dueño,
+        subcategoria=sub
+    )
+
+    try:
+        producto, ubicacion = ProductService.crear_producto_desde_formulario(
+            form,
+            request,
+            codigo_generado=codigo,
+            tipo_codigo=tipo,
+            tamano_etiqueta=tam
+        )
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return render(request, "inventario/nuevo_producto.html", contexto(form))
+
+    messages.success(request, "Producto registrado correctamente.")
+
+    url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
+    return redirect(f"{url}?highlight={producto.id}&new=1")
+
+
 
 
 
@@ -341,122 +461,35 @@ def buscar_producto_por_codigo(request):
     
 
 
-
-@login_required
-def seleccionar_etiqueta_temp(request):
-
-    if request.method == "GET" and request.session.get("pendiente_producto"):
-        messages.info(request, "Este producto no tiene código. Selecciona una etiqueta.")
-
-    if request.method == "POST":
-        tamaño = request.POST.get("tipo_codigo")
-
-        pendiente = request.session.get("pendiente_producto")
-        pendiente_inv = request.session.get("pendiente_inventario")
-
-        if not pendiente:
-            messages.error(request, "No hay datos de producto pendientes.")
-            return redirect("inventario:nuevo_producto")
-
-        dueño = Empleado.objects.get(id=pendiente["dueño"])
-        subcategoria = Categoria.objects.get(id=pendiente["subcategoria"])
-
-        # 1) Generar código interno + tipo según etiqueta
-        codigo, tipo_codigo = CodigoService.generar_codigo_interno(
-            tamaño=tamaño,
-            dueño=dueño,
-            subcategoria=subcategoria
-        )
-
-        # 2) Reconstruir datos del formulario
-        data = QueryDict("", mutable=True)
-        data.update(pendiente)
-
-        # ⚠️ aseguramos categoría padre para que el form pueda reconstruir bien
-        if "categoria_padre" in pendiente:
-            data["categoria_padre"] = pendiente["categoria_padre"]
-
-        data["codigo_barras"] = codigo
-        data["tipo_codigo"] = tipo_codigo
-
-        # Atributos dinámicos
-        for key, value in pendiente.get("atributos", {}).items():
-            data[key] = value
-
-        # Inventario
-        data["cantidad_inicial"] = pendiente_inv["cantidad"]
-        data["ubicacion"] = pendiente_inv["ubicacion_id"]
-
-        # Temporada
-        if "temporada" in pendiente:
-            data.setlist("temporada", pendiente["temporada"])
-
-        # 3) Reconstruir archivo desde sesión
-        import base64, io
-        from django.core.files.uploadedfile import InMemoryUploadedFile
-
-        file_bytes_b64 = request.session.get("pendiente_file")
-        file_name = request.session.get("pendiente_file_name")
-        file_type = request.session.get("pendiente_file_type")
-
-        files = None
-        if file_bytes_b64:
-            file_bytes = base64.b64decode(file_bytes_b64)
-            files = {
-                "foto_url": InMemoryUploadedFile(
-                    io.BytesIO(file_bytes),
-                    field_name="foto_url",
-                    name=file_name,
-                    content_type=file_type,
-                    size=len(file_bytes),
-                    charset=None
-                )
-            }
-
-        # 4) Form en modo "desde etiqueta"
-        form = ProductoForm(data, files, from_etiqueta=True)
-
-        if not form.is_valid():
-            print("ERRORES:", form.errors)
-            messages.error(request, "Error al validar el producto después de generar el código.")
-            return redirect("inventario:nuevo_producto")
-
-        # 5) Crear producto SIN código real
-        producto, ubicacion = ProductService.crear_producto_sin_codigo(form, request)
-
-        # 6) Limpiar sesión
-        for key in [
-            "pendiente_producto",
-            "pendiente_inventario",
-            "pendiente_file",
-            "pendiente_file_name",
-            "pendiente_file_type",
-        ]:
-            request.session.pop(key, None)
-
-        messages.success(request, f"Producto registrado correctamente en {ubicacion.nombre}.")
-        return redirect("inventario:productos_por_ubicacion", ubicacion_id=ubicacion.id)
-
-    return render(request, "inventario/seleccionar_etiqueta.html", {
-        "etiquetas": EtiquetaService.ETIQUETAS
-    })
     
-    
-    
+import traceback   
+#VISTA API PARA VER LOS CODIGOS EN EL FRONT DE MANERA FLUIDA
 @login_required
 def codigo_base64(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
 
     try:
-        imagen = CodigoService.generar_imagen_base64(producto)
-
-        if not imagen:
-            return JsonResponse({'error': 'No se pudo generar la imagen del código.'}, status=400)
+        imagen = BarcodeRenderService.generar(
+            codigo=producto.codigo_barras,          # ← ESTE ES EL CAMBIO
+            tipo=producto.tipo_codigo,
+            tamaño=producto.tamano_etiqueta,
+        )
 
         return JsonResponse({'imagen': imagen})
 
     except Exception as e:
+        print("\n\n🔥 ERROR GENERANDO CÓDIGO DE BARRAS 🔥")
+        print(f"Producto ID: {producto.id}")
+        print(f"Codigo: {producto.codigo_barras}")
+        print(f"Tipo: {producto.tipo_codigo}")
+        print(f"Tamaño: {producto.tamaño_etiqueta}")
+        traceback.print_exc()
+        print("🔥 FIN DEL ERROR 🔥\n\n")
+
         return JsonResponse({'error': str(e)}, status=500)
+
+
+
 
 # Vista encargada del formulario de temporadas y de mostrarlas a usuarios empleados normales.
 @login_required

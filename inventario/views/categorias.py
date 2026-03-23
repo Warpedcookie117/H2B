@@ -3,11 +3,16 @@
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from inventario.forms import AtributoForm, CategoriaPadreForm, SubcategoriaForm
-from inventario.models import Atributo, Categoria
+from inventario.models import Atributo, Categoria, ValorAtributo
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from rapidfuzz import process, fuzz
+
+from inventario.services.atributo_service import AtributoService
+
+
 
 
 @login_required
@@ -305,3 +310,61 @@ def eliminar_atributo(request, subcat_id, atributo_id):
     })
     
     
+    
+def fuzzy_atributo(request, atributo_id):
+    import re
+    from rapidfuzz import process, fuzz
+
+    query = request.GET.get("q", "").strip().lower()
+    atributo = Atributo.objects.get(id=atributo_id)
+
+    # Obtener valores crudos
+    existentes = list(
+        ValorAtributo.objects.filter(
+            atributo=atributo,
+            producto__categoria=atributo.categoria
+        ).values_list("valor", flat=True)
+    )
+
+    if not existentes:
+        return JsonResponse({"results": []})
+
+    tipo_attr = atributo.tipo.strip().lower()
+    normalizados = []
+
+    for v in existentes:
+        if not v:
+            continue
+
+        s = str(v).strip()
+
+        # 🔥 Normalización numérica REAL
+        if tipo_attr == "numero":
+            match = re.search(r"\d+(?:\.\d+)?", s)
+            if match:
+                num = float(match.group())
+                s = str(int(num)) if num.is_integer() else str(num)
+            else:
+                continue
+        else:
+            s = AtributoService.normalizar_texto(s)
+
+        normalizados.append(s)
+
+    # 🔥 Deduplicar ANTES del fuzzy
+    normalizados = sorted(set(normalizados))
+
+    # 🔥 Fuzzy match
+    resultados = process.extract(
+        query,
+        normalizados,
+        scorer=fuzz.WRatio,
+        limit=5
+    )
+
+    sugerencias = [
+        {"valor": r[0], "score": r[1]}
+        for r in resultados if r[1] >= 60
+    ]
+
+    return JsonResponse({"results": sugerencias})

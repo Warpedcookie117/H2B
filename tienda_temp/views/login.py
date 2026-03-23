@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from tienda_temp.forms import ContactoForm, PerfilConfigForm
-from tienda_temp.models import Usuario, Empleado
+from tienda_temp.models import Cliente, Usuario, Empleado
 
 
 def landing(request):
@@ -14,12 +14,14 @@ def landing(request):
 
         if empleado:
             rol = empleado.rol
-            if rol == 'dueño' or user.is_superuser:
+
+            if rol == 'dueño':
                 return redirect('tienda_temp:dashboard_dueno')
-            elif rol in ['cajero', 'almacenista', 'ayudante']:
+
+            if rol in ['cajero', 'almacenista', 'ayudante']:
                 return redirect('tienda_temp:dashboard_socio')
 
-        elif cliente:
+        if cliente:
             return render(request, 'tienda/landing.html', {'cliente': cliente})
 
     return render(request, 'tienda/landing.html')
@@ -47,22 +49,23 @@ def obtener_usuario_por_identificador(identificador):
 
     return None
 
-
 def redirigir_por_rol(user):
-    if user.is_superuser:
-        return 'tienda_temp:dashboard_dueno'
-
-    if hasattr(user, 'empleado'):
+    # Empleado
+    try:
         rol = user.empleado.rol
+        if rol == "dueño":
+            return "tienda_temp:dashboard_dueno"
+        if rol in ["cajero", "almacenista", "ayudante"]:
+            return "tienda_temp:dashboard_socio"
+    except Empleado.DoesNotExist:
+        pass
 
-        if rol == 'dueño':
-            return 'tienda_temp:dashboard_dueno'
-
-        if rol in ['cajero', 'almacenista', 'ayudante']:
-            return 'tienda_temp:dashboard_socio'
-
-    if hasattr(user, 'cliente'):
-        return 'landing'  # landing global
+    # Cliente
+    try:
+        user.cliente
+        return "landing"
+    except Cliente.DoesNotExist:
+        pass
 
     return None
 
@@ -72,27 +75,32 @@ def login_user(request):
         identificador = request.POST.get('username')
         password = request.POST.get('password')
 
-        # Buscar usuario por username / email / número
         user = obtener_usuario_por_identificador(identificador)
 
-        if user:
-            # Autenticar usando el username real
-            user_auth = authenticate(request, username=user.username, password=password)
+        if not user:
+            messages.error(request, "❌ Usuario, correo o número incorrecto")
+            return redirect('tienda_temp:login')
 
-            if user_auth:
-                login(request, user_auth)
+        # Validar contraseña directamente
+        if not user.check_password(password):
+            messages.error(request, "❌ Contraseña incorrecta")
+            return redirect('tienda_temp:login')
 
-                destino = redirigir_por_rol(user_auth)
-                if destino:
-                    return redirect(destino)
+        # Iniciar sesión
+        login(request, user)
 
-                messages.error(request, "⚠️ Tu cuenta no tiene un rol válido.")
-                return redirect('tienda_temp:login')
+        # 🔥 Cargar empleado/cliente/rol
+        request.user.refresh_from_db()
 
-        messages.error(request, "❌ Usuario, correo o número incorrecto")
+        destino = redirigir_por_rol(request.user)
+        if destino:
+            return redirect(destino)
+
+        messages.error(request, "⚠️ Tu cuenta no tiene un rol válido.")
         return redirect('tienda_temp:login')
 
     return render(request, 'tienda/login.html')
+
 
 
 def logout_user(request):
@@ -106,7 +114,7 @@ def contacto(request):
 
     if hasattr(request.user, 'cliente'):
         puede_enviar = True
-    elif hasattr(request.user, 'empleado') or request.user.is_superuser:
+    elif hasattr(request.user, 'empleado'):
         messages.error(request, "Los empleados no pueden enviar mensajes.")
     else:
         messages.warning(request, "Tu cuenta no tiene un rol asignado.")
@@ -121,8 +129,14 @@ def aboutus(request):
     return render(request, 'tienda/about-us.html')
 
 
+
 def configuracion_perfil(request):
-    empleado = request.user.empleado
+    # Validar que el usuario tiene perfil de empleado
+    empleado = getattr(request.user, 'empleado', None)
+
+    if not empleado:
+        messages.error(request, "Solo los empleados pueden editar su perfil.")
+        return redirect('tienda_temp:landing')
 
     if request.method == "POST":
         form = PerfilConfigForm(
@@ -132,7 +146,10 @@ def configuracion_perfil(request):
         )
         if form.is_valid():
             form.save()
-            return redirect("tienda_temp:profile_settings")
+            messages.success(request, "Perfil actualizado correctamente.")
+            return redirect("tienda_temp:configuracion_perfil")
+        else:
+            messages.error(request, "Revisa los campos, hay errores en el formulario.")
     else:
         form = PerfilConfigForm(
             usuario=request.user,
@@ -140,3 +157,4 @@ def configuracion_perfil(request):
         )
 
     return render(request, "tienda/profile_config.html", {"form": form})
+

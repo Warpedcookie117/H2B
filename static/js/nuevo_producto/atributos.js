@@ -1,12 +1,31 @@
+// ============================================
+// ATRIBUTOS DINÁMICOS (VERSIÓN SEGURA)
+// ============================================
+//
+// - No destruye el input file
+// - No usa innerHTML = ""
+// - Limpia solo los hijos del contenedor
+// - Mantiene fuzzy, datalist y validaciones
+// ============================================
+
 export function initAtributos({ atributosContainer }) {
 
-    /**
-     * Renderiza los atributos dinámicos de una subcategoría.
-     * - Muestra valores previos si existen (Django los manda en el form)
-     * - Muestra errores si Django los generó
-     */
+    // ============================================
+    // 🔥 FUNCIÓN SEGURA PARA LIMPIAR CONTENEDOR
+    // ============================================
+    function limpiarContenedorSeguro(container) {
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
+    }
+
+    // ============================================
+    // MOSTRAR ATRIBUTOS DE UNA SUBCATEGORÍA
+    // ============================================
     function mostrarAtributosDeSubcategoria(subId) {
-        atributosContainer.innerHTML = "";
+
+        // 🔥 YA NO BORRA EL INPUT FILE
+        limpiarContenedorSeguro(atributosContainer);
 
         const allAtributos = document.querySelectorAll("#atributos-data div");
 
@@ -16,26 +35,92 @@ export function initAtributos({ atributosContainer }) {
                 const attrId = attr.dataset.id;
                 const fieldName = `atributo_${attrId}`;
 
-                // Crear wrapper
                 const wrapper = document.createElement("div");
                 wrapper.className = "mb-3";
 
-                // Label
                 const label = document.createElement("label");
                 label.className = "block font-semibold mb-1";
                 label.textContent = attr.dataset.nombre;
 
-                // Input
-                const input = document.createElement("input");
-                input.type = "text";
-                input.name = fieldName;
-                input.className = "form-control";
+                const valoresRaw = attr.dataset.valores || "";
+                const valores = valoresRaw ? valoresRaw.split("||") : [];
 
-                // Recuperar valor previo del form (si Django recargó con errores)
+                const tipo = attr.dataset.tipo.toLowerCase();
+
+                let input;
+
+                // ============================================
+                // 1) NÚMEROS → INPUT + DATALIST
+                // ============================================
+                if (tipo === "numero" && valores.length > 0) {
+                    input = document.createElement("input");
+                    input.type = "text";
+                    input.name = fieldName;
+                    input.className = "form-control";
+                    input.dataset.atributoId = attrId;
+                    input.autocomplete = "new-password";
+
+                    input.addEventListener("input", () => {
+                        input.value = input.value.replace(/[^0-9.]/g, "");
+                        if (input.value.startsWith(".")) input.value = "";
+                    });
+
+                    const datalist = document.createElement("datalist");
+                    datalist.id = `${fieldName}_datalist`;
+
+                    valores.forEach(v => {
+                        const opt = document.createElement("option");
+                        opt.value = v;
+                        datalist.appendChild(opt);
+                    });
+
+                    input.setAttribute("list", datalist.id);
+                    wrapper.appendChild(datalist);
+
+                // ============================================
+                // 2) TEXTO CON VALORES → INPUT + DATALIST + FUZZY
+                // ============================================
+                } else if (tipo === "texto" && valores.length > 0) {
+                    input = document.createElement("input");
+                    input.type = "text";
+                    input.name = fieldName;
+                    input.className = "form-control";
+                    input.dataset.atributoId = attrId;
+                    input.autocomplete = "new-password";
+
+                    const datalist = document.createElement("datalist");
+                    datalist.id = `${fieldName}_datalist`;
+
+                    valores.forEach(v => {
+                        const opt = document.createElement("option");
+                        opt.value = v;
+                        datalist.appendChild(opt);
+                    });
+
+                    input.setAttribute("list", datalist.id);
+                    wrapper.appendChild(datalist);
+
+                // ============================================
+                // 3) TEXTO SIN VALORES → INPUT SIMPLE
+                // ============================================
+                } else {
+                    input = document.createElement("input");
+                    input.type = "text";
+                    input.name = fieldName;
+                    input.className = "form-control";
+                    input.dataset.atributoId = attrId;
+                    input.autocomplete = "new-password";
+                }
+
+                // ============================================
+                // 🔥 VALOR PREVIO (si Django recargó con errores)
+                // ============================================
                 const oldValue = document.querySelector(`[name="${fieldName}"]`)?.value;
                 if (oldValue) input.value = oldValue;
 
-                // Recuperar error del form (si Django lo generó)
+                // ============================================
+                // 🔥 ERRORES PREVIOS
+                // ============================================
                 const errorElement = document.querySelector(`#error_${fieldName}`);
                 if (errorElement) {
                     input.classList.add("border-red-500");
@@ -44,7 +129,6 @@ export function initAtributos({ atributosContainer }) {
                 wrapper.appendChild(label);
                 wrapper.appendChild(input);
 
-                // Mostrar error debajo del input
                 if (errorElement) {
                     const errorText = document.createElement("p");
                     errorText.className = "text-red-600 text-sm mt-1";
@@ -57,11 +141,12 @@ export function initAtributos({ atributosContainer }) {
         });
     }
 
-    /**
-     * Renderiza atributos en modo read-only (producto existente)
-     */
+    // ============================================
+    // MODO READ-ONLY PARA PRODUCTO EXISTENTE
+    // ============================================
     function renderAtributosReadOnly(atributos = []) {
-        atributosContainer.innerHTML = "";
+
+        limpiarContenedorSeguro(atributosContainer);
 
         atributos.forEach((attr) => {
             const wrapper = document.createElement("div");

@@ -8,6 +8,9 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
 SECRET_KEY = config('SECRET_KEY')
 
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
@@ -52,6 +55,7 @@ INSTALLED_APPS = [
     "tienda_temp",
     "inventario",
     "ventas",
+    "sucursales",
 ]
 
 AUTH_USER_MODEL = 'tienda_temp.Usuario'
@@ -68,6 +72,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'main.middleware.sucursal_middleware.SucursalMiddleware',
 ]
 
 ROOT_URLCONF = 'main.urls'
@@ -83,6 +88,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 "inventario.context_processor.ubicaciones_sidebar",
+                "sucursales.context_processors.sucursales_sidebar",
             ],
         },
     },
@@ -91,12 +97,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'main.wsgi.application'
 
 # ⭐ BASE DE DATOS PARA RENDER
-DATABASES = {
-    'default': dj_database_url.config(
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+
 
 
 AUTH_PASSWORD_VALIDATORS = [

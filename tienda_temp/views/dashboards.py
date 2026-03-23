@@ -1,6 +1,9 @@
 from django.db.models import Sum, F
+from django.db.models.functions import TruncMonth
 from django.shortcuts import render
-from inventario.models import Categoria, Inventario, MovimientoInventario, Producto
+from django.utils.timezone import now
+from django.utils.timezone import localtime
+from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
 
 
 def dashboard_socio(request):
@@ -77,7 +80,57 @@ def dashboard_socio(request):
 
 
 def dashboard_dueno(request):
-    return render(request, 'tienda/dashboard_dueno.html')
+
+    total_productos = Producto.objects.count()
+
+    ventas_totales = (
+        MovimientoInventario.objects
+        .filter(tipo="salida", motivo="venta")
+        .annotate(monto=F("cantidad") * F("producto__precio_menudeo"))
+        .aggregate(total=Sum("monto"))
+        .get("total") or 0
+    )
+
+    ubicaciones = Ubicacion.objects.all()  # ← SI LA NECESITAS PARA KPIs
+
+    mas_vendidos = (
+        MovimientoInventario.objects
+        .filter(tipo="salida", motivo="venta")
+        .values(nombre=F("producto__nombre"))
+        .annotate(cantidad=Sum("cantidad"))
+        .order_by("-cantidad")[:10]
+    )
+
+    ventas_mes_raw = (
+        MovimientoInventario.objects
+        .filter(tipo="salida", motivo="venta")
+        .annotate(mes=TruncMonth("fecha"))
+        .values("mes")
+        .annotate(total=Sum("cantidad"))
+        .order_by("mes")
+    )
+
+    ventas_mes_data = [
+        {
+            "mes": localtime(v["mes"]).strftime("%Y-%m"),
+            "total": v["total"]
+        }
+        for v in ventas_mes_raw
+    ]
+
+    context = {
+        "total_productos": total_productos,
+        "ventas_totales": ventas_totales,
+        "ubicaciones": ubicaciones,  # ← ESTA ES LA CORRECTA
+        "mas_vendidos": list(mas_vendidos),
+        "ventas_mes_data": ventas_mes_data,
+        "ahora": now(),
+    }
+
+    return render(request, "tienda/dashboard_dueno.html", context)
+
+
+
 
 
 def base_conocimientos(request):

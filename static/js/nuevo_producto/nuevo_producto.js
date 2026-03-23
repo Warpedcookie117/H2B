@@ -38,6 +38,24 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function activarCamposProducto() {
+        [
+            nombreInput,
+            descripcionInput,
+            mayoreoInput,
+            menudeoInput,
+            docenaInput,
+            tipoCodigoInput,
+            duenioSelect,
+            categoriaPadreSelect,
+            subcategoriaSelect
+        ].forEach(el => {
+            el.disabled = false;
+            el.removeAttribute("readonly");
+            el.classList.remove("bg-gray-100");
+        });
+    }
+
     function actualizarTemporadas(temporadasDelProducto) {
         const checkboxes = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
 
@@ -59,12 +77,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function bloquearFoto() {
         const fotoInput = document.getElementById("id_foto_url");
-        if (fotoInput) fotoInput.disabled = true;
+        if (fotoInput) {
+            fotoInput.style.pointerEvents = "none";
+            fotoInput.style.opacity = "0.5";
+        }
     }
 
     function habilitarFoto() {
         const fotoInput = document.getElementById("id_foto_url");
-        if (fotoInput) fotoInput.disabled = false;
+        if (fotoInput) {
+            fotoInput.style.pointerEvents = "auto";
+            fotoInput.style.opacity = "1";
+        }
     }
 
     function mostrarFoto(url) {
@@ -111,7 +135,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const botonInventario = initBotonInventario({
         form,
         submitBtn,
-        ubicacionSelect
+        ubicacionSelect,
+
+        codigoInput,
+        nombreInput,
+        descripcionInput,
+        mayoreoInput,
+        menudeoInput,
+        docenaInput,
+        tipoCodigoInput,
+        duenioSelect,
+        categoriaPadreSelect,
+        subcategoriaSelect
     });
 
     // ============================
@@ -164,11 +199,9 @@ document.addEventListener("DOMContentLoaded", () => {
             habilitarFoto();
             limpiarFoto();
 
-            form.action = "/inventario/nuevo_producto/";
-
-            submitBtn.textContent = "Registrar producto";
-            submitBtn.classList.replace("bg-green-600", "bg-red-600");
-            submitBtn.classList.replace("hover:bg-green-700", "hover:bg-red-700");
+            // ❗ NO tocar form.action
+            // ❗ NO cambiar el botón aquí
+            // initBotonInventario controla eso
 
             const subId = subcategoriaSelect.value;
             if (subId) {
@@ -186,3 +219,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 });
+
+// ============================
+// DEBUG: detectar quién borra el archivo
+// ============================
+
+const fotoInput = document.querySelector("#id_foto_url");
+
+if (fotoInput) {
+    let ultimoEstado = fotoInput.files.length;
+
+    setInterval(() => {
+        const actual = fotoInput.files.length;
+
+        if (ultimoEstado === 1 && actual === 0) {
+            console.warn("🔥🔥🔥 EL ARCHIVO SE BORRÓ AQUÍ 🔥🔥🔥");
+            console.trace("Stack donde se borró el archivo:");
+            console.log("Valor actual del input:", fotoInput.value);
+        }
+
+        ultimoEstado = actual;
+    }, 200);
+}
+
+import "./fuzzy.js";
