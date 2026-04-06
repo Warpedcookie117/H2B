@@ -29,66 +29,92 @@
       </div>
     {% endif %}
 
+    {% if form.non_field_errors %}
+      <div class="bg-red-100 text-red-700 p-2 rounded mb-4">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
     <form method="POST" action="" autocomplete="off">
       {% csrf_token %}
 
       <div class="mb-4">
         <label for="id_username">Nombre de Usuario</label>
         {{ form.username }}
+        {{ form.username.errors }}
       </div>
 
+      <!-- PASSWORD 1 -->
       <div class="mb-4">
         <label for="id_password1">Contraseña</label>
-        {{ form.password1 }}
+        <div class="relative">
+          {{ form.password1 }}
+          <button type="button"
+                  onclick="togglePassword('id_password1')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
+            👁
+          </button>
+        </div>
+        {{ form.password1.errors }}
       </div>
 
+      <!-- PASSWORD 2 -->
       <div class="mb-4">
         <label for="id_password2">Confirmar Contraseña</label>
-        {{ form.password2 }}
+        <div class="relative">
+          {{ form.password2 }}
+          <button type="button"
+                  onclick="togglePassword('id_password2')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
+            👁
+          </button>
+        </div>
+        {{ form.password2.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_first_name">Nombre(s)</label>
         {{ form.first_name }}
+        {{ form.first_name.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_last_name">Apellido(s)</label>
         {{ form.last_name }}
+        {{ form.last_name.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_email">Correo Electrónico</label>
         {{ form.email }}
+        {{ form.email.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_edad">Edad</label>
         {{ form.edad }}
+        {{ form.edad.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_direccion">Dirección</label>
         {{ form.direccion }}
+        {{ form.direccion.errors }}
       </div>
 
       <div class="mb-4">
         <label for="id_numero_contacto">Número de Contacto</label>
         {{ form.numero_contacto }}
+        {{ form.numero_contacto.errors }}
       </div>
 
-      {# 🔥 LÓGICA DE ROLES #}
       {% if form.rol.value == "dueño" %}
-        {# DUEÑO: campo oculto, no editable #}
         {{ form.rol }}
       {% else %}
-        {# EMPLEADO NORMAL: menú de roles válidos #}
         <div class="mb-4">
           <label for="id_rol">Rol</label>
           <select name="rol" id="id_rol" class="form-control" required>
             <option value="" disabled selected>Selecciona un rol</option>
-
-            {# Se generan dinámicamente desde el formulario #}
             {% for value, label in form.fields.rol.choices %}
               {% if value != "dueño" %}
                 <option value="{{ value }}">{{ label }}</option>
@@ -101,11 +127,13 @@
       <div class="mb-4">
         <label for="id_contacto_emergencia">Contacto de Emergencia</label>
         {{ form.contacto_emergencia }}
+        {{ form.contacto_emergencia.errors }}
       </div>
 
       <div class="mb-6">
         <label for="id_descripcion_contacto_emergencia">Descripción del Contacto</label>
         {{ form.descripcion_contacto_emergencia }}
+        {{ form.descripcion_contacto_emergencia.errors }}
       </div>
 
       <button type="submit" class="btn-submit" id="btn-submit">
@@ -122,4 +150,13 @@
 
   </div>
 </section>
+
+<!-- 🔥 OJITO FUNCIONAL -->
+<script>
+function togglePassword(id) {
+  const input = document.getElementById(id);
+  input.type = input.type === "password" ? "text" : "password";
+}
+</script>
+
 {% endblock %}

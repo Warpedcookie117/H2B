@@ -9,7 +9,6 @@
 
     <!-- TÍTULO -->
     <h1 class="text-4xl font-black flex items-center gap-3 text-purple-700">
-        <i class="fa-solid fa-shop"></i>
         {{ sucursal.nombre }}
     </h1>
 
@@ -104,6 +103,31 @@
             <p class="text-gray-700">No hay ventas recientes.</p>
             {% endfor %}
         </div>
+    </div>
+
+    <!-- NUEVA SECCIÓN: ACCESOS A HISTORIALES -->
+    <div class="mt-16 space-y-6">
+
+        <h2 class="text-3xl font-black text-purple-700">Historial</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <a href="{% url 'ventas:tickets_cortes_caja' sucursal.id %}"
+            class="block text-center p-6 border-4 border-black bg-white font-black text-xl"
+            style="background:#FFCC00; box-shadow: 6px 6px 0 0 black;">
+                Ver cortes de caja
+            </a>
+
+
+            <!-- BOTÓN: TICKETS DE VENTA -->
+            <a href="{% url 'ventas:tickets_ventas' sucursal.id %}"
+               class="block text-center p-6 border-4 border-black bg-white font-black text-xl"
+               style="background:#0099FF; box-shadow: 6px 6px 0 0 black;">
+                Ver tickets de venta
+            </a>
+
+        </div>
+
     </div>
 
 </div>

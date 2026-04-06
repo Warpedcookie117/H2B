@@ -1,8 +1,16 @@
+// buscador_productos.js
+
 import { normalizar } from "./core.js";
 import { agregarProducto } from "./carrito.js";
 
+// ============================================================
+// 1. BUSCADOR POR TEXTO
+// ============================================================
+
 export function initBuscador() {
     const buscarInput = document.getElementById("buscar-producto");
+
+    if (!buscarInput) return;
 
     buscarInput.addEventListener("input", () => {
         const texto = normalizar(buscarInput.value);
@@ -20,11 +28,41 @@ export function initBuscador() {
             item.style.display = coincide ? "flex" : "none";
         });
     });
+
+    // ============================================================
+    // CLICK EN CARD → AGREGAR AL CARRITO
+    // ============================================================
+
+    document.querySelectorAll(".producto-item").forEach(card => {
+        card.onclick = () => {
+            const id = parseInt(card.dataset.id);
+            const nombre = card.dataset.nombre;
+
+            const precios = {
+                men: parseFloat(card.dataset.men),
+                may: parseFloat(card.dataset.may),
+                doc: parseFloat(card.dataset.doc)
+            };
+
+            const stock_piso = parseInt(card.dataset.stockPiso);
+            const stock_bodega = parseInt(card.dataset.stockBodega);
+
+            agregarProducto(id, nombre, precios, stock_piso, stock_bodega);
+        };
+    });
 }
+
+
+
+// ============================================================
+// 2. DRAG & DROP
+// ============================================================
 
 export function initDragDrop() {
     const listaProductos = document.getElementById("lista-productos");
     const carritoLista = document.getElementById("carrito-lista");
+
+    if (!listaProductos || !carritoLista) return;
 
     listaProductos.querySelectorAll(".producto-item").forEach(item => {
         item.setAttribute("draggable", "true");
@@ -64,41 +102,66 @@ export function initDragDrop() {
     });
 }
 
+
+
+// ============================================================
+// 3. ESCANEO (FUNCIONA EN AMBOS INPUTS)
+// ============================================================
+
 export function initEscaneo() {
-    const scanInput = document.getElementById("scan-input");
+    const scanInputs = [
+        document.getElementById("scan-input"),        // input principal
+        document.getElementById("buscar-producto")    // input de la columna derecha
+    ];
 
-    scanInput.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter") return;
+    scanInputs.forEach(input => {
+        if (!input) return;
 
-        const texto = normalizar(scanInput.value.trim());
-        if (!texto) return;
+        input.addEventListener("keydown", (e) => {
+            if (e.key !== "Enter") return;
 
-        const producto = Array.from(document.querySelectorAll(".producto-item"))
-            .find(p =>
-                normalizar(p.dataset.nombre).includes(texto) ||
-                normalizar(p.dataset.codigo || "").includes(texto) ||
-                normalizar(p.dataset.sku || "").includes(texto)
-            );
+            const texto = normalizar(input.value.trim());
+            if (!texto) return;
 
-        if (producto) {
-            const stock_piso = parseInt(producto.dataset.stockPiso);
-            const stock_bodega = parseInt(producto.dataset.stockBodega);
+            const producto = buscarProductoPorTexto(texto);
 
-            agregarProducto(
-                parseInt(producto.dataset.id),
-                producto.dataset.nombre,
-                {
-                    men: parseFloat(producto.dataset.men),
-                    may: parseFloat(producto.dataset.may),
-                    doc: parseFloat(producto.dataset.doc)
-                },
-                stock_piso,
-                stock_bodega
-            );
-
-            scanInput.value = "";
-        } else {
-            alert("Producto no encontrado");
-        }
+            if (producto) {
+                agregarDesdeCard(producto);
+                input.value = "";
+            } else {
+                alert("Producto no encontrado");
+            }
+        });
     });
+}
+
+
+
+// ============================================================
+// 4. HELPERS
+// ============================================================
+
+function buscarProductoPorTexto(texto) {
+    return Array.from(document.querySelectorAll(".producto-item"))
+        .find(p =>
+            normalizar(p.dataset.nombre).includes(texto) ||
+            normalizar(p.dataset.codigo || "").includes(texto) ||
+            normalizar(p.dataset.sku || "").includes(texto)
+        );
+}
+
+function agregarDesdeCard(card) {
+    const id = parseInt(card.dataset.id);
+    const nombre = card.dataset.nombre;
+
+    const precios = {
+        men: parseFloat(card.dataset.men),
+        may: parseFloat(card.dataset.may),
+        doc: parseFloat(card.dataset.doc)
+    };
+
+    const stock_piso = parseInt(card.dataset.stockPiso || card.dataset.stock_piso);
+    const stock_bodega = parseInt(card.dataset.stockBodega || card.dataset.stock_bodega);
+
+    agregarProducto(id, nombre, precios, stock_piso, stock_bodega);
 }

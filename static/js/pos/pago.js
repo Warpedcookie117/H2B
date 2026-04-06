@@ -1,135 +1,110 @@
-// pago.js
+// pago.js — Lógica pura del pago
 
 import { carrito, totalConDescuento, descuentoActivo } from "./core.js";
 import { getCookie } from "./core.js";
-import { renderCarrito } from "./carrito.js";
-import { actualizarTotales } from "./totales.js";
+import { limpiarCarrito } from "./carrito.js";
 
-export function initPago() {
-    const btnCobrar = document.getElementById("btn-cobrar");
-    const modalPago = document.getElementById("modal-pago");
-    const inputPagoEfectivo = document.getElementById("pago-efectivo");
-    const inputPagoTarjeta = document.getElementById("pago-tarjeta");
-    const btnConfirmarPago = document.getElementById("confirmar-pago");
-    const btnCerrarModal = document.getElementById("cerrar-modal");
+// Callbacks que la UI registrará
+export let onPagoError = () => {};
+export let onPagoExito = () => {};
+export let onPagoIniciado = () => {};
+export let onPagoProcesado = () => {};
 
-    // Contenedor de errores
-    const errorBox = document.createElement("div");
-    errorBox.id = "error-stock";
-    errorBox.className = "text-red-600 font-bold text-sm mb-2 hidden";
-    btnCobrar.parentNode.insertBefore(errorBox, btnCobrar);
-
-    btnCobrar.addEventListener("click", () => {
-
-        if (carrito.length === 0) {
-            mostrarError("No hay productos en el carrito");
-            return;
-        }
-
-        // Validación de stock
-        for (const item of carrito) {
-            if (item.cantidad <= item.stock_piso) continue;
-            if (item.cantidad <= item.stock_bodega) continue;
-
-            mostrarError(`"${item.nombre}" no tiene stock suficiente`);
-            return;
-        }
-
-        ocultarError();
-        modalPago.classList.remove("hidden");
-
-        inputPagoEfectivo.value = totalConDescuento.toFixed(2);
-        inputPagoTarjeta.value = "0.00";
-    });
-
-    btnCerrarModal.addEventListener("click", () => {
-        modalPago.classList.add("hidden");
-    });
-
-    btnConfirmarPago.addEventListener("click", () => {
-        const efectivo = parseFloat(inputPagoEfectivo.value || 0);
-        const tarjeta = parseFloat(inputPagoTarjeta.value || 0);
-
-        if (efectivo + tarjeta < totalConDescuento) {
-            mostrarError("Pago insuficiente");
-            return;
-        }
-
-        ocultarError();
-        enviarVenta(efectivo, tarjeta, modalPago);
-    });
+export function setPagoCallbacks({ error, exito, iniciado, procesado }) {
+    if (error) onPagoError = error;
+    if (exito) onPagoExito = exito;
+    if (iniciado) onPagoIniciado = iniciado;
+    if (procesado) onPagoProcesado = procesado;
 }
 
-function mostrarError(msg) {
-    const box = document.getElementById("error-stock");
-    box.textContent = msg;
-    box.classList.remove("hidden");
+
+// ============================================================
+// 1. Validación de stock ANTES de cobrar
+// ============================================================
+
+export function validarStock() {
+    if (carrito.length === 0) {
+        return "No hay productos en el carrito";
+    }
+
+    for (const item of carrito) {
+        if (item.cantidad <= item.stock_piso) continue;
+        if (item.cantidad <= item.stock_bodega) continue;
+
+        return `"${item.nombre}" no tiene stock suficiente`;
+    }
+
+    return null; // OK
 }
 
-function ocultarError() {
-    const box = document.getElementById("error-stock");
-    box.classList.add("hidden");
+
+// ============================================================
+// 2. Validación del pago
+// ============================================================
+
+export function validarPago(efectivo, tarjeta) {
+    const total = totalConDescuento();   // ← FIX: antes era la función sin ejecutar
+
+    if (efectivo + tarjeta < total) {
+        return "Pago insuficiente";
+    }
+
+    return null; // OK
 }
 
-function enviarVenta(efectivo, tarjeta, modalPago) {
 
+// ============================================================
+// 3. Procesar venta (llamar backend)
+// ============================================================
+
+export async function procesarPago(efectivo, tarjeta) {
+
+    onPagoIniciado();
+
+    // Payload EXACTO que espera el backend
     const payload = {
         carrito: carrito.map(p => ({
             producto_id: p.id,
-            cantidad: p.cantidad,
-            precio_aplicado: p.precio_aplicado
+            cantidad: Number(p.cantidad) || 1,
+            precio_aplicado: Number(p.precio_aplicado) || Number(p.precios?.men) || 0
         })),
-        pagado_efectivo: efectivo,
-        pagado_tarjeta: tarjeta,
-        ubicacion_id: sucursal_id,
-        descuento_10: descuentoActivo
+        pagado_efectivo: Number(efectivo) || 0,
+        pagado_tarjeta: Number(tarjeta) || 0,
+        descuento_10: Boolean(descuentoActivo)
     };
 
     const csrftoken = getCookie("csrftoken");
 
-    fetch("/ventas/procesar-venta/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrftoken
-        },
-        body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(data => {
+    try {
+        const resp = await fetch("/ventas/procesar-venta/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrftoken
+            },
+            body: JSON.stringify(payload)
+        });
 
+        const data = await resp.json();
+
+        // Callback opcional
+        onPagoProcesado(data);
+
+        // Lógica interna
         if (data.status === "ok") {
-
-            mostrarAlerta("Venta realizada con éxito ✔️", "ok");
-
-            carrito.length = 0;
-            renderCarrito();
-            actualizarTotales();
-            modalPago.classList.add("hidden");
-
+            limpiarCarrito();
+            onPagoExito(data);
         } else {
-            mostrarAlerta("Error: " + data.message, "error");
+            onPagoError(data.message || "Error al procesar la venta");
         }
-    })
-    .catch(() => {
-        mostrarAlerta("Error de conexión con el servidor", "error");
-    });
-}
 
-function mostrarAlerta(mensaje, tipo = "ok") {
-    const box = document.getElementById("pos-alerta");
+        // 🔥 FIX CRÍTICO: devolver data para ui.js
+        return data;
 
-    box.textContent = mensaje;
+    } catch (e) {
+        onPagoError("Error de conexión con el servidor");
 
-    if (tipo === "ok") {
-        box.className = "p-3 rounded-lg font-bold text-center mb-3 bg-green-600 text-white";
-    } else {
-        box.className = "p-3 rounded-lg font-bold text-center mb-3 bg-red-600 text-white";
+        // También devolver algo para que ui.js no reciba undefined
+        return { status: "error", message: "Error de conexión con el servidor" };
     }
-
-    box.classList.remove("hidden");
-
-    setTimeout(() => {
-        box.classList.add("hidden");
-    }, 3000);
 }

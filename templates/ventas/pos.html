@@ -3,22 +3,32 @@
 
 {% block content %}
 
-<!-- 🔥 DEFINIMOS LA UBICACIÓN DEL POS (PISO) -->
 <script>
     const sucursal_id = {{ ubicacion_pos.id }};
 </script>
 
+<!-- ========================================================= -->
+<!-- HEADER GLOBAL CENTRADO -->
+<!-- ========================================================= -->
+<div class="w-full text-center mb-6">
+    <h1 class="text-3xl font-bold">
+        Punto de Venta — {{ ubicacion_pos.nombre }}
+    </h1>
+</div>
+
 <div class="flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-[calc(100vh-80px)]">
 
+    <!-- ========================================================= -->
     <!-- IZQUIERDA: CARRITO -->
+    <!-- ========================================================= -->
     <div class="flex flex-col flex-1 bg-white rounded-xl shadow p-4 lg:p-6 min-h-[400px]">
 
-        <h2 class="text-2xl font-bold mb-4">Punto de Venta</h2>
+        <h3 class="text-xl font-bold mb-3">Carrito</h3>
 
-        <!-- ⭐ ALERTA DE ÉXITO / ERROR -->
+        <!-- ALERTA -->
         <div id="pos-alerta" class="hidden p-3 rounded-lg font-bold text-center mb-3"></div>
 
-        <!-- INPUT ESCANEO -->
+        <!-- ESCANEO -->
         <input 
             id="scan-input"
             type="text"
@@ -27,7 +37,7 @@
             autofocus
         >
 
-        <!-- CARRITO (DROPZONE) -->
+        <!-- CARRITO -->
         <div id="carrito-lista"
              class="flex-1 overflow-y-auto pr-2 space-y-3 border-2 border-dashed border-gray-300 rounded-lg min-h-[200px]"
              ondragover="event.preventDefault()">
@@ -39,10 +49,8 @@
                 Total: $<span id="total-general">0.00</span>
             </h3>
 
-            <!-- ERROR STOCK -->
             <div id="error-stock" class="hidden text-red-600 font-bold text-sm mb-2"></div>
 
-            <!-- COBRAR -->
             <button id="btn-cobrar"
                 class="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xl font-bold transition">
                 COBRAR
@@ -51,18 +59,33 @@
 
     </div>
 
+
+
+    <!-- ========================================================= -->
     <!-- DERECHA: PRODUCTOS -->
+    <!-- ========================================================= -->
     <div class="w-full lg:w-[520px] bg-white rounded-xl shadow p-4 lg:p-6 flex flex-col">
 
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-xl font-bold">Productos</h3>
+            <h3 class="text-xl font-bold">Productos en PISO</h3>
 
-            <!-- BOTÓN 10% -->
-            <button id="btn-descuento"
-                class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md transition 
-                    shrink-0 w-20 text-center whitespace-nowrap select-none">
-                10% OFF
-            </button>
+            <div class="flex gap-2">
+                <a href="{% url 'sucursales:salir_caja' %}"
+                   class="px-3 py-1 bg-pink-500 hover:bg-pink-600 text-white rounded-md text-xs font-bold">
+                    Salir de Caja
+                </a>
+
+                <a href="{% url 'ventas:corte_caja' %}"
+                   class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-bold">
+                    Corte Caja
+                </a>
+
+                <button id="btn-descuento"
+                    class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md transition 
+                        shrink-0 w-20 text-center whitespace-nowrap select-none">
+                    10% OFF
+                </button>
+            </div>
         </div>
 
         <!-- BUSCADOR -->
@@ -91,7 +114,6 @@
                 data-stock-bodega="{{ p.stock_bodega }}"
                 draggable="true"
             >
-                <!-- IMAGEN -->
                 <div class="w-full h-32 bg-gray-200 rounded-md overflow-hidden flex items-center justify-center">
                     {% if p.foto_url %}
                         <img src="{{ p.foto_url.url }}" class="w-full h-full object-cover">
@@ -100,10 +122,16 @@
                     {% endif %}
                 </div>
 
-                <!-- INFO -->
                 <div class="flex flex-col">
                     <p class="font-semibold text-base leading-normal truncate">{{ p.nombre }}</p>
-                    <p class="text-red-600 font-bold text-lg">${{ p.precio_menudeo }}</p>
+
+                    <p class="text-red-600 font-bold text-lg">
+                        ${{ p.precio_menudeo }} <span class="text-xs text-gray-600">(MEN)</span>
+                    </p>
+
+                    <p class="text-green-600 font-bold text-sm">
+                        ${{ p.precio_mayoreo }} <span class="text-xs text-gray-600">(MAY)</span>
+                    </p>
                 </div>
             </div>
             {% endfor %}
@@ -114,7 +142,11 @@
 
 </div>
 
-<!-- MODAL -->
+
+
+<!-- ========================================================= -->
+<!-- MODAL DE PAGO -->
+<!-- ========================================================= -->
 <div id="modal-pago" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-[350px] animate-scaleIn">
 
@@ -147,7 +179,54 @@
     </div>
 </div>
 
-<!-- MAIN JS COMO MÓDULO -->
+
+<!-- ========================================================= -->
+<!-- MODAL DE RESULTADO -->
+<!-- ========================================================= -->
+<div id="modal-resultado" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-[350px] animate-scaleIn">
+
+        <h2 class="text-xl font-bold mb-4 text-center">Venta realizada</h2>
+
+        <div class="mb-4 text-center">
+            <p class="text-lg font-semibold">Total pagado:</p>
+            <p class="text-3xl font-bold text-green-600">$<span id="resultado-total">0.00</span></p>
+        </div>
+
+        <div class="mb-6 text-center">
+            <p class="text-lg font-semibold">Cambio:</p>
+            <p class="text-3xl font-bold text-blue-600">$<span id="resultado-cambio">0.00</span></p>
+        </div>
+
+        <!-- 🔥 MENSAJE DE IMPRESIÓN (éxito o fallo) -->
+        <div id="resultado-impresion" class="text-center mt-4 text-sm"></div>
+
+        <button id="cerrar-resultado"
+            class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold mt-4">
+            Aceptar
+        </button>
+
+    </div>
+</div>
+
+
+<!-- ========================================================= -->
+<!-- CLASES PARA QUE TAILWIND NO PURGUE LOS COLORES -->
+<!-- ========================================================= -->
+<div class="hidden">
+    <span class="bg-pink-300"></span>
+    <span class="bg-green-500"></span>
+    <span class="bg-purple-500"></span>
+    <span class="bg-blue-600"></span>
+    <span class="bg-gray-300"></span>
+
+    <span class="text-black"></span>
+    <span class="text-white"></span>
+
+    <span class="border-4"></span>
+    <span class="border-black"></span>
+</div>
+
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
 
 {% endblock %}

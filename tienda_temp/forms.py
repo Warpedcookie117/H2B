@@ -10,15 +10,18 @@ from tienda_temp.models import Empleado, Usuario
 class RegistroEmpleadoForm(forms.Form):
     username = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
     email = forms.EmailField(widget=forms.EmailInput(attrs={"class": "form-control"}))
-    password1 = forms.CharField(widget=forms.PasswordInput(attrs={"class": "form-control"}))
-    password2 = forms.CharField(widget=forms.PasswordInput(attrs={"class": "form-control"}))
+
+    password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": "form-control", "id": "id_password1"})
+    )
+    password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={"class": "form-control", "id": "id_password2"})
+    )
+
     first_name = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
     last_name = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
 
-    edad = forms.IntegerField(
-        min_value=16,
-        widget=forms.NumberInput(attrs={"class": "form-control"})
-    )
+    edad = forms.IntegerField(widget=forms.NumberInput(attrs={"class": "form-control"}))
     direccion = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
     numero_contacto = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
     contacto_emergencia = forms.CharField(widget=forms.TextInput(attrs={"class": "form-control"}))
@@ -26,10 +29,10 @@ class RegistroEmpleadoForm(forms.Form):
         widget=forms.Textarea(attrs={"class": "form-control", "rows": 3})
     )
 
-    # 🔥 Campo de rol: válido y coherente
+    # 🔥 YA NO ES HIDDEN
     rol = forms.ChoiceField(
         choices=Empleado.ROL_CHOICES,
-        widget=forms.HiddenInput()  # si quieres que venga desde la URL
+        widget=forms.Select(attrs={"class": "form-control"})
     )
 
     def clean(self):
@@ -44,12 +47,7 @@ class RegistroEmpleadoForm(forms.Form):
         if Usuario.objects.filter(email=cleaned.get("email")).exists():
             raise forms.ValidationError("El correo ya está registrado.")
 
-        if Empleado.objects.filter(numero_contacto=cleaned.get("numero_contacto")).exists():
-            raise forms.ValidationError("El número de contacto ya está registrado.")
-
         return cleaned
-
-
 
 
 class RegistroClienteForm(forms.Form):

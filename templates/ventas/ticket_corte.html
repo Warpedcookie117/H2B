@@ -3,43 +3,80 @@
 
 {% block content %}
 
-<div id="ticket-area" class="max-w-md mx-auto bg-white shadow-lg rounded-xl p-6 mt-10">
+<!-- CARD PRINCIPAL -->
+<div id="ticket-area"
+     class="max-w-md mx-auto p-6 mt-10 border-4 border-black rounded-xl bg-[#FFEE88]
+            transition-all duration-150 ease-out
+            hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]"
+     style="box-shadow: 8px 8px 0 0 black;">
+
+    <!-- BOTÓN VOLVER -->
+    <div class="flex justify-center mb-4">
+        <a href="{% url 'ventas:tickets_cortes_caja' corte.caja.sucursal.id %}"
+            class="px-4 py-2 bg-blue-700 text-white rounded-lg font-black
+                   transition-all duration-150 ease-out
+                   hover:bg-blue-800
+                   hover:shadow-[inset_0px_0px_0px_4px_black]
+                   active:translate-y-1 active:shadow-[inset_6px_6px_0px_0px_black]"
+            style="box-shadow: 4px 4px 0 0 black;">
+            Ver todos los cortes de esta sucursal
+        </a>
+    </div>
 
     <!-- ENCABEZADO -->
-    <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">Corte del Día</h2>
-        <p class="text-sm text-gray-500">{{ fecha|date:"d/m/Y H:i" }}</p>
+    <div class="text-center my-6">
+        <h2 class="text-3xl font-black text-gray-900">Corte del Día</h2>
+        <p class="text-sm font-semibold text-gray-700">
+            {{ fecha|date:"d/m/Y H:i" }}
+        </p>
     </div>
 
     <!-- INFO CAJA -->
-    <div class="mb-4">
-        <p class="text-gray-700"><strong>Caja:</strong> {{ caja.nombre }}</p>
-        <p class="text-gray-700"><strong>Empleado:</strong> {{ empleado.nombre }}</p>
+    <div class="p-4 border-4 border-black rounded-lg bg-white
+                transition-all duration-150 ease-out
+                hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]"
+         style="box-shadow: 4px 4px 0 0 black;">
+        <p class="text-gray-900 font-bold text-lg">
+            Caja: <span class="font-black">{{ caja.nombre }}</span>
+        </p>
+
+        <p class="text-gray-900 font-bold text-lg">
+            Empleado:
+            <span class="font-black">
+                {% if empleado %}
+                    {{ empleado.user.get_full_name|default:empleado.user.username }}
+                {% else %}
+                    Corte automático
+                {% endif %}
+            </span>
+        </p>
     </div>
 
-    <hr class="my-4">
-
     <!-- TOTAL GENERAL -->
-    <div class="mb-4">
-        <h3 class="text-xl font-bold text-gray-800">Total General</h3>
-        <p class="text-3xl font-bold text-green-600 mt-2">
+    <div class="mt-6 p-4 border-4 border-black rounded-lg bg-[#FFCC00]
+                transition-all duration-150 ease-out
+                hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]"
+         style="box-shadow: 4px 4px 0 0 black;">
+        <h3 class="text-xl font-black text-gray-900">Total General</h3>
+        <p class="text-4xl font-black text-green-700 mt-2">
             ${{ total_general }}
         </p>
     </div>
 
-    <hr class="my-4">
-
     <!-- TOTALES POR DUEÑO -->
-    <div class="mb-4">
-        <h3 class="text-xl font-bold text-gray-800 mb-2">Ventas por dueño</h3>
+    <div class="mt-6 p-4 border-4 border-black rounded-lg bg-white
+                transition-all duration-150 ease-out
+                hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]"
+         style="box-shadow: 4px 4px 0 0 black;">
+        <h3 class="text-xl font-black text-gray-900 mb-3">Ventas por dueño</h3>
 
         {% for dueno, total in totales_dueno.items %}
-        <div class="flex justify-between py-1">
-            <span class="font-semibold text-gray-700">{{ dueno }}</span>
-            <span class="font-bold text-gray-900">${{ total }}</span>
+        <div class="flex justify-between py-1 text-lg font-bold text-gray-900">
+            <span>{{ dueno }}</span>
+            <span>${{ total }}</span>
         </div>
         {% empty %}
-        <p class="text-gray-500 text-sm">No hubo ventas hoy.</p>
+        <p class="text-gray-700 font-semibold">No hubo ventas hoy.</p>
         {% endfor %}
     </div>
 
@@ -50,29 +87,36 @@
 
     <!-- IMPRIMIR -->
     <button onclick="window.print()"
-            class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow">
+            class="px-6 py-3 bg-red-600 text-white rounded-lg font-black
+                   transition-all duration-150 ease-out
+                   hover:bg-red-700
+                   hover:shadow-[inset_0px_0px_0px_4px_black]
+                   active:translate-y-1 active:shadow-[inset_6px_6px_0px_0px_black]"
+            style="box-shadow: 4px 4px 0 0 black;">
         Imprimir
     </button>
 
     <!-- DESCARGAR PDF -->
     <button onclick="descargarPDF()"
-            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow">
+            class="px-6 py-3 bg-blue-600 text-white rounded-lg font-black
+                   transition-all duration-150 ease-out
+                   hover:bg-blue-700
+                   hover:shadow-[inset_0px_0px_0px_4px_black]
+                   active:translate-y-1 active:shadow-[inset_6px_6px_0px_0px_black]"
+            style="box-shadow: 4px 4px 0 0 black;">
         Descargar
     </button>
 
 </div>
 
-
 <!-- SCRIPT PARA DESCARGAR PDF -->
 <script>
 function descargarPDF() {
-    const ticket = document.getElementById("ticket-area").innerText;
-
     const contenido = `
 Corte del Día
 Fecha: {{ fecha|date:"d/m/Y H:i" }}
 Caja: {{ caja.nombre }}
-Empleado: {{ empleado.nombre }}
+Empleado: {% if empleado %}{{ empleado.user.get_full_name|default:empleado.user.username }}{% else %}Corte automático{% endif %}
 
 Total General: ${{ total_general }}
 

@@ -1,16 +1,16 @@
-from django.shortcuts import get_object_or_404, render
+
+from django.contrib import messages
+from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from inventario.models import Producto, Ubicacion
 from django.db.models import Sum, Case, When, IntegerField
 from django.db.models.functions import Coalesce
-from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 import json
+from ventas.services.pos_service import POSService
 from sucursales.models import Sucursal
-from ventas.models import CorteCaja, Venta
-from .services.pos_service import POSService
-from django.contrib import messages
-from django.shortcuts import redirect, render
+from django.http import JsonResponse
 
 
 @login_required
@@ -67,7 +67,7 @@ def pos_view(request):
                     Case(
                         When(
                             inventarios__ubicacion__sucursal_id=sucursal_id,
-                            inventarios__ubicacion__tipo="bodega_interna",
+                            inventarios__ubicacion__tipo="bodega",
                             then="inventarios__cantidad_actual",
                         ),
                         default=0,
@@ -80,7 +80,6 @@ def pos_view(request):
         .filter(stock_piso__gt=0)
         .order_by("nombre")
     )
-
     return render(
         request,
         "ventas/pos.html",
@@ -92,73 +91,113 @@ def pos_view(request):
 
 
     
-    
 @login_required
 @require_POST
 def procesar_venta(request):
 
+    print("\n\n================= DEBUG POS =================")
+    print("Método:", request.method)
+    print("URL:", request.path)
+
     # 0) Validar rol
     empleado = request.user.empleado
-    if empleado.rol not in ["cajero", "dueno"]:
-        return JsonResponse({
-            "status": "error",
-            "message": "No tienes permiso para procesar ventas."
-        }, status=403)
+    print("Empleado:", empleado.id, empleado.rol)
+
+    if empleado.rol not in ["cajero", "dueno", "dueño"]:
+        print("ERROR: Rol inválido")
+        return JsonResponse({"status": "error", "message": "No tienes permiso"}, status=403)
 
     # 1) Validar caja activa
     sucursal_id = request.session.get("sucursal_actual")
     caja_id = request.session.get("caja_actual")
 
+    print("Sucursal en sesión:", sucursal_id)
+    print("Caja en sesión:", caja_id)
+
     if not sucursal_id or not caja_id:
-        return JsonResponse({
-            "status": "error",
-            "message": "Debes autenticarte en una caja."
-        }, status=400)
+        print("ERROR: No hay sucursal o caja en sesión")
+        return JsonResponse({"status": "error", "message": "Debes autenticarte en una caja."}, status=400)
 
-    # 🔥 1.5) Obtener objeto sucursal (ESTO FALTABA)
-    sucursal = Sucursal.objects.get(id=sucursal_id)
+    # 2) Obtener sucursal
+    try:
+        sucursal = Sucursal.objects.get(id=sucursal_id)
+        print("Sucursal OK:", sucursal)
+    except Sucursal.DoesNotExist:
+        print("ERROR: Sucursal inválida")
+        return JsonResponse({"status": "error", "message": "Sucursal inválida."}, status=400)
 
-    # 2) Parsear JSON
+    # 3) Parsear JSON
+    print("Raw body:", request.body)
+
     try:
         data = json.loads(request.body)
-    except Exception:
-        return JsonResponse({"status": "error", "message": "JSON inválido"}, status=400)
+        print("JSON recibido:")
+        print(json.dumps(data, indent=4))
+    except Exception as e:
+        print("ERROR PARSEANDO JSON:", str(e))
+        return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
 
     carrito = data.get("carrito", [])
-    pagado_efectivo = float(data.get("pagado_efectivo", 0))
-    pagado_tarjeta = float(data.get("pagado_tarjeta", 0))
-    descuento_10 = bool(data.get("descuento_10", False))
+    pagado_efectivo = data.get("pagado_efectivo")
+    pagado_tarjeta = data.get("pagado_tarjeta")
+    descuento_10 = data.get("descuento_10")
 
-    # 3) Validación básica
+    print("\n--- CAMPOS RECIBIDOS ---")
+    print("carrito:", carrito)
+    print("pagado_efectivo:", pagado_efectivo)
+    print("pagado_tarjeta:", pagado_tarjeta)
+    print("descuento_10:", descuento_10)
+
+    # 4) Validación básica
     if not carrito:
-        return JsonResponse({"status": "error", "message": "Carrito vacío"}, status=400)
+        print("ERROR: Carrito vacío")
+        return JsonResponse({"status": "error", "message": "Carrito vacío."}, status=400)
 
-    # 4) Convertir carrito
+    # 5) Convertir carrito
     carrito_real = []
+    print("\n--- PROCESANDO CARRITO ---")
     for item in carrito:
-        producto_id = item.get("producto_id")
-        cantidad = int(item.get("cantidad", 0))
-        precio_aplicado = float(item.get("precio_aplicado", 0))
+        print("Item recibido:", item)
 
-        carrito_real.append({
-            "producto_id": producto_id,
-            "cantidad": cantidad,
-            "precio_aplicado": precio_aplicado
-        })
+        try:
+            producto_id = item.get("producto_id")
+            cantidad = int(item.get("cantidad"))
+            precio_aplicado = float(item.get("precio_aplicado"))
 
-    # 5) Crear venta
+            print("→ OK producto_id:", producto_id,
+                  "cantidad:", cantidad,
+                  "precio:", precio_aplicado)
+
+            carrito_real.append({
+                "producto_id": producto_id,
+                "cantidad": cantidad,
+                "precio_aplicado": precio_aplicado,
+            })
+
+        except Exception as e:
+            print("ERROR EN ITEM:", str(e))
+            return JsonResponse({
+                "status": "error",
+                "message": f"Error en item del carrito: {str(e)}"
+            }, status=400)
+
+    # 6) Crear venta con POSService
+    print("\n--- LLAMANDO POSService.crear_venta ---")
     try:
         resultado = POSService.crear_venta(
             empleado=empleado,
-            sucursal=sucursal,      # ✔ ahora sí existe
-            caja_id=caja_id,        # ✔ clave
+            sucursal=sucursal,
+            caja_id=caja_id,
             carrito=carrito_real,
-            pagado_efectivo=pagado_efectivo,
-            pagado_tarjeta=pagado_tarjeta,
-            descuento_10=descuento_10
+            pagado_efectivo=float(pagado_efectivo),
+            pagado_tarjeta=float(pagado_tarjeta),
+            descuento_10=bool(descuento_10)
         )
 
         venta = resultado["venta"]
+        ticket_texto = resultado["ticket_texto"]
+
+        print("VENTA CREADA OK:", venta.id)
 
         return JsonResponse({
             "status": "ok",
@@ -166,52 +205,19 @@ def procesar_venta(request):
             "total": float(venta.total),
             "cambio": float(venta.cambio),
             "descuento": float(venta.descuento),
+
+            # URLs para ver ticket
+            "url_html": reverse("ventas:ticket_venta", args=[venta.id]),
+            "url_pdf": reverse("ventas:ticket_venta_pdf", args=[venta.id]),
+            "url_termico": reverse("ventas:ticket_venta_termico", args=[venta.id]),
+
+            # Ticket ESC/POS para impresión automática
+            "ticket_texto": ticket_texto,
         })
 
     except Exception as e:
+        print("ERROR EN POSService:", str(e))
         return JsonResponse({
             "status": "error",
             "message": str(e)
         }, status=400)
-        
-        
-        
-@login_required
-def ticket_corte(request, corte_id):
-    corte = get_object_or_404(CorteCaja, id=corte_id)
-
-    contexto = {
-        "corte": corte,
-        "caja": corte.caja,
-        "empleado": corte.empleado,
-        "fecha": corte.fecha,
-        "total_general": corte.total_general,
-        "totales_dueno": corte.total_por_dueno,
-    }
-
-    return render(request, "ventas/ticket_corte.html", contexto)
-
-
-
-@login_required
-def ticket_venta(request, venta_id):
-    venta = get_object_or_404(Venta, id=venta_id)
-
-    detalles = venta.detalles.all()  # 🔥 VentaDetalle
-
-    contexto = {
-        "venta": venta,
-        "detalles": detalles,
-        "empleado": venta.empleado,
-        "fecha": venta.fecha,
-        "total": venta.total,
-        "subtotal": venta.subtotal,
-        "descuento": venta.descuento,
-        "metodo_pago": venta.metodo_pago,
-        "pagado_efectivo": venta.pagado_efectivo,
-        "pagado_tarjeta": venta.pagado_tarjeta,
-        "cambio": venta.cambio,
-    }
-
-    return render(request, "ventas/ticket_venta.html", contexto)
-

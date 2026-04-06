@@ -15,7 +15,10 @@ function submitAjuste(productoId, esDueno) {
         console.log("RESPUESTA:", data); // DEBUG
 
         if (!data.success) {
-            mostrarError(data.errors?.join("<br>") || "Ocurrió un error.");
+
+            // ⭐⭐⭐ ERROR DENTRO DEL MODAL (NO SE CIERRA)
+            mostrarErrorEnModal(modalId, data.errors?.join("<br>") || "Ocurrió un error.");
+
             return;
         }
 
@@ -42,7 +45,9 @@ function submitAjuste(productoId, esDueno) {
     })
     .catch(err => {
         console.error("ERROR EN FETCH:", err); // DEBUG
-        mostrarError("Error de conexión.");
+
+        // ⭐⭐⭐ ERROR DENTRO DEL MODAL
+        mostrarErrorEnModal(modalId, "Error de conexión.");
     });
 }
 

@@ -14,13 +14,7 @@ from django.views.decorators.http import require_POST
 from ventas.models import Venta, CorteCaja
 from django.db.models import Sum
 from django.utils import timezone
-
-
-
-
-
-
-
+from ventas.services.corte_service import generar_corte_para_fecha
 
 
 
@@ -67,20 +61,36 @@ def entrar_caja_ajax(request):
     caja_id = request.POST.get("caja_id")
     password = request.POST.get("password")
 
-    # Validar contraseña REAL del usuario
     user = authenticate(username=request.user.username, password=password)
     if not user:
         return JsonResponse({"error": "Contraseña incorrecta."}, status=400)
 
     caja = get_object_or_404(Caja, id=caja_id)
 
-    # Guardar caja activa
-    request.session["caja_actual"] = caja.id
+    hoy = timezone.now().date()
+    ayer = hoy - timezone.timedelta(days=1)
 
-    # 🔥 Guardar sucursal automáticamente
+    ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()
+
+    if not ultimo_corte or ultimo_corte.fecha.date() < hoy:
+
+        corte_auto = generar_corte_para_fecha(caja, ayer)
+
+        request.session["caja_actual"] = caja.id
+        request.session["sucursal_actual"] = caja.sucursal_id
+
+        return JsonResponse({
+            "redirect": f"/ventas/ticket-corte/{corte_auto.id}/"
+        })
+
+    request.session["caja_actual"] = caja.id
     request.session["sucursal_actual"] = caja.sucursal_id
 
     return JsonResponse({"ok": True})
+
+
+
+
 
     
 @login_required
@@ -111,57 +121,9 @@ def salir_caja(request):
 
     # Redirección según rol
     if rol == "dueño":
-        return redirect("dashboard_dueno")
+        return redirect("tienda_temp:dashboard_dueno")
     else:
-        return redirect("dashboard_socio")
+        return redirect("tienda_temp:dashboard_socio")
     
     
-    
-    
-@login_required
-def corte_del_dia(request):
-    # 1. Verificar que el usuario esté en una caja
-    caja_id = request.session.get("caja_actual")
-    if not caja_id:
-        messages.error(request, "No estás dentro de ninguna caja.")
-        return redirect("dashboard_socio")
-
-    caja = Caja.objects.get(id=caja_id)
-
-    # 2. Ventas del día
-    hoy = timezone.now().date()
-
-    ventas = Venta.objects.filter(
-        caja=caja,
-        fecha__date=hoy
-    )
-
-    # 3. Total general
-    total_general = ventas.aggregate(total=Sum("total"))["total"] or 0
-
-    # 4. Totales por dueño
-    totales_dueno = {}
-
-    for venta in ventas:
-        for item in venta.detalles.all():
-            dueno = item.producto.dueno.nombre  # 🔥 tu modelo ya tiene dueño
-            totales_dueno.setdefault(dueno, 0)
-            totales_dueno[dueno] += float(item.subtotal)
-
-    # 5. Crear el corte
-    corte = CorteCaja.objects.create(
-        caja=caja,
-        empleado=request.user.empleado,
-        total_general=total_general,
-        total_por_dueno=totales_dueno
-    )
-
-    # 6. Limpiar sesión de caja
-    request.session.pop("sucursal_actual", None)
-    request.session.pop("caja_actual", None)
-
-    messages.success(request, "Corte del día realizado correctamente.")
-
-    # 7. Redirigir al ticket del corte
-    return redirect("ventas:ticket_corte", corte.id)
 

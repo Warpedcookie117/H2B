@@ -181,7 +181,6 @@ class ProductoForm(forms.ModelForm):
         help_text="Número de piezas al registrar el producto"
     )
 
-    # 🔥🔥🔥 CAMBIO IMPORTANTE: queryset vacío
     ubicacion = forms.ModelChoiceField(
         queryset=Ubicacion.objects.none(),
         required=True,
@@ -265,22 +264,40 @@ class ProductoForm(forms.ModelForm):
             )
 
         # ============================================================
-        # 🔥 NUEVA LÓGICA: SIEMPRE MOSTRAR TODAS LAS UBICACIONES
+        # 🔥 SIEMPRE MOSTRAR TODAS LAS UBICACIONES CON OPTGROUPS
         # ============================================================
 
-        sucursal_id = self.initial.get("sucursal_actual") or self.data.get("sucursal_actual")
+        ubicaciones = Ubicacion.objects.select_related("sucursal").all().order_by(
+            "sucursal__nombre",
+            "nombre"
+        )
 
-        ubicaciones_globales = Ubicacion.objects.filter(sucursal__isnull=True)
-        ubicaciones_sucursal = Ubicacion.objects.filter(sucursal_id=sucursal_id) if sucursal_id else Ubicacion.objects.none()
+        # Asignar queryset completo
+        self.fields["ubicacion"].queryset = ubicaciones
 
-        # Combinar ambas
-        self.fields["ubicacion"].queryset = (
-            ubicaciones_sucursal | ubicaciones_globales
-        ).order_by("sucursal__nombre", "tipo")
+        # ❌ NO preseleccionar nada
+        self.fields["ubicacion"].initial = None
 
-        # 🔥 Preseleccionar ubicación si estás en caja
-        if hasattr(self, "request") and getattr(self.request, "caja_actual", None):
-            self.fields["ubicacion"].initial = self.request.caja_actual.ubicacion_id
+        # Crear optgroups dinámicos
+        choices = []
+        grupo_actual = []
+        grupo_nombre = None
+
+        for u in ubicaciones:
+            nombre_sucursal = u.sucursal.nombre if u.sucursal else "Globales"
+
+            if grupo_nombre != nombre_sucursal:
+                if grupo_actual:
+                    choices.append((grupo_nombre, grupo_actual))
+                grupo_nombre = nombre_sucursal
+                grupo_actual = []
+
+            grupo_actual.append((u.id, u.nombre))
+
+        if grupo_actual:
+            choices.append((grupo_nombre, grupo_actual))
+
+        self.fields["ubicacion"].choices = choices
 
     def clean_foto_url(self):
         foto = self.cleaned_data.get("foto_url")
@@ -342,7 +359,6 @@ class ProductoForm(forms.ModelForm):
             raise forms.ValidationError(errores)
 
         return cleaned
-
 
 
 

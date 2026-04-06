@@ -1,0 +1,87 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Ticket de Venta {{ venta.id }}{% endblock %}
+
+{% block content %}
+
+<div class="p-8 space-y-10">
+
+    <!-- TÍTULO -->
+    <h1 class="text-4xl font-black text-purple-700">
+        Ticket de venta
+    </h1>
+
+    <!-- INFO PRINCIPAL -->
+    <div class="p-6 border-4 border-black bg-white"
+         style="background:#FFEE88; box-shadow: 6px 6px 0 0 black;">
+
+        <p class="font-bold text-xl">Venta #{{ venta.id }}</p>
+        <p class="text-sm mt-1">Fecha: {{ venta.fecha }}</p>
+        <p class="text-sm">Caja: {{ venta.caja.nombre }}</p>
+        <p class="text-sm">Sucursal: {{ venta.caja.sucursal.nombre }}</p>
+
+        <p class="text-sm">
+            Empleado:
+            {{ venta.empleado.user.get_full_name|default:venta.empleado.user.username }}
+        </p>
+
+    </div>
+
+    <!-- FORMATO TÉRMICO REAL -->
+    <div class="p-6 border-4 border-black bg-black text-green-400 rounded-lg text-sm whitespace-pre-wrap"
+         style="box-shadow: 6px 6px 0 0 black;">
+
+{{ ticket_texto }}
+
+    </div>
+
+    <!-- TOTAL (CUADRO AMARILLO GRANDE) -->
+    <div class="p-6 border-4 border-black bg-white text-right"
+         style="background:#FFCC00; box-shadow: 6px 6px 0 0 black;">
+        <p class="text-3xl font-black">Total: ${{ venta.total }}</p>
+    </div>
+
+    <!-- ACCIONES -->
+    <div class="flex flex-wrap gap-4">
+
+        <!-- PDF -->
+        <a href="{% url 'ventas:ticket_venta_pdf' venta.id %}"
+           class="px-6 py-3 border-4 border-black font-black text-white text-lg"
+           style="background:#0099FF; box-shadow: 4px 4px 0 0 black;">
+            Descargar PDF
+        </a>
+
+        <!-- REIMPRIMIR -->
+        <button id="reimprimir-ticket"
+           class="px-6 py-3 border-4 border-black font-black text-white text-lg"
+           style="background:#FF0066; box-shadow: 4px 4px 0 0 black;">
+            Imprimir de nuevo
+        </button>
+
+        <!-- HISTORIAL -->
+        <a href="{% url 'ventas:tickets_ventas' venta.caja.sucursal.id %}"
+           class="px-6 py-3 border-4 border-black font-black text-lg"
+           style="background:#FFCC00; box-shadow: 4px 4px 0 0 black;">
+            Ver todos los tickets de esta sucursal
+        </a>
+
+    </div>
+
+</div>
+
+<!-- SCRIPT PARA REIMPRIMIR -->
+<script>
+document.getElementById("reimprimir-ticket").onclick = () => {
+    document.dispatchEvent(new CustomEvent("imprimir-ticket", {
+        detail: {
+            total: {{ venta.total }},
+            cambio: {{ venta.cambio }},
+            venta_id: {{ venta.id }},
+            ticket_texto: `{{ ticket_texto|escapejs }}`
+        }
+    }));
+};
+</script>
+
+{% endblock %}

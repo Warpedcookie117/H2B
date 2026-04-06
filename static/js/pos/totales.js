@@ -1,15 +1,10 @@
-import { carrito, descuentoActivo, setTotales } from "./core.js";
+import { carrito, descuentoActivo, totalConDescuento } from "./core.js";
 
 export function actualizarTotales() {
 
-    let total = carrito.reduce((acc, item) => {
-        return acc + (item.precio_aplicado * item.cantidad);
-    }, 0);
-
-    const totalConDesc = descuentoActivo ? total * 0.9 : total;
-
-    setTotales(total, totalConDesc);
+    // totalConDescuento() YA calcula todo dinámicamente
+    const total = totalConDescuento();
 
     document.getElementById("total-general").textContent =
-        totalConDesc.toFixed(2);
+        total.toFixed(2);
 }

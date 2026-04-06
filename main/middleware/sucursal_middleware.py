@@ -11,17 +11,27 @@ class SucursalMiddleware:
 
         sucursal_id = request.session.get("sucursal_actual")
         caja_id = request.session.get("caja_actual")
+
         print(">>> caja_id en sesión:", caja_id)
+
+        # -------------------------
+        # SUCURSAL
+        # -------------------------
         if sucursal_id:
-            try:
-                request.sucursal_actual = Sucursal.objects.get(id=sucursal_id)
-            except Sucursal.DoesNotExist:
+            suc = Sucursal.objects.filter(id=sucursal_id).first()
+            if suc:
+                request.sucursal_actual = suc
+            else:
                 request.session.pop("sucursal_actual", None)
 
+        # -------------------------
+        # CAJA
+        # -------------------------
         if caja_id:
-            try:
-                request.caja_actual = Caja.objects.get(id=caja_id)
-            except Caja.DoesNotExist:
+            caja = Caja.objects.filter(id=caja_id).first()
+            if caja:
+                request.caja_actual = caja
+            else:
                 request.session.pop("caja_actual", None)
 
         return self.get_response(request)

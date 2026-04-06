@@ -8,13 +8,18 @@ async function confirmarAgregar(event) {
     const form = event.currentTarget.closest("form");
     const cantidad = form.querySelector('input[name="cantidad"]').value;
 
+    const productoId = form.querySelector('input[name="producto_id"]').value;
+    const modalId = `modalAgregar_${productoId}`;
+
     if (!cantidad || cantidad <= 0) {
-        mostrarError("Debes ingresar una cantidad válida.");
+
+        // ⭐⭐⭐ ERROR DENTRO DEL MODAL
+        mostrarErrorEnModal(modalId, "Debes ingresar una cantidad válida.");
+
         return;
     }
 
     const data = new FormData(form);
-    const productoId = data.get("producto_id");
     const ubicacionId = data.get("ubicacion_id");
 
     try {
@@ -27,7 +32,10 @@ async function confirmarAgregar(event) {
         const result = await response.json();
 
         if (!result.success) {
-            mostrarError(result.errors.join(", "));
+
+            // ⭐⭐⭐ ERROR DENTRO DEL MODAL
+            mostrarErrorEnModal(modalId, result.errors.join(", "));
+
             return;
         }
 
@@ -35,12 +43,14 @@ async function confirmarAgregar(event) {
         actualizarCard(productoId, ubicacionId, result.cantidad_actual);
 
         // ⭐ Cerrar modal
-        cerrarModal(`modalAgregar_${productoId}`);
+        cerrarModal(modalId);
 
         // ⭐ Mostrar mensaje de éxito
         mostrarMensaje("Cantidad agregada correctamente.");
 
     } catch (err) {
-        mostrarError("Error inesperado al agregar inventario.");
+
+        // ⭐⭐⭐ ERROR DENTRO DEL MODAL
+        mostrarErrorEnModal(modalId, "Error inesperado al agregar inventario.");
     }
 }

@@ -75,6 +75,8 @@ MIDDLEWARE = [
     'main.middleware.sucursal_middleware.SucursalMiddleware',
 ]
 
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+
 ROOT_URLCONF = 'main.urls'
 
 TEMPLATES = [

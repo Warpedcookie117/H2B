@@ -31,6 +31,9 @@
 
         </div>
 
+        <!-- ⭐⭐⭐ CONTENEDOR DE ERRORES DEL MODAL -->
+        <div class="modal-error hidden text-red-700 bg-red-100 border border-red-300 px-3 py-2 rounded mb-3"></div>
+
         <!-- Formulario -->
         <form id="formTransferir"
               method="POST"
@@ -43,14 +46,10 @@
             <input type="hidden" name="producto_id">
             <input type="hidden" name="origen_id">
 
-            <!-- ❌ YA NO USAMOS destino_id -->
-            <!-- <input type="hidden" name="destino_id" id="destino_id"> -->
-
             <!-- Destino -->
             <div>
                 <label class="font-semibold mb-2 block">Transferir a la ubicación</label>
 
-                <!-- ⭐ CORRECCIÓN CRÍTICA: name="destino" -->
                 <select id="destino_select"
                         name="destino"
                         class="w-full border border-gray-300 rounded-lg px-4 py-2 text-lg

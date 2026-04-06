@@ -93,14 +93,14 @@ async function confirmarTransferirMultiple(event) {
     const destinoId = document.getElementById("transferir_multiple_destino").value;
 
     if (!origenId) {
-        mostrarError("No se pudo determinar la ubicación origen.");
+        mostrarErrorEnModal("modalTransferirMultiple", "No se pudo determinar la ubicación origen.");
         return;
     }
 
     const filas = document.querySelectorAll("#transferir_multiple_tabla tr");
 
     if (filas.length === 0) {
-        mostrarError("No has agregado productos.");
+        mostrarErrorEnModal("modalTransferirMultiple", "No has agregado productos.");
         return;
     }
 
@@ -122,7 +122,7 @@ async function confirmarTransferirMultiple(event) {
     });
 
     if (payload.productos.length === 0) {
-        mostrarError("Debes ingresar cantidades válidas.");
+        mostrarErrorEnModal("modalTransferirMultiple", "Debes ingresar cantidades válidas.");
         return;
     }
 
@@ -139,7 +139,7 @@ async function confirmarTransferirMultiple(event) {
         const result = await response.json();
 
         if (!result.success) {
-            mostrarError(result.errors || "Error desconocido del servidor.");
+            mostrarErrorEnModal("modalTransferirMultiple", result.errors || "Error desconocido del servidor.");
             return;
         }
 
@@ -158,6 +158,6 @@ async function confirmarTransferirMultiple(event) {
 
     } catch (err) {
         console.error(err);
-        mostrarError("Error inesperado al realizar la transferencia múltiple.");
+        mostrarErrorEnModal("modalTransferirMultiple", "Error inesperado al realizar la transferencia múltiple.");
     }
 }

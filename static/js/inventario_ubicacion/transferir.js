@@ -97,7 +97,10 @@ async function confirmarTransferir(event) {
 
         if (!result.success) {
             console.error("❌ Errores:", result.errors);
-            mostrarError(result.errors.join(", "));
+
+            // ⭐⭐⭐ ERROR DENTRO DEL MODAL (NO SE CIERRA)
+            mostrarErrorEnModal("modalTransferir", result.errors.join(", "));
+
             return;
         }
 
@@ -122,6 +125,8 @@ async function confirmarTransferir(event) {
 
     } catch (err) {
         console.error("💥 ERROR FATAL EN TRANSFERENCIA:", err);
-        mostrarError("Error inesperado al transferir inventario.");
+
+        // ⭐⭐⭐ ERROR DENTRO DEL MODAL
+        mostrarErrorEnModal("modalTransferir", "Error inesperado al transferir inventario.");
     }
 }

@@ -114,6 +114,32 @@ def agregar_inventario(request, producto_id, ubicacion_id):
         })
 
 
+def puede_transferir(empleado, origen: Ubicacion, destino: Ubicacion):
+    rol = empleado.rol.lower()
+
+    # 1. Dueño, cajero y almacenista → acceso total
+    if rol in ["dueño", "dueno", "cajero", "almacenista"]:
+        return "transferencia_total"
+
+    # 2. Ayudante general → solo dentro de la misma sucursal
+    if rol == "ayudante":
+        # misma sucursal
+        if origen.sucursal_id and destino.sucursal_id:
+            if origen.sucursal_id == destino.sucursal_id:
+                return "transferencia_misma_sucursal"
+
+        # NO puede transferir entre sucursales
+        # NO puede transferir desde sucursal → almacén
+        # NO puede transferir desde almacén → sucursal
+        # NO puede hacer ajustes negativos directos
+        return "prohibido"
+
+    # 3. Cualquier otro rol desconocido → prohibido
+    return "prohibido"
+
+
+
+
 
 
 @login_required
@@ -123,7 +149,7 @@ def transferir_inventario(request):
 
     producto_id = request.POST.get("producto_id")
     origen_id = request.POST.get("origen_id")
-    destino_id = request.POST.get("destino")   # ⭐ CORREGIDO
+    destino_id = request.POST.get("destino")
     cantidad = request.POST.get("cantidad")
 
     if not all([producto_id, origen_id, destino_id, cantidad]):
@@ -139,7 +165,6 @@ def transferir_inventario(request):
         origen=origen
     )
 
-    # ⭐ NECESARIO PARA QUE EL MODELO NO TRUENE
     form.instance.producto = producto
     form.instance.origen = origen
     form.instance.destino = destino
@@ -150,6 +175,16 @@ def transferir_inventario(request):
     cantidad = form.cleaned_data["cantidad"]
     empleado = getattr(request.user, "empleado", None)
 
+    # ⭐ VALIDAR PERMISOS
+    permiso = puede_transferir(empleado, origen, destino)
+
+    if permiso == "prohibido":
+        return JsonResponse({
+            "success": False,
+            "errors": ["No tienes permiso para transferir entre estas ubicaciones."]
+        })
+
+    # ⭐ TRANSFERENCIA NORMAL (dueño, cajero, almacenista o misma sucursal)
     try:
         resultado = InventarioService.transferencia(
             producto=producto,
@@ -166,10 +201,6 @@ def transferir_inventario(request):
         "mensaje": f"Transferidos {cantidad} de {producto.nombre} hacia {destino.nombre}.",
         **resultado
     })
-
-
-
-
 
 
 

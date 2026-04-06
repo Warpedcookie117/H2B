@@ -2,6 +2,7 @@ from django.db import transaction
 from ventas.models import Venta, VentaDetalle
 from inventario.services.inventario_service import InventarioService
 from inventario.models import Producto
+from ventas.services.ticket_service import generar_texto_ticket   # 🔥 IMPORTANTE
 
 
 class POSService:
@@ -9,17 +10,6 @@ class POSService:
     @staticmethod
     @transaction.atomic
     def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_10=False):
-        """
-        carrito = [
-            {"producto_id": int, "cantidad": int, "precio_aplicado": float},
-            ...
-        ]
-
-        NOTA IMPORTANTE:
-        - 'sucursal' es un OBJETO Sucursal (no un ID)
-        - La ubicación de la venta se determina automáticamente como Piso <Sucursal>
-        - 'caja_id' es la caja activa en sesión
-        """
 
         detalles = []
         subtotal = 0
@@ -49,7 +39,6 @@ class POSService:
 
         # 3) Validar pagos
         total_pagado = pagado_efectivo + pagado_tarjeta
-
         if total_pagado < total:
             raise ValueError("El pago es insuficiente.")
 
@@ -58,14 +47,14 @@ class POSService:
         if cambio < 0:
             cambio = 0
 
-        # 4) Determinar ubicación de la venta (siempre Piso <Sucursal>)
-        ubicacion_venta = sucursal.ubicacion_set.get(tipo="piso")
+        # 4) Ubicación de venta
+        ubicacion_venta = sucursal.ubicaciones.get(tipo="piso")
 
-        # 5) Crear Venta (🔥 ahora incluye caja_id)
+        # 5) Crear Venta
         venta = Venta.objects.create(
             empleado=empleado,
             ubicacion=ubicacion_venta,
-            caja_id=caja_id,  # 🔥 clave para reportes por caja
+            caja_id=caja_id,
             subtotal=subtotal,
             descuento=descuento,
             total=total,
@@ -78,7 +67,6 @@ class POSService:
         # 6) Crear detalles + descontar inventario
         for d in detalles:
 
-            # A) Crear detalle
             VentaDetalle.objects.create(
                 venta=venta,
                 producto=d["producto"],
@@ -87,20 +75,21 @@ class POSService:
                 subtotal=d["subtotal"],
             )
 
-            # B) Salida inteligente de inventario (por sucursal)
-            origen = InventarioService.salida_inteligente(
+            InventarioService.salida_inteligente(
                 producto=d["producto"],
                 cantidad=d["cantidad"],
                 empleado=empleado,
-                sucursal=sucursal  # 🔥 clave para descontar solo de esa sucursal
+                sucursal=sucursal
             )
 
-            d["origen_inventario"] = origen
+        # 7) 🔥 Generar ticket ESC/POS
+        ticket_texto = generar_texto_ticket(venta)
 
-        # 7) Regresar venta + detalles
+        # 8) Regresar venta + detalles + ticket
         return {
             "venta": venta,
-            "detalles": detalles
+            "detalles": detalles,
+            "ticket_texto": ticket_texto   # 🔥 AHORA SÍ EXISTE
         }
 
     @staticmethod

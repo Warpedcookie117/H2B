@@ -6,52 +6,39 @@ from tienda_temp.forms import RegistroEmpleadoForm
 from tienda_temp.models import Cliente, Empleado, Usuario
 
 
-# -----------------------------
-# REGISTRO DE EMPLEADOS (CORREGIDO)
-# -----------------------------
 def registro_empleado(request):
-    rol = request.GET.get("rol", None)
-
-    roles_validos = [r[0] for r in Empleado.ROL_CHOICES]
-    if rol not in roles_validos:
-        rol = None
-
-    initial_data = {"rol": rol} if rol else {}
-    form = RegistroEmpleadoForm(request.POST or None, initial=initial_data)
+    form = RegistroEmpleadoForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
-        rol_final = data["rol"]
 
         with transaction.atomic():
-
-            # 🔥 Crear usuario correctamente (sin create_user)
             usuario = Usuario(
                 username=data["username"],
                 email=data["email"],
                 first_name=data["first_name"],
                 last_name=data["last_name"],
                 is_superuser=False,
-                is_staff=True,  # si quieres acceso al admin
+                is_staff=True,
             )
             usuario.set_password(data["password1"])
             usuario.save()
 
-            # 🔥 Crear empleado
             Empleado.objects.create(
                 user=usuario,
                 edad=data["edad"],
                 direccion=data["direccion"],
                 numero_contacto=data["numero_contacto"],
-                rol=rol_final,
+                rol=data["rol"],
                 contacto_emergencia=data["contacto_emergencia"],
                 descripcion_contacto_emergencia=data["descripcion_contacto_emergencia"]
             )
 
-        messages.success(request, f"{rol_final.capitalize()} registrado exitosamente.")
+        messages.success(request, "Empleado registrado exitosamente.")
         return redirect("tienda_temp:login")
 
     return render(request, "tienda/registro_empleado.html", {"form": form})
+
 
 
 

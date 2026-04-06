@@ -104,7 +104,7 @@ class InventarioService:
 
         # Ubicaciones internas de la sucursal
         piso = Ubicacion.objects.get(sucursal=sucursal, tipo="piso")
-        bodega = Ubicacion.objects.get(sucursal=sucursal, tipo="bodega_interna")
+        bodega = Ubicacion.objects.get(sucursal=sucursal, tipo="bodega")
 
         stock_piso = InventarioService.get_stock(producto, piso)
         stock_bodega = InventarioService.get_stock(producto, bodega)

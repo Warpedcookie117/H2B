@@ -1,0 +1,110 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Cortes de Caja — {{ sucursal.nombre }}{% endblock %}
+
+{% block content %}
+
+<div class="p-8 space-y-10">
+
+    <!-- TÍTULO -->
+    <h1 class="text-4xl font-black text-purple-700">
+        Cortes de caja — {{ sucursal.nombre }}
+    </h1>
+
+    <!-- FILTROS -->
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 border-4 border-black"
+          style="box-shadow: 6px 6px 0 0 black; background:#FFEE88;">
+
+        <!-- FECHA -->
+        <div>
+            <label class="font-bold text-sm">Fecha</label>
+            <input type="date" name="fecha" value="{{ request.GET.fecha }}"
+                   class="w-full mt-1 p-2 border-2 border-black">
+        </div>
+
+        <!-- CAJA -->
+        <div>
+            <label class="font-bold text-sm">Caja</label>
+            <select name="caja" class="w-full mt-1 p-2 border-2 border-black">
+                <option value="">Todas</option>
+                {% for caja in sucursal.cajas.all %}
+                <option value="{{ caja.id }}" {% if request.GET.caja == caja.id|stringformat:"s" %}selected{% endif %}>
+                    {{ caja.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- BOTÓN -->
+        <div class="flex items-end">
+            <button type="submit"
+                    class="w-full py-3 font-black border-4 border-black text-white text-lg"
+                    style="background:#0099FF; box-shadow: 4px 4px 0 0 black;">
+                Filtrar
+            </button>
+        </div>
+
+    </form>
+
+    <!-- TABLA DE CORTES -->
+    <div class="overflow-x-auto">
+        <table class="w-full border-4 border-black bg-white"
+               style="box-shadow: 6px 6px 0 0 black;">
+
+            <thead class="bg-purple-700 text-white">
+                <tr>
+                    <th class="p-3 border-2 border-black text-left">Fecha</th>
+                    <th class="p-3 border-2 border-black text-left">Caja</th>
+                    <th class="p-3 border-2 border-black text-left">Total general</th>
+                    <th class="p-3 border-2 border-black text-left">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for corte in cortes %}
+                <tr class="bg-[#FFEE88] border-b-2 border-black">
+                    <td class="p-3 border-2 border-black">{{ corte.fecha }}</td>
+                    <td class="p-3 border-2 border-black">{{ corte.caja.nombre }}</td>
+                    <td class="p-3 border-2 border-black font-black">${{ corte.total_general }}</td>
+
+                    <td class="p-3 border-2 border-black space-x-2">
+
+                        <!-- VER TICKET HTML -->
+                        <a href="{% url 'ventas:ticket_corte' corte.id %}"
+                           class="px-3 py-1 border-2 border-black font-bold text-white"
+                           style="background:#FF0066; box-shadow: 3px 3px 0 0 black;">
+                            Ver
+                        </a>
+
+                        <!-- PDF -->
+                        <a href="{% url 'ventas:ticket_corte_pdf' corte.id %}"
+                           class="px-3 py-1 border-2 border-black font-bold text-white"
+                           style="background:#0099FF; box-shadow: 3px 3px 0 0 black;">
+                            PDF
+                        </a>
+
+                        <!-- TÉRMICO -->
+                        <a href="{% url 'ventas:ticket_corte_termico' corte.id %}"
+                           class="px-3 py-1 border-2 border-black font-bold text-white"
+                           style="background:#FFCC00; box-shadow: 3px 3px 0 0 black;">
+                            Térmico
+                        </a>
+
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="p-6 text-center font-bold text-gray-700">
+                        No se encontraron cortes para esta sucursal.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,5 +1,5 @@
 // -------------------------------------------------------------
-// SIDEBAR + MODALES DINÁMICOS (CREAR CAJA + ENTRAR CAJA)
+// SIDEBAR + MODALES DINÁMICOS (ENTRAR CAJA)
 // -------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 🟣 FUNCIÓN PROFESIONAL: MENSAJE CONTEXTUAL
   // ============================================================
   function showCajaMessage(btn, msg) {
-      const wrapper = btn.parentElement; // 🔥 el contenedor real
+      const wrapper = btn.parentElement;
       const box = wrapper.querySelector(".msg-caja");
 
       if (!box) return;
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Si no estoy en ninguna caja → abrir modal
+    // Abrir modal
     fetch(`/sucursales/modal-entrar-caja/?caja_id=${cajaId}&nombre=${encodeURIComponent(nombre)}`)
       .then((r) => r.json())
       .then((data) => {
@@ -213,10 +213,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
           }
 
+          // ======================================================
+          // 🔥 CORTE AUTOMÁTICO DETECTADO
+          // ======================================================
+          if (data.redirect) {
+            window.location.href = data.redirect;
+            return;
+          }
+
+          // ======================================================
+          // 🔥 ENTRADA NORMAL
+          // ======================================================
           window.location.href = "/ventas/pos/";
         });
     };
   }
 
-  console.log("✅ Sidebar listo con modal dinámico de entrar caja + mensajes contextuales");
+  console.log("✅ Sidebar listo con modal dinámico de entrar caja + mensajes contextuales + CORTE AUTOMÁTICO");
 });

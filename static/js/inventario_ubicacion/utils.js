@@ -11,6 +11,13 @@ function abrirModal(modalId) {
         return;
     }
 
+    // ⭐⭐⭐ LIMPIAR ERROR DEL MODAL ANTES DE MOSTRARLO
+    const errorBox = modal.querySelector(".modal-error");
+    if (errorBox) {
+        errorBox.innerHTML = "";
+        errorBox.classList.add("hidden", "d-none");
+    }
+
     modal.classList.remove("hidden");
 
     requestAnimationFrame(() => {
@@ -27,6 +34,13 @@ function cerrarModal(modalId) {
     const content = document.getElementById(`${modalId}Content`);
 
     if (!modal || !content) return;
+
+    // ⭐⭐⭐ LIMPIAR ERROR AL CERRAR (doble seguridad)
+    const errorBox = modal.querySelector(".modal-error");
+    if (errorBox) {
+        errorBox.innerHTML = "";
+        errorBox.classList.add("hidden", "d-none");
+    }
 
     content.classList.remove("opacity-100", "scale-100");
     content.classList.add("opacity-0", "scale-95");
@@ -79,9 +93,6 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
 
     card.dataset.cantidad = nuevaCantidad;
 
-    /* ============================================================
-       SI LLEGA A 0 → MODO SIN INVENTARIO
-       ============================================================ */
     if (parseInt(nuevaCantidad) === 0) {
 
         card.classList.remove("bg-white");
@@ -107,9 +118,6 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
         return;
     }
 
-    /* ============================================================
-       SI LA CANTIDAD > 0 → MODO NORMAL
-       ============================================================ */
     card.style.backgroundColor = "";
     card.style.borderColor = "";
     card.classList.remove("bg-gray-100", "border-gray-400");
@@ -122,7 +130,7 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
 
 
 /* ============================================================
-   ORDENAMIENTO INICIAL (MANDAR CARDS EN 0 AL FINAL)
+   ORDENAMIENTO INICIAL
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -173,7 +181,6 @@ document.getElementById("buscadorProductos").addEventListener("input", function 
         }
     });
 
-    // Reordenar coincidencias arriba
     const coincidencias = cards.filter(card => {
         const nombre = card.querySelector(".nombre").textContent.toLowerCase();
         const categoria = card.querySelector(".categoria").textContent.toLowerCase();
@@ -195,7 +202,6 @@ document.getElementById("buscadorProductos").addEventListener("input", function 
     coincidencias.forEach(card => card.style.order = 0);
     noCoincidencias.forEach(card => card.style.order = 1);
 
-    // Restaurar orden original si el buscador está vacío
     if (!texto) {
         cards.forEach(card => {
             const cantidad = parseInt(card.dataset.cantidad);
@@ -233,4 +239,22 @@ function mostrarError(texto) {
     `;
 
     setTimeout(() => cont.innerHTML = "", 5000);
+}
+
+function mostrarErrorEnModal(modalId, mensaje) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+
+    const box = modal.querySelector(".modal-error");
+    if (!box) return;
+
+    // Mostrar error
+    box.innerHTML = mensaje;
+    box.classList.remove("hidden", "d-none");
+
+    // ⭐ BORRAR AUTOMÁTICAMENTE A LOS 2 SEGUNDOS
+    setTimeout(() => {
+        box.innerHTML = "";
+        box.classList.add("hidden", "d-none");
+    }, 2000);
 }
