@@ -4,92 +4,232 @@
 {% block title %}Configuración de Perfil{% endblock %}
 
 {% block content %}
-<section class="py-10">
-  <div class="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-10 border border-gray-200">
+<style>
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50%       { transform: translateY(-12px) rotate(var(--r, 0deg)); }
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes popIn {
+    0%   { transform: scale(0.8); opacity: 0; }
+    70%  { transform: scale(1.03); }
+    100% { transform: scale(1);   opacity: 1; }
+  }
 
-    <h2 class="text-3xl font-extrabold text-gray-800 mb-8 text-center tracking-tight">
-      Configuración de Perfil
-    </h2>
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay: .7s; animation-duration: 5.5s; }
+  .shape:nth-child(3) { animation-delay: 1.3s; animation-duration: 3.5s; }
+  .shape:nth-child(4) { animation-delay: .4s; animation-duration: 4.5s; }
 
-    <form method="POST" class="space-y-8">
-      {% csrf_token %}
+  .anim-down { animation: slideDown .45s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-up   { animation: slideUp   .45s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-pop  { animation: popIn     .4s  cubic-bezier(.22,.68,0,1.2) both; }
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+  .d1 { animation-delay: .06s; }
+  .d2 { animation-delay: .12s; }
+  .d3 { animation-delay: .18s; }
+  .d4 { animation-delay: .24s; }
+  .d5 { animation-delay: .30s; }
 
-        <!-- Username -->
-        <div class="flex flex-col gap-1 md:col-span-2">
-          <label class="font-semibold text-gray-700">Nombre de usuario</label>
-          <input type="text" name="{{ form.username.name }}" value="{{ form.username.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
+  .input-90s {
+    width: 100%;
+    border: 4px solid black;
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    outline: none;
+    background: white;
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+  .input-90s:focus {
+    box-shadow: 4px 4px 0 0 black;
+    transform: translate(-2px, -2px);
+  }
 
-        <!-- Nombre -->
-        <div class="flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Nombre</label>
-          <input type="text" name="{{ form.first_name.name }}" value="{{ form.first_name.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
+  .btn-90s {
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  .btn-90s:hover  { transform: translate(-3px,-3px); box-shadow: 8px 8px 0 0 black; }
+  .btn-90s:active { transform: translate(1px,1px);   box-shadow: 2px 2px 0 0 black; }
+</style>
 
-        <!-- Apellidos -->
-        <div class="flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Apellidos</label>
-          <input type="text" name="{{ form.last_name.name }}" value="{{ form.last_name.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
+<div class="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
-        <!-- Email -->
-        <div class="md:col-span-2 flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Correo electrónico</label>
-          <input type="email" name="{{ form.email.name }}" value="{{ form.email.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
-
-        <!-- Dirección -->
-        <div class="md:col-span-2 flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Dirección</label>
-          <input type="text" name="{{ form.direccion.name }}" value="{{ form.direccion.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
-
-        <!-- Número de contacto -->
-        <div class="flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Número de contacto</label>
-          <input type="text" name="{{ form.numero_contacto.name }}" value="{{ form.numero_contacto.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
-
-        <!-- Edad -->
-        <div class="flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Edad</label>
-          <input type="number" name="{{ form.edad.name }}" value="{{ form.edad.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
-
-        <!-- Contacto emergencia -->
-        <div class="flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Contacto de emergencia</label>
-          <input type="text" name="{{ form.contacto_emergencia.name }}" value="{{ form.contacto_emergencia.value|default:'' }}"
-                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none">
-        </div>
-
-        <!-- Descripción contacto emergencia -->
-        <div class="md:col-span-2 flex flex-col gap-1">
-          <label class="font-semibold text-gray-700">Descripción del contacto de emergencia</label>
-          <textarea name="{{ form.descripcion_contacto_emergencia.name }}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none h-24">{{ form.descripcion_contacto_emergencia.value|default:'' }}</textarea>
-        </div>
-
-      </div>
-
-      <div class="text-center">
-        <button type="submit"
-                class="bg-red-600 hover:bg-red-700 text-white px-10 py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-[1.02]">
-          Guardar cambios
-        </button>
-      </div>
-
-    </form>
-
+  <!-- ENCABEZADO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] p-8 text-center anim-down"
+       style="background-color: #8338EC;">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-white rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-10 h-10 bg-[#FFBE0B] rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-12 h-12 bg-white rounded-full"></div>
+      <div class="shape absolute bottom-3 right-1/4 w-14 h-3 bg-black" style="--r:-10deg"></div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,0.4)]">
+        ⚙️ Mi Perfil
+      </h1>
+      <p class="text-white/70 font-black text-sm mt-2 uppercase tracking-widest">
+        {{ request.user.get_full_name|default:request.user.username }}
+      </p>
+    </div>
   </div>
-</section>
+
+  <!-- MENSAJES DJANGO -->
+  {% if messages %}
+  <div class="space-y-2 anim-pop">
+    {% for message in messages %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-5 py-3 uppercase tracking-widest text-sm
+                {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- FORMULARIO -->
+  <form method="POST">
+    {% csrf_token %}
+
+    <div class="space-y-4">
+
+      <!-- Username -->
+      <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden anim-up d1">
+        <div class="bg-[#FFBE0B] border-b-4 border-black px-4 py-2">
+          <label class="font-black text-black text-[10px] uppercase tracking-widest">
+            Nombre de usuario
+          </label>
+        </div>
+        <div class="p-4">
+          <input type="text" name="{{ form.username.name }}" value="{{ form.username.value|default:'' }}"
+                 class="input-90s">
+          {% if form.username.errors %}
+          <p class="text-[#FF006E] font-bold text-xs mt-1">{{ form.username.errors|join:", " }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Nombre + Apellidos -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 anim-up d2">
+
+        <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+          <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-2">
+            <label class="font-black text-white text-[10px] uppercase tracking-widest">Nombre</label>
+          </div>
+          <div class="p-4">
+            <input type="text" name="{{ form.first_name.name }}" value="{{ form.first_name.value|default:'' }}"
+                   class="input-90s">
+          </div>
+        </div>
+
+        <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+          <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-2">
+            <label class="font-black text-white text-[10px] uppercase tracking-widest">Apellidos</label>
+          </div>
+          <div class="p-4">
+            <input type="text" name="{{ form.last_name.name }}" value="{{ form.last_name.value|default:'' }}"
+                   class="input-90s">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Email -->
+      <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden anim-up d3">
+        <div class="bg-[#06D6A0] border-b-4 border-black px-4 py-2">
+          <label class="font-black text-black text-[10px] uppercase tracking-widest">
+            Correo electrónico
+          </label>
+        </div>
+        <div class="p-4">
+          <input type="email" name="{{ form.email.name }}" value="{{ form.email.value|default:'' }}"
+                 class="input-90s">
+        </div>
+      </div>
+
+      <!-- Dirección -->
+      <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden anim-up d3">
+        <div class="bg-[#FB5607] border-b-4 border-black px-4 py-2">
+          <label class="font-black text-white text-[10px] uppercase tracking-widest">Dirección</label>
+        </div>
+        <div class="p-4">
+          <input type="text" name="{{ form.direccion.name }}" value="{{ form.direccion.value|default:'' }}"
+                 class="input-90s">
+        </div>
+      </div>
+
+      <!-- Teléfono + Edad -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 anim-up d4">
+
+        <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+          <div class="bg-[#FF006E] border-b-4 border-black px-4 py-2">
+            <label class="font-black text-white text-[10px] uppercase tracking-widest">
+              Número de contacto
+            </label>
+          </div>
+          <div class="p-4">
+            <input type="text" name="{{ form.numero_contacto.name }}" value="{{ form.numero_contacto.value|default:'' }}"
+                   class="input-90s">
+          </div>
+        </div>
+
+        <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+          <div class="bg-[#FF006E] border-b-4 border-black px-4 py-2">
+            <label class="font-black text-white text-[10px] uppercase tracking-widest">Edad</label>
+          </div>
+          <div class="p-4">
+            <input type="number" name="{{ form.edad.name }}" value="{{ form.edad.value|default:'' }}"
+                   class="input-90s">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Contacto de emergencia -->
+      <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden anim-up d4">
+        <div class="bg-[#FFBE0B] border-b-4 border-black px-4 py-2">
+          <label class="font-black text-black text-[10px] uppercase tracking-widest">
+            Contacto de emergencia
+          </label>
+        </div>
+        <div class="p-4">
+          <input type="text" name="{{ form.contacto_emergencia.name }}" value="{{ form.contacto_emergencia.value|default:'' }}"
+                 class="input-90s">
+        </div>
+      </div>
+
+      <!-- Descripción contacto emergencia -->
+      <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden anim-up d5">
+        <div class="bg-[#8338EC] border-b-4 border-black px-4 py-2">
+          <label class="font-black text-white text-[10px] uppercase tracking-widest">
+            Descripción del contacto de emergencia
+          </label>
+        </div>
+        <div class="p-4">
+          <textarea name="{{ form.descripcion_contacto_emergencia.name }}"
+                    rows="3"
+                    class="input-90s resize-none">{{ form.descripcion_contacto_emergencia.value|default:'' }}</textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GUARDAR -->
+    <div class="mt-6 anim-pop d5">
+      <button type="submit"
+              class="btn-90s w-full border-4 border-black shadow-[6px_6px_0_0_black]
+                     bg-[#8338EC] text-white font-black text-sm uppercase tracking-widest py-4">
+        💾 Guardar cambios
+      </button>
+    </div>
+
+  </form>
+
+</div>
 {% endblock %}

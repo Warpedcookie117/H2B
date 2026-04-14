@@ -1,98 +1,80 @@
-<!-- Modal Transferir Inventario (UNIVERSAL PARA AMBAS VISTAS) -->
-<div id="modalTransferir"
-     class="modal-overlay hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+<!-- MODAL TRANSFERIR SIMPLE -->
+<div id="modalTransferir" class="modal-90s hidden">
+  <div id="modalTransferirContent"
+       class="modal-box opacity-0 scale-95 transition-all duration-200"
+       style="background-color: {{ color_header }};">
 
-    <div id="modalTransferirContent"
-         class="modal-content bg-white w-full max-w-xl rounded-xl shadow-2xl p-6
-                transition-all duration-300 opacity-0 z-[999]">
-
-        <!-- Encabezado -->
-        <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Transferir inventario
-        </h2>
-
-        <!-- Información dinámica del producto -->
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 space-y-2">
-
-            <p><strong>Producto:</strong>
-                <span id="transferir_producto_nombre"
-                      class="font-semibold text-gray-800"></span>
-            </p>
-
-            <p><strong>Cantidad en origen:</strong>
-                <span id="cantidad_origen_label"
-                      class="text-red-700 font-bold"></span>
-            </p>
-
-            <p><strong>Cantidad en destino:</strong>
-                <span id="cantidad_destino_label"
-                      class="text-blue-700 font-bold"></span>
-            </p>
-
-        </div>
-
-        <!-- ⭐⭐⭐ CONTENEDOR DE ERRORES DEL MODAL -->
-        <div class="modal-error hidden text-red-700 bg-red-100 border border-red-300 px-3 py-2 rounded mb-3"></div>
-
-        <!-- Formulario -->
-        <form id="formTransferir"
-              method="POST"
-              action="{% url 'inventario:transferir_inventario' %}"
-              onsubmit="confirmarTransferir(event)"
-              class="space-y-6">
-
-            {% csrf_token %}
-
-            <input type="hidden" name="producto_id">
-            <input type="hidden" name="origen_id">
-
-            <!-- Destino -->
-            <div>
-                <label class="font-semibold mb-2 block">Transferir a la ubicación</label>
-
-                <select id="destino_select"
-                        name="destino"
-                        class="w-full border border-gray-300 rounded-lg px-4 py-2 text-lg
-                               focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">Selecciona una ubicación</option>
-
-                    {% for u in ubicaciones %}
-                        {% if u.id != ubicacion.id %}
-                            <option value="{{ u.id }}">{{ u.nombre }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-
-            <!-- Cantidad -->
-            <div>
-                <label class="font-semibold mb-2 block">Cantidad a transferir</label>
-
-                <input type="number"
-                       name="cantidad"
-                       min="1"
-                       class="w-full border border-gray-300 rounded-lg px-4 py-2 text-lg
-                              focus:ring-blue-500 focus:border-blue-500"
-                       placeholder="Ingresa la cantidad"
-                       required>
-            </div>
-
-            <!-- Botones -->
-            <div class="flex justify-end gap-3 pt-4">
-
-                <button type="button"
-                        onclick="cerrarModal('modalTransferir')"
-                        class="px-5 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition font-semibold">
-                    Cancelar
-                </button>
-
-                <button type="submit"
-                        class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition font-semibold">
-                    Transferir
-                </button>
-
-            </div>
-
-        </form>
+    <div class="border-b-4 border-black pb-3 mb-4 px-2 py-2 -mx-2 -mt-2 rounded-sm" style="background-color: black;">
+      <h2 class="text-xl font-black text-white uppercase tracking-widest">⇄ Transferir inventario</h2>
     </div>
+
+    <!-- INFO PRODUCTO -->
+    <div class="modal-info-box space-y-3">
+      <p id="transferir_producto_nombre"
+         class="text-2xl font-black text-black uppercase tracking-wide leading-tight">
+      </p>
+
+      <div class="border-t-4 border-black pt-3 grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">
+            Origen — {{ ubicacion.nombre }}
+          </p>
+          <p class="text-3xl font-black text-black leading-none">
+            <span id="cantidad_origen_label"></span>
+            <span class="text-xs font-bold text-gray-500 block mt-0.5">piezas disponibles</span>
+          </p>
+        </div>
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">
+            Destino seleccionado
+          </p>
+          <p class="text-3xl font-black text-[#3A86FF] leading-none">
+            <span id="cantidad_destino_label">—</span>
+            <span class="text-xs font-bold text-gray-500 block mt-0.5">piezas allá</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-error hidden"></div>
+
+    <form id="formTransferir"
+          method="POST"
+          action="{% url 'inventario:transferir_inventario' %}"
+          onsubmit="confirmarTransferir(event)"
+          class="space-y-4 mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="producto_id">
+      <input type="hidden" name="origen_id">
+
+      <div>
+        <label class="modal-label">¿A dónde vas a transferir?</label>
+        <select id="destino_select" name="destino" class="modal-select">
+          <option value="">Selecciona una ubicación</option>
+          {% for u in ubicaciones %}
+            {% if u.id != ubicacion.id %}
+            <option value="{{ u.id }}">{{ u.nombre }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="modal-label">¿Cuántas piezas vas a mover?</label>
+        <input type="number" name="cantidad" min="1" required
+               class="modal-input" placeholder="Ej: 5">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button"
+                onclick="cerrarModal('modalTransferir')"
+                class="modal-btn modal-btn-cancel">
+          Cancelar
+        </button>
+        <button type="submit" class="modal-btn modal-btn-primary">
+          Transferir
+        </button>
+      </div>
+    </form>
+  </div>
 </div>

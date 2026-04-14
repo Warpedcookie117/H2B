@@ -9,8 +9,6 @@ class AtributoService:
 
     @staticmethod
     def normalizar_texto(valor_raw):
-        print(f"[DEBUG TEXTO] RAW='{repr(valor_raw)}'")
-
         v = valor_raw.strip().lower()
 
         v = (
@@ -22,25 +20,18 @@ class AtributoService:
         )
 
         if v in AtributoService.EQUIV_NA:
-            print(f"[DEBUG TEXTO] → 'N/A'")
             return "N/A"
 
-        print(f"[DEBUG TEXTO] NORMALIZADO='{v}'")
         return v
 
     @staticmethod
     def fuzzy_texto(valor_normalizado, atributo):
-        print(f"[DEBUG FUZZY] atributo={atributo.nombre} valor='{valor_normalizado}'")
-
         existentes = list(
             ValorAtributo.objects.filter(atributo=atributo)
             .values_list("valor", flat=True)
         )
 
-        print(f"[DEBUG FUZZY] existentes={existentes}")
-
         if not existentes:
-            print("[DEBUG FUZZY] No hay existentes → se queda igual")
             return valor_normalizado
 
         mejor, score, _ = process.extractOne(
@@ -49,83 +40,76 @@ class AtributoService:
             scorer=fuzz.WRatio
         )
 
-        print(f"[DEBUG FUZZY] mejor='{mejor}' score={score}")
-
         if score >= 85:
-            print(f"[DEBUG FUZZY] → Normalizado a existente '{mejor}'")
             return mejor
 
-        print("[DEBUG FUZZY] → No aplica fuzzy")
         return valor_normalizado
 
     @staticmethod
     def normalizar_numero(valor_raw, atributo):
-        print(f"[DEBUG NUM] atributo={atributo.nombre} RAW='{repr(valor_raw)}'")
-
         v = valor_raw.strip().lower()
 
         if v in AtributoService.EQUIV_NA:
-            print("[DEBUG NUM] → 'N/A' por equivalencia")
             return "N/A"
 
         try:
             num = float(v)
-            print(f"[DEBUG NUM] float={num}")
-        except Exception as e:
-            print(f"[DEBUG NUM ERROR] No se pudo convertir '{v}' a número")
+        except Exception:
             raise ValidationError(
                 f"El atributo '{atributo.nombre}' debe ser numérico o 'N/A'."
             )
 
-        existentes = ValorAtributo.objects.filter(atributo=atributo).values_list("valor", flat=True)
-        print(f"[DEBUG NUM] existentes={list(existentes)}")
+        # Si tiene decimales significativos → guardar exacto, sin corrección.
+        # Ej: 8.11, 8.12, 8.13 son tonos distintos, no los tocamos.
+        tiene_decimales = (num != int(num))
+        if tiene_decimales:
+            return str(int(num)) if num.is_integer() else str(num)
 
-        TOL = 0.3
+        # Solo para enteros → intentar corrección por tolerancia (Ej: 10ml vs 11ml typo)
+        # TOL pequeño para no corregir valores legítimamente distintos
+        TOL = 0.5
+
+        existentes = ValorAtributo.objects.filter(
+            atributo=atributo
+        ).values_list("valor", flat=True)
 
         for existente in existentes:
             try:
                 num_existente = float(existente)
-            except:
+            except Exception:
+                continue
+
+            # Solo comparar contra enteros existentes
+            if num_existente != int(num_existente):
                 continue
 
             if abs(num - num_existente) <= TOL:
-                print(f"[DEBUG NUM] Coincide con existente '{num_existente}'")
-                return str(num_existente)
+                return str(int(num_existente))
 
-        print(f"[DEBUG NUM] Nuevo valor '{num}'")
-        return str(num)
+        return str(int(num))
 
     @staticmethod
     def guardar_valores(producto, data):
         atributos = Atributo.objects.filter(categoria=producto.categoria)
 
-        print("\n================= DEBUG GUARDAR VALORES =================")
-        print(f"Producto: {producto.id} | Categoria: {producto.categoria.nombre}")
-        print("POST DATA:", {k: repr(v) for k, v in data.items()})
-        print("=========================================================\n")
-
         for atributo in atributos:
             key = f"atributo_{atributo.id}"
             valor_raw = (data.get(key) or "").strip()
 
-            print(f"\n[DEBUG LOOP] atributo_id={atributo.id} nombre={atributo.nombre} tipo={atributo.tipo}")
-            print(f"[DEBUG LOOP] valor_raw='{repr(valor_raw)}'")
-
+            # TEXTO — fuzzy aplica a TODOS los atributos de tipo texto
             if atributo.tipo.strip().lower() == "texto":
                 valor = AtributoService.normalizar_texto(valor_raw)
 
-                if atributo.nombre.lower() in ["marca", "color", "material", "modelo"]:
+                # No aplicar fuzzy a N/A, no tiene sentido compararlo
+                if valor != "N/A":
                     valor = AtributoService.fuzzy_texto(valor, atributo)
 
+            # NUMÉRICO
             else:
                 valor = AtributoService.normalizar_numero(valor_raw, atributo)
-
-            print(f"[DEBUG SAVE] Guardando valor='{valor}' para atributo='{atributo.nombre}'")
 
             ValorAtributo.objects.update_or_create(
                 producto=producto,
                 atributo=atributo,
                 defaults={"valor": valor},
             )
-
-        print("\n================= FIN DEBUG GUARDAR VALORES =================\n")

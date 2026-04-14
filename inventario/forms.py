@@ -1,4 +1,5 @@
 from django import forms
+from inventario.services.atributo_service import AtributoService
 from inventario.services.codigo_service import CodigoService
 from inventario.services.codigo_service import CodigoService
 from tienda_temp.models import Empleado
@@ -104,8 +105,15 @@ class CategoriaPadreForm(forms.ModelForm):
         model = Categoria
         fields = ["nombre", "descripcion"]
         widgets = {
-            "nombre": forms.TextInput(attrs={"class": "form-control"}),
-            "descripcion": forms.Textarea(attrs={"class": "form-control"}),
+            "nombre": forms.TextInput(attrs={
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white",
+                "placeholder": "Ej: Ropa, Calzado, Accesorios..."
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white resize-none",
+                "rows": 3,
+                "placeholder": "¿De qué trata esta categoría?"
+            }),
         }
 
 
@@ -114,8 +122,15 @@ class SubcategoriaForm(forms.ModelForm):
         model = Categoria
         fields = ["nombre", "descripcion"]
         widgets = {
-            "nombre": forms.TextInput(attrs={"class": "form-control"}),
-            "descripcion": forms.Textarea(attrs={"class": "form-control"}),
+            "nombre": forms.TextInput(attrs={
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white",
+                "placeholder": "Ej: Tenis, Botas, Sandalias..."
+            }),
+            "descripcion": forms.Textarea(attrs={
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white resize-none",
+                "rows": 3,
+                "placeholder": "Descripción opcional"
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -137,42 +152,44 @@ class UbicacionForm(forms.ModelForm):
         fields = ["nombre", "direccion"]
         widgets = {
             "nombre": forms.TextInput(attrs={
-                "class": "border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none",
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white",
                 "placeholder": "Ej. Almacén Central"
             }),
             "direccion": forms.TextInput(attrs={
-                "class": "border rounded px-3 py-2 w-full focus:ring-2 focus:ring-blue-500 focus:outline-none",
+                "class": "w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white",
                 "placeholder": "Ej. Av. Universidad 123, Monterrey"
             }),
         }
+        
+        
 
 
 class ProductoForm(forms.ModelForm):
-
+ 
     tipo_codigo = forms.CharField(
         required=False,
         widget=forms.HiddenInput()
     )
-
+ 
     tamano_etiqueta = forms.CharField(
         required=False,
         widget=forms.HiddenInput()
     )
-
+ 
     categoria_padre = forms.ModelChoiceField(
         queryset=Categoria.objects.filter(padre__isnull=True),
         label="Categoría padre",
         required=True,
         widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_categoria_padre'})
     )
-
+ 
     subcategoria = forms.ModelChoiceField(
         queryset=Categoria.objects.none(),
         label="Subcategoría",
         required=True,
         widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_subcategoria'})
     )
-
+ 
     cantidad_inicial = forms.IntegerField(
         label="Cantidad inicial",
         min_value=1,
@@ -180,20 +197,33 @@ class ProductoForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={'class': 'form-control'}),
         help_text="Número de piezas al registrar el producto"
     )
-
+ 
     ubicacion = forms.ModelChoiceField(
         queryset=Ubicacion.objects.none(),
         required=True,
         label="Ubicación de registro",
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+ 
+    precio_mayoreo = forms.DecimalField(
+        min_value=0,
+        decimal_places=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
+    )
+
+    precio_menudeo = forms.DecimalField(
+        min_value=0,
+        decimal_places=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
+    )
 
     precio_docena = forms.DecimalField(
         required=False,
         min_value=0,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0'})
+        decimal_places=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
     )
-
+ 
     class Meta:
         model = Producto
         fields = [
@@ -219,13 +249,13 @@ class ProductoForm(forms.ModelForm):
             'tipo_codigo': forms.HiddenInput(),
             'tamano_etiqueta': forms.HiddenInput(),
         }
-
+ 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+ 
         # Dueños
         self.fields['dueño'].queryset = Empleado.objects.filter(rol='dueño')
-
+ 
         # Subcategorías dinámicas
         if 'categoria_padre' in self.data:
             try:
@@ -233,131 +263,121 @@ class ProductoForm(forms.ModelForm):
                 self.fields['subcategoria'].queryset = Categoria.objects.filter(padre_id=padre_id)
             except (ValueError, TypeError):
                 self.fields['subcategoria'].queryset = Categoria.objects.none()
-
+ 
         elif self.instance.pk and self.instance.categoria:
             padre = self.instance.categoria.padre
             self.fields['subcategoria'].queryset = Categoria.objects.filter(padre=padre)
-
+ 
         else:
             self.fields['subcategoria'].queryset = Categoria.objects.none()
-
-        # Campos dinámicos de atributos
+ 
+        # Campos dinámicos de atributos — opcionales
         sub_id = (
             self.data.get("subcategoria")
             or (self.instance.categoria.id if self.instance.pk else None)
         )
-
+ 
         atributos = []
         if sub_id:
             try:
                 sub_id = int(sub_id)
                 atributos = Atributo.objects.filter(categoria_id=sub_id)
-            except:
+            except Exception:
                 atributos = []
-
+ 
         for atributo in atributos:
             key = f"atributo_{atributo.id}"
             self.fields[key] = forms.CharField(
-                required=True,
+                required=False,  # ← opcional, vacío = N/A
                 label=atributo.nombre,
-                widget=forms.TextInput(attrs={'class': 'form-control'})
+                widget=forms.TextInput(attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Dejar vacío si no aplica'
+                })
             )
-
-        # ============================================================
-        # 🔥 SIEMPRE MOSTRAR TODAS LAS UBICACIONES CON OPTGROUPS
-        # ============================================================
-
+ 
+        # Ubicaciones con optgroups
         ubicaciones = Ubicacion.objects.select_related("sucursal").all().order_by(
             "sucursal__nombre",
             "nombre"
         )
-
-        # Asignar queryset completo
+ 
         self.fields["ubicacion"].queryset = ubicaciones
-
-        # ❌ NO preseleccionar nada
         self.fields["ubicacion"].initial = None
-
-        # Crear optgroups dinámicos
+ 
         choices = []
         grupo_actual = []
         grupo_nombre = None
-
+ 
         for u in ubicaciones:
             nombre_sucursal = u.sucursal.nombre if u.sucursal else "Globales"
-
+ 
             if grupo_nombre != nombre_sucursal:
                 if grupo_actual:
                     choices.append((grupo_nombre, grupo_actual))
                 grupo_nombre = nombre_sucursal
                 grupo_actual = []
-
+ 
             grupo_actual.append((u.id, u.nombre))
-
+ 
         if grupo_actual:
             choices.append((grupo_nombre, grupo_actual))
-
+ 
         self.fields["ubicacion"].choices = choices
-
+ 
     def clean_foto_url(self):
         foto = self.cleaned_data.get("foto_url")
         if not foto:
             raise forms.ValidationError("Debes subir una imagen del producto.")
         return foto
-
+ 
     def clean_subcategoria(self):
         sub = self.cleaned_data.get("subcategoria")
         if not sub or sub.padre is None:
             raise forms.ValidationError("Debes seleccionar una subcategoría válida.")
         return sub
-
+ 
     def clean_codigo_barras(self):
         codigo = self.cleaned_data.get("codigo_barras")
-
+ 
         if codigo:
             codigo = str(codigo).strip()
-
+ 
             try:
                 CodigoService.validar_codigo_real(codigo)
             except ValueError as e:
                 raise forms.ValidationError(str(e))
-
+ 
             if Producto.objects.filter(codigo_barras=codigo).exists():
                 raise forms.ValidationError("Ya existe un producto con este código de barras.")
-
+ 
             return codigo
-
+ 
         return None
-
+ 
     def clean(self):
         cleaned = super().clean()
-
+ 
         sub = cleaned.get("subcategoria")
         if not sub:
             return cleaned
-
+ 
         atributos = Atributo.objects.filter(categoria=sub)
-
-        errores = []
-
+ 
         for atributo in atributos:
             key = f"atributo_{atributo.id}"
-
+ 
             if key not in self.fields:
                 continue
-
+ 
             valor = (self.data.get(key) or "").strip()
-
-            if valor == "":
-                errores.append(f"El atributo '{atributo.nombre}' es obligatorio.")
-            elif valor.lower() == "n/a":
+ 
+            # Vacío o cualquier variante de N/A → guardar como N/A
+            if valor == "" or valor.lower() in {v.lower() for v in AtributoService.EQUIV_NA}:
                 cleaned[key] = "N/A"
             else:
                 cleaned[key] = valor
-
-        if errores:
-            raise forms.ValidationError(errores)
-
+ 
         return cleaned
 
 

@@ -73,21 +73,24 @@ def entrar_caja_ajax(request):
     ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()
 
     if not ultimo_corte or ultimo_corte.fecha.date() < hoy:
+        # ⭐ Solo genera corte de ayer si hubo ventas
+        from ventas.models import Venta
+        hubo_ventas_ayer = Venta.objects.filter(caja=caja, fecha__date=ayer).exists()
 
-        corte_auto = generar_corte_para_fecha(caja, ayer)
+        if hubo_ventas_ayer:
+            corte_auto = generar_corte_para_fecha(caja, ayer)
 
-        request.session["caja_actual"] = caja.id
-        request.session["sucursal_actual"] = caja.sucursal_id
+            request.session["caja_actual"] = caja.id
+            request.session["sucursal_actual"] = caja.sucursal_id
 
-        return JsonResponse({
-            "redirect": f"/ventas/ticket-corte/{corte_auto.id}/"
-        })
+            return JsonResponse({
+                "redirect": f"/ventas/ticket-corte/{corte_auto.id}/"
+            })
 
     request.session["caja_actual"] = caja.id
     request.session["sucursal_actual"] = caja.sucursal_id
 
     return JsonResponse({"ok": True})
-
 
 
 
@@ -127,3 +130,27 @@ def salir_caja(request):
     
     
 
+# ============================================================
+# ELIMINAR CAJA — solo dueño, sin reload
+# ============================================================
+ 
+@login_required
+@require_POST
+def eliminar_caja(request, caja_id):
+ 
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"success": False, "error": "Sin permiso."}, status=403)
+ 
+    caja = get_object_or_404(Caja, id=caja_id)
+    sucursal_id = caja.sucursal_id
+    caja.delete()
+ 
+    # Devolver cajas actualizadas
+    cajas = list(
+        Caja.objects
+        .filter(sucursal_id=sucursal_id)
+        .values("id", "nombre")
+    )
+ 
+    return JsonResponse({"success": True, "cajas": cajas})

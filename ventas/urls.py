@@ -1,9 +1,10 @@
 from django.urls import path
 
 # POS
-from ventas.views.pos_views import pos_view, procesar_venta
+from ventas.views.pos_views import pos_view, procesar_venta, stock_productos
 # Tickets de venta
 from ventas.views.ticket_venta_views import (
+    
     tickets_ventas,
     ticket_venta, 
     ticket_venta_pdf, 
@@ -12,7 +13,11 @@ from ventas.views.ticket_venta_views import (
 )
 
 #ventas_views
-from ventas.views.ventas_views import ventas_por_cajero 
+from ventas.views.ventas_views import (
+    
+    ventas_por_cajero,
+    api_ventas_hoy
+) 
 
 # Tickets de corte
 from ventas.views.ticket_corte_views import (
@@ -33,6 +38,7 @@ urlpatterns = [
     # ============================
     path("pos/", pos_view, name="pos"),
     path("procesar-venta/", procesar_venta, name="procesar_venta"),
+    path("stock-productos/", stock_productos, name="stock_productos"),
 
     # ============================
     # TICKETS DE VENTA
@@ -55,5 +61,7 @@ urlpatterns = [
     # Ventas
     # ============================
     path("ventas-por-cajero/", ventas_por_cajero, name="ventas_por_cajero"),
+    path("api/ventas/hoy/", api_ventas_hoy, name="api_ventas_hoy"),
+
 
 ]

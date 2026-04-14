@@ -1,0 +1,317 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Productos Inactivos{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/inventario_ubicacion.css' %}">
+
+<div class="max-w-full px-4 py-6 space-y-8 overflow-x-hidden">
+
+  <!-- ENCABEZADO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] p-8 text-center"
+       style="background-color: #1a1a2e;">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-white rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-12 h-12 bg-black rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-14 h-14 bg-white rounded-full"></div>
+      <div class="shape absolute bottom-2 right-1/4 w-20 h-3 bg-black" style="--r:-10deg"></div>
+      <div class="shape absolute top-1/2 left-1/4 w-10 h-10 bg-white rotate-[30deg]" style="--r:30deg"></div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,0.3)]">
+        🚫 Productos Inactivos
+      </h1>
+      <p class="text-white font-black text-sm sm:text-lg mt-3">
+        Estos productos no aparecen en inventario ni en el POS, compa.<br>
+        <span class="opacity-80">Reactívalos o elimínalos para siempre. Tú decides. 💀</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- MENSAJES DJANGO -->
+  {% if messages %}
+  <div class="space-y-2">
+    {% for message in messages %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-5 py-3 uppercase tracking-widest text-sm
+                {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- MENSAJE GLOBAL JS -->
+  <div id="mensajeGlobal"></div>
+
+  <!-- BUSCADOR -->
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+    <input type="text" id="buscadorProductos"
+           placeholder="Busca por nombre, categoría o subcategoría..."
+           class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+  </div>
+
+  <!-- SIN RESULTADOS -->
+  <div id="sinResultados" class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 text-center">
+    <p class="font-black text-black uppercase tracking-widest text-base">
+      😬 No encontré nada con ese nombre o categoría, checa bien compa.
+    </p>
+  </div>
+
+  <!-- GRID DE PRODUCTOS -->
+  <div id="gridProductos"
+       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+
+    {% for producto in productos %}
+    <div id="card_inactivo_{{ producto.id }}"
+         class="cardProducto card-producto border-4 border-black shadow-[6px_6px_0_0_black] flex flex-col"
+         data-nombre="{{ producto.nombre|lower }}"
+         data-categoria="{{ producto.categoria_padre.nombre|default:''|lower }}"
+         data-subcategoria="{{ producto.categoria.nombre|default:''|lower }}">
+
+      <!-- BADGE INACTIVO -->
+      <div class="border-b-4 border-black px-3 py-1 flex items-center gap-1.5"
+           style="background-color: #1a1a2e;">
+        <span class="font-black text-white text-[9px] uppercase tracking-widest">🚫 Inactivo</span>
+        {% if producto.fecha_desactivacion %}
+        <span class="text-white/70 text-[9px] font-bold ml-auto">
+          {{ producto.fecha_desactivacion|date:"d/m/Y" }}
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="p-3 flex flex-col flex-1">
+
+        <!-- IMAGEN -->
+        <div class="w-full h-32 bg-white border-4 border-black flex items-center justify-center overflow-hidden mb-3">
+          {% if producto.foto_url %}
+            <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+          {% else %}
+            <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+          {% endif %}
+        </div>
+
+        <!-- NOMBRE -->
+        <h3 class="nombre font-black text-black text-xs uppercase tracking-wide text-center mb-1 leading-tight">
+          {{ producto.nombre }}
+        </h3>
+
+        <!-- CATEGORÍAS -->
+        <p class="categoria text-[10px] text-gray-500 font-semibold text-center mb-0.5">
+          {{ producto.categoria_padre.nombre|default:"—" }}
+        </p>
+        <p class="subcategoria text-[10px] text-gray-500 font-semibold text-center mb-2">
+          {{ producto.categoria.nombre|default:"—" }}
+        </p>
+
+        <!-- DUEÑO -->
+        <p class="text-[10px] font-bold text-center text-gray-600 mb-2 uppercase tracking-widest">
+          👤 {{ producto.dueño.user.get_full_name|default:producto.dueño.user.username }}
+        </p>
+
+        <!-- MOTIVO -->
+        {% if producto.motivo_desactivacion %}
+        <div class="border-4 border-black bg-[#FFBE0B] px-2 py-1 mb-2">
+          <p class="text-[9px] font-black text-black uppercase tracking-widest leading-tight">
+            💬 {{ producto.motivo_desactivacion }}
+          </p>
+        </div>
+        {% endif %}
+
+        <!-- QUIÉN DESACTIVÓ -->
+        {% if producto.desactivado_por %}
+        <p class="text-[9px] text-gray-500 font-semibold text-center mb-2">
+          Por: {{ producto.desactivado_por.user.get_full_name|default:producto.desactivado_por.user.username }}
+        </p>
+        {% endif %}
+
+        <!-- ACCIONES -->
+        <div class="mt-auto space-y-1.5">
+
+          <button onclick="abrirModalReactivar({{ producto.id }}, '{{ producto.nombre }}')"
+                  class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                         bg-[#06D6A0] text-black font-black text-[10px] uppercase tracking-widest
+                         py-1.5 flex items-center justify-center gap-1">
+            ♻ Reactivar
+          </button>
+
+          {% if producto.codigo_barras %}
+          <button onclick="mostrarEtiquetaInterna(this)"
+                  data-url="{% url 'inventario:codigo_base64' producto.id %}"
+                  data-id="{{ producto.id }}"
+                  data-ubicacion="0"
+                  class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                         bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest
+                         py-1.5 flex items-center justify-center gap-1">
+            ▮▮ Etiqueta
+          </button>
+
+          <div id="etiqueta-{{ producto.id }}-0"
+               class="etiqueta-box bg-white border-4 border-black text-center mb-1.5">
+            <img id="img-{{ producto.id }}-0" src="" class="mx-auto w-3/4 object-contain"/>
+            <p class="text-sm font-black font-mono text-gray-800 py-2 border-t-4 border-black tracking-widest">
+              {{ producto.codigo_barras }}
+            </p>
+            <div class="flex gap-2 p-2 border-t-4 border-black">
+              <button onclick="imprimirEtiqueta({{ producto.id }}, 0)"
+                      class="btn-90s flex-1 bg-[#3A86FF] border-4 border-black text-white py-1 text-[10px] font-black uppercase flex items-center justify-center">
+                🖨 Imprimir
+              </button>
+              <button onclick="descargarEtiqueta({{ producto.id }}, 0)"
+                      class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black text-black py-1 text-[10px] font-black uppercase flex items-center justify-center">
+                ⬇ Descargar
+              </button>
+            </div>
+            <div id="codigo-{{ producto.id }}-0"
+                 class="codigo text-[9px] border-t-4 border-black p-1 font-mono text-center select-all break-all cursor-pointer bg-gray-100">
+              {{ producto.codigo_barras }}
+            </div>
+          </div>
+          {% endif %}
+
+          <a href="{% url 'inventario:detalle_producto' producto.id %}"
+             class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                    bg-[#3A86FF] text-white font-black text-[10px] uppercase tracking-widest
+                    py-1.5 flex items-center justify-center gap-1">
+            🔍 Ver detalle
+          </a>
+
+          <button onclick="abrirModalEliminarDefinitivo({{ producto.id }}, '{{ producto.nombre }}')"
+                  class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                         bg-[#FF006E] text-white font-black text-[10px] uppercase tracking-widest
+                         py-1.5 flex items-center justify-center gap-1">
+            🗑 Eliminar definitivo
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    {% empty %}
+    <div class="col-span-full border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-12 text-center">
+      <p class="font-black text-gray-300 uppercase tracking-widest text-2xl">VACÍO</p>
+      <p class="text-gray-400 font-semibold text-sm mt-2">
+        No hay productos inactivos. Todo está activo, compa. 🎉
+      </p>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- MODAL REACTIVAR -->
+  <div id="modalReactivar" class="modal-90s hidden">
+    <div id="modalReactivarContent"
+         class="modal-box opacity-0 scale-95 transition-all duration-200"
+         style="background-color: #06D6A0;">
+
+      <div class="border-b-4 border-black pb-3 mb-4 px-2 py-2 -mx-2 -mt-2 rounded-sm"
+           style="background-color: black;">
+        <h2 class="text-xl font-black text-white uppercase tracking-widest">♻ Reactivar producto</h2>
+      </div>
+
+      <div class="modal-info-box">
+        <p id="reactivar_nombre"
+           class="text-2xl font-black text-black uppercase tracking-wide leading-tight"></p>
+      </div>
+
+      <div class="modal-error hidden"></div>
+
+      <input type="hidden" id="reactivar_producto_id">
+
+      <div class="space-y-4 mt-4">
+        <div>
+          <label class="modal-label">¿En qué ubicación lo vas a poner? *</label>
+          <select id="reactivar_ubicacion" class="modal-select">
+            <option value="">— Selecciona una ubicación —</option>
+            {% for ub in ubicaciones %}
+              <option value="{{ ub.id }}">
+                {{ ub.nombre }}{% if ub.sucursal %} — {{ ub.sucursal.nombre }}{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="modal-label">Cantidad inicial *</label>
+          <input type="number" id="reactivar_cantidad" min="1"
+                 placeholder="Ej: 10" class="modal-input">
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button"
+                  onclick="cerrarModal('modalReactivar')"
+                  class="modal-btn modal-btn-cancel">
+            Cancelar
+          </button>
+          <button type="button"
+                  onclick="confirmarReactivar()"
+                  class="modal-btn modal-btn-primary">
+            Reactivar
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL ELIMINAR DEFINITIVO -->
+  <div id="modalEliminarDefinitivo" class="modal-90s hidden">
+    <div id="modalEliminarDefinitivoContent"
+         class="modal-box opacity-0 scale-95 transition-all duration-200"
+         style="background-color: #FF006E;">
+
+      <div class="border-b-4 border-black pb-3 mb-4 px-2 py-2 -mx-2 -mt-2 rounded-sm"
+           style="background-color: black;">
+        <h2 class="text-xl font-black text-white uppercase tracking-widest">🗑 Eliminar definitivo</h2>
+      </div>
+
+      <div class="modal-info-box space-y-2">
+        <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">
+          Vas a eliminar permanentemente:
+        </p>
+        <p id="eliminar_def_nombre"
+           class="text-2xl font-black text-black uppercase tracking-wide leading-tight"></p>
+        <p class="text-[10px] font-bold text-gray-600">
+          Esta acción no se puede deshacer. El producto y todos sus datos
+          serán eliminados de la base de datos.
+        </p>
+      </div>
+
+      <div class="modal-error hidden"></div>
+
+      <input type="hidden" id="eliminar_def_producto_id">
+
+      <div class="flex justify-end gap-3 pt-4">
+        <button type="button"
+                onclick="cerrarModal('modalEliminarDefinitivo')"
+                class="modal-btn modal-btn-cancel">
+          Cancelar
+        </button>
+        <button type="button"
+                onclick="confirmarEliminarDefinitivo()"
+                class="modal-btn modal-btn-primary">
+          Sí, eliminar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/inventario_ubicacion/utils.js' %}"></script>
+<script src="{% static 'js/inventario_ubicacion/etiquetas.js' %}"></script>
+<script src="{% static 'js/inactivos.js' %}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const colores = [
+    "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
+    "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
+  ];
+  document.querySelectorAll("#gridProductos .cardProducto").forEach((card, i) => {
+    card.style.backgroundColor = colores[i % colores.length];
+  });
+});
+</script>
+{% endblock %}

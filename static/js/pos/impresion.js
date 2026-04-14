@@ -1,4 +1,4 @@
-// impresion.js — Impresión híbrida WebUSB + WebSerial + fallback
+// impresion.js — Impresión via window.print() para impresora térmica con driver usbprint.sys
 
 // ============================================================
 // 1. Inicialización
@@ -7,12 +7,13 @@
 export function initImpresion() {
     document.addEventListener("imprimir-ticket", async (e) => {
         try {
-            await imprimirTicketHibrido(e.detail);
+            await imprimirTicket(e.detail);
         } catch (err) {
+            console.error("Error de impresión:", err);
             document.dispatchEvent(new CustomEvent("impresion-fallo", {
                 detail: {
                     venta_id: e.detail.venta_id,
-                    motivo: "No se pudo imprimir el ticket"
+                    motivo: err.message || "No se pudo abrir la ventana de impresión."
                 }
             }));
         }
@@ -20,109 +21,78 @@ export function initImpresion() {
 }
 
 
-
 // ============================================================
-// 2. Generar ESC/POS
-// ============================================================
-
-function generarTicketESC({ total, cambio }) {
-    const encoder = new TextEncoder();
-
-    let texto = "";
-    texto += "      MODELO\n";
-    texto += "-----------------------------\n";
-    texto += "        TICKET DE VENTA\n";
-    texto += "-----------------------------\n";
-    texto += `TOTAL:     $${total.toFixed(2)}\n`;
-    texto += `CAMBIO:    $${cambio.toFixed(2)}\n`;
-    texto += "-----------------------------\n";
-    texto += "Gracias por su compra\n\n\n\n";
-
-    return encoder.encode(texto);
-}
-
-
-
-// ============================================================
-// 3. Impresión híbrida
+// 2. Impresión vía window.print()
+//    La impresora usa usbprint.sys (driver estándar Windows),
+//    por lo que se imprime como cualquier impresora del sistema.
 // ============================================================
 
-async function imprimirTicketHibrido(data) {
-    const escpos = generarTicketESC(data);
-
-    // 1) WebUSB
-    try {
-        await imprimirWebUSB(escpos);
-        document.dispatchEvent(new CustomEvent("impresion-exito", {
-            detail: { venta_id: data.venta_id }
-        }));
-        return;
-    } catch (err) {
-        console.warn("WebUSB falló:", err);
+async function imprimirTicket({ ticket_texto, venta_id }) {
+    if (!ticket_texto) {
+        throw new Error("No se recibió el texto del ticket.");
     }
 
-    // 2) WebSerial
-    try {
-        await imprimirWebSerial(escpos);
-        document.dispatchEvent(new CustomEvent("impresion-exito", {
-            detail: { venta_id: data.venta_id }
-        }));
-        return;
-    } catch (err) {
-        console.warn("WebSerial falló:", err);
+    // Escapar caracteres especiales para HTML
+    const textoEscapado = ticket_texto
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket #${venta_id}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10pt;
+      background: white;
+      color: black;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: 1.5;
+      padding: 2mm;
+    }
+    @media print {
+      @page { size: 58mm auto; margin: 0mm 2mm; }
+      body { width: 58mm; }
+    }
+  </style>
+</head>
+<body>
+  <pre>${textoEscapado}</pre>
+  <script>
+    window.onload = function () {
+      window.print();
+      window.onafterprint = function () { window.close(); };
+      setTimeout(function () { window.close(); }, 5000);
+    };
+  <\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+    const popup = window.open(url, "_blank", "width=300,height=500,toolbar=0,menubar=0");
+
+    if (!popup) {
+        URL.revokeObjectURL(url);
+        throw new Error(
+            "El navegador bloqueó la ventana de impresión. " +
+            "Permite popups para este sitio e intenta de nuevo."
+        );
     }
 
-    // 3) Fallback final
-    document.dispatchEvent(new CustomEvent("impresion-fallo", {
-        detail: {
-            venta_id: data.venta_id,
-            motivo: "No se detectó ninguna impresora compatible"
-        }
+    // Limpiar el blob URL cuando la ventana se cierre
+    popup.addEventListener("unload", () => URL.revokeObjectURL(url));
+
+    document.dispatchEvent(new CustomEvent("impresion-exito", {
+        detail: { venta_id }
     }));
-}
-
-
-
-// ============================================================
-// 4. Impresión por WebUSB
-// ============================================================
-
-async function imprimirWebUSB(escpos) {
-    if (!("usb" in navigator)) throw new Error("WebUSB no soportado");
-
-    const device = await navigator.usb.requestDevice({
-        filters: [
-            { vendorId: 0x0416 },
-            { vendorId: 0x0483 },
-            { vendorId: 0x1fc9 }
-        ]
-    });
-
-    await device.open();
-    if (device.configuration === null) {
-        await device.selectConfiguration(1);
-    }
-
-    await device.claimInterface(0);
-    await device.transferOut(1, escpos);
-    await device.close();
-}
-
-
-
-// ============================================================
-// 5. Impresión por WebSerial
-// ============================================================
-
-async function imprimirWebSerial(escpos) {
-    if (!("serial" in navigator)) throw new Error("WebSerial no soportado");
-
-    const port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 9600 });
-
-    const writer = port.writable.getWriter();
-    await writer.write(escpos);
-    writer.releaseLock();
-
-    await port.close();
 }

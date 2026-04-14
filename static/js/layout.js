@@ -2,12 +2,16 @@ document.addEventListener("DOMContentLoaded", function () {
   const navbar = document.getElementById("navbar");
   const sidebar = document.getElementById("sidebar");
 
-  if (!navbar || !sidebar) {
-    console.warn("Navbar o sidebar no encontrados");
-    return;
-  }
+  // Si NO hay sidebar, significa:
+  // - Invitado
+  // - Cliente autenticado
+  // En ambos casos NO ejecutamos lógica de dashboard
+  if (!sidebar) return;
 
-  // Ajuste inicial al cargar
+  // Si hay sidebar pero no navbar (muy raro pero posible)
+  if (!navbar) return;
+
+  // Ajuste inicial al cargar (solo dashboard)
   if (window.innerWidth >= 768) {
     sidebar.style.top = "4rem";
     sidebar.style.height = "calc(100vh - 4rem)";
@@ -21,7 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Ocultar o mostrar navbar
     navbar.classList.toggle("navbar-hidden", scrollingDown);
 
-    // Ajustar el top y altura del sidebar en escritorio
+    // Ajustar sidebar en escritorio
     if (window.innerWidth >= 768) {
       const topValue = scrollingDown ? "0" : "4rem";
       sidebar.style.top = topValue;
@@ -31,5 +35,3 @@ document.addEventListener("DOMContentLoaded", function () {
     lastScrollY = window.scrollY;
   });
 });
-
-

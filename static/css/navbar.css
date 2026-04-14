@@ -42,3 +42,15 @@
 #navbar {
   z-index: 100 !important;
 }
+
+/* Nav links container — scrollable horizontal sin scrollbar visible */
+#navbar [style*="scrollbar-width"]::-webkit-scrollbar {
+  display: none;
+}
+
+/* Padding reducido en nav-links en pantallas pequeñas */
+@media (max-width: 639px) {
+  .nav-link {
+    padding: 0.35rem 0.4rem;
+  }
+}

@@ -143,20 +143,3 @@ function abrirModalTransferirMultiple(ubicacionId) {
     document.getElementById("transferir_multiple_search").value = "";
     document.getElementById("transferir_multiple_resultados").classList.add("hidden");
 }
-
-/* ---------------------------
-   ELIMINAR INVENTARIO / PRODUCTO
----------------------------- */
-
-function abrirModalEliminar(titulo, mensaje, productoId, ubicacionId, tipo) {
-    const modalId = "modalEliminar";
-    abrirModal(modalId);
-
-    // IDs correctos según TU modal
-    document.getElementById("modalEliminarTitulo").textContent = titulo;
-    document.getElementById("modalEliminarMensaje").textContent = mensaje;
-
-    document.getElementById("eliminar_producto_id").value = productoId;
-    document.getElementById("eliminar_ubicacion_id").value = ubicacionId;
-    document.getElementById("eliminar_tipo").value = tipo;
-}

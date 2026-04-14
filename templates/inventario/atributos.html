@@ -1,137 +1,335 @@
-{% extends "partials/base.html" %}
+{% extends 'partials/base.html' %}
 {% load static %}
 
 {% block content %}
 
-<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+<style>
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
 
-    <!-- TÍTULO -->
-    <h1 class="text-3xl font-extrabold text-gray-800 mb-8">
-        🧩 Atributos por Subcategoría
-    </h1>
+  .panel-subcats {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    opacity: 0;
+    transform: translateX(20px);
+    pointer-events: none;
+  }
+  .panel-subcats.visible {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
 
-    <!-- MENSAJES -->
-    <div id="msgSuccess" class="hidden bg-green-600 text-white px-4 py-2 rounded mb-4"></div>
-    <div id="msgError" class="hidden bg-red-600 text-white px-4 py-2 rounded mb-4"></div>
+  .cat-row.activa {
+    background: #00F5D4;
+    border-color: black;
+  }
+</style>
 
-    <div class="space-y-10">
+<div class="max-w-7xl mx-auto px-4 py-10 space-y-8">
 
-        {% for padre in categorias_padre %}
-        <div class="border rounded-xl p-6 bg-white shadow-sm">
+<!-- ENCABEZADO -->
+<div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#F0FFF4] p-8">
+  <h1 class="text-5xl sm:text-6xl font-black text-black uppercase tracking-tight leading-none">
+    🧩 Atributos
+  </h1>
 
-            <!-- TÍTULO DE CATEGORÍA PADRE -->
-            <h2 class="text-2xl font-semibold mb-6 text-gray-800 flex items-center gap-2">
-                📁 {{ padre.nombre }}
-            </h2>
+  <p class="text-gray-800 font-bold text-lg mt-4">
+    Oye compare, escúchame bien porque esto es importante. 👇
+  </p>
 
-            <!-- GRID RESPONSIVE -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div class="mt-4 space-y-3 text-gray-700 font-semibold text-sm">
 
-                {% for s in subcategorias %}
-                {% if s.padre.id == padre.id %}
+    <p>
+      📦 Cada <span class="font-black text-black">subcategoría</span> tiene sus propios atributos.
+      Por ejemplo: <span class="font-black text-black">Gelish</span> puede tener
+      <span class="font-black text-black">Tono</span>, <span class="font-black text-black">Mililitros</span> y <span class="font-black text-black">Marca</span>.
+      Tú decides qué datos importan para cada tipo de producto.
+    </p>
 
-                <!-- CARD DE SUBCATEGORÍA -->
-                <div id="card-{{ s.id }}" class="p-5 border rounded-xl bg-gray-50 shadow hover:shadow-md transition">
+    <p>
+      🏷️ Al registrar un producto nuevo, el sistema te pide llenar esos atributos automáticamente.
+      Si no los defines aquí primero, el producto queda sin información útil. No hagas eso, padrino.
+    </p>
 
-                    <h3 class="font-bold text-lg text-gray-800 mb-3">
-                        {{ s.nombre }}
-                    </h3>
+    <p>
+      🔢 <span class="font-black text-black">Tipo Número</span> — para tallas, tonos, mililitros, cantidades.
+      El sistema tiene corrección automática: si registras el tono
+      <span class="font-black text-black">9.8</span> pero ya existe un
+      <span class="font-black text-black">10</span> y la diferencia es menor a 0.3,
+      lo corrige solo a <span class="font-black text-black">10</span> sin preguntarte nada.
+      Así no terminas con 40 versiones del mismo tono escritas diferente, wapo.
+    </p>
 
-                    {% if s.atributos.all %}
-                    <ul class="space-y-3">
+    <p>
+      🔤 <span class="font-black text-black">Tipo Texto</span> — para marca, color, acabado.
+      Ejemplo: <span class="font-black text-black">Rosa neón, Matte, OPI</span>.
+      El sistema normaliza a minúsculas y aplica corrección fuzzy en atributos como
+      <span class="font-black text-black">Marca, Color, Material y Modelo</span> —
+      si escribes algo parecido a lo que ya existe con 85% de similitud o más, lo corrige al valor guardado.
+      Así <span class="font-black text-black">blanco perla de 10ml</span>,
+      <span class="font-black text-black">blanco perla de 15ml</span> y
+      <span class="font-black text-black">blanco matte</span> quedan como productos distintos sin bronca,
+      pero <span class="font-black text-black">blanco perla</span> y <span class="font-black text-black">blanco perla </span> con espacio de más quedan iguales.
+    </p>
 
-                        {% for a in s.atributos.all %}
-                        <li class="p-3 border rounded-lg bg-white shadow-sm">
+    <p>
+      🔒 Además, el sistema genera una
+      <span class="font-black text-black">firma única</span> por producto combinando todos sus atributos.
+      Si intentas registrar dos productos con exactamente los mismos valores,
+      el sistema te lo bloquea — no importa quién lo intente registrar.
+    </p>
 
-                            <div class="flex justify-between items-center">
-                                <span class="font-semibold text-gray-800">{{ a.nombre }}</span>
-                                <span class="px-2 py-1 bg-gray-200 rounded text-xs text-gray-700">
-                                    {{ a.get_tipo_display }}
-                                </span>
-                            </div>
+    <p>
+      ✏️ Puedes agregar, editar o eliminar atributos cuando quieras.
+      Pero ojo — si eliminas uno que ya tienen productos asignados, esos valores
+      <span class="text-[#FF006E] font-black">se van sin vuelta atrás.</span>
+    </p>
 
-                            {% if not solo_lectura %}
-                            <div class="flex gap-2 mt-3">
+    <p>
+      👉 Para empezar pícale a una categoría de la derecha, elige una subcategoría y agrega sus atributos. Así de fácil, mi rey.
+    </p>
 
-                                <button
-                                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition"
-                                    onclick="abrirModalAtributo({{ s.id }}, {{ a.id }})">
-                                    ✏️ Editar
-                                </button>
+  </div>
+</div>
 
-                                <button
-                                    class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition"
-                                    onclick="confirmarEliminar({{ s.id }}, {{ a.id }})">
-                                    🗑️ Eliminar
-                                </button>
+  <!-- MENSAJES -->
+  <div id="msgSuccess"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#00F5D4]
+              text-black font-black px-6 py-3 uppercase tracking-widest text-base">
+  </div>
+  <div id="msgError"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+              text-white font-black px-6 py-3 uppercase tracking-widest text-base">
+  </div>
 
-                            </div>
-                            {% endif %}
+  <!-- LAYOUT: panel izquierda, categorías derecha -->
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
 
-                        </li>
-                        {% endfor %}
+    <!-- ============================================================ -->
+    <!-- COLUMNA IZQUIERDA — Paneles de subcategorías                -->
+    <!-- ============================================================ -->
+    <div class="flex-1 min-w-0 relative order-2 lg:order-1">
 
-                    </ul>
-                    {% else %}
-                    <p class="text-gray-500 italic text-sm">Sin atributos.</p>
-                    {% endif %}
+      <!-- Estado vacío -->
+      <div id="panelVacio"
+           class="border-4 border-dashed border-gray-300 bg-white p-14 text-center">
+        <p class="text-gray-300 font-black text-4xl uppercase mb-2">👉</p>
+        <p class="text-gray-400 font-bold text-base">
+          Pícale a una categoría para ver sus subcategorías y atributos.
+        </p>
+      </div>
 
-                    {% if not solo_lectura %}
-                    <button
-                        class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-4 font-semibold transition"
-                        onclick="abrirModalAtributo({{ s.id }})">
-                        ➕ Agregar atributo
-                    </button>
-                    {% endif %}
+      {% for padre in categorias_padre %}
+      <div id="panel-{{ padre.id }}"
+           class="panel-subcats hidden border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
 
-                </div>
+        <!-- HEADER DEL PANEL — amarillo -->
+        <div class="bg-[#FFBE0B] border-b-4 border-black px-6 py-4">
+          <h2 class="font-black text-black uppercase tracking-widest text-xl">
+            {{ padre.nombre }}
+          </h2>
+          <p class="text-black/60 font-semibold text-xs mt-0.5 uppercase tracking-widest">
+            {{ padre.subcategorias.count }} subcategoría{{ padre.subcategorias.count|pluralize:"s" }}
+          </p>
+        </div>
 
-                {% endif %}
-                {% endfor %}
+        <!-- SUBCATEGORÍAS CON ATRIBUTOS -->
+        <div class="divide-y-4 divide-black">
 
+          {% for s in subcategorias %}
+          {% if s.padre.id == padre.id %}
+          <div id="card-{{ s.id }}" class="p-6">
+
+            <!-- NOMBRE SUBCATEGORÍA en caja verde neón -->
+            <div class="flex items-center justify-between gap-4 mb-4 flex-wrap">
+              <div class="bg-[#00F5D4] border-4 border-black shadow-[3px_3px_0_0_black] px-4 py-2 flex-1">
+                <h3 class="font-black text-black text-xl uppercase tracking-wide">
+                  {{ s.nombre }}
+                </h3>
+              </div>
+              {% if not solo_lectura %}
+              <button onclick="abrirModalAtributo({{ s.id }})"
+                      class="btn-90s bg-[#FFBE0B] border-4 border-black shadow-[3px_3px_0_0_black]
+                             text-black font-black text-xs uppercase tracking-widest px-3 py-2 flex-shrink-0">
+                ➕ Agregar atributo
+              </button>
+              {% endif %}
             </div>
 
+            <!-- ATRIBUTOS -->
+            {% if s.atributos.all %}
+            <ul class="space-y-3">
+              {% for a in s.atributos.all %}
+              <li class="border-4 border-black p-4 bg-[#F0FFF4] flex items-center justify-between gap-4 flex-wrap">
+                <div class="min-w-0 flex-1">
+                  <p class="font-black text-black text-base uppercase tracking-wide">{{ a.nombre }}</p>
+                  <span class="inline-block mt-1 border-2 border-black bg-[#CCFF00]
+                               text-black font-black text-[10px] uppercase tracking-widest px-2 py-0.5">
+                    {{ a.get_tipo_display }}
+                  </span>
+                </div>
+                {% if not solo_lectura %}
+                <div class="flex gap-2 flex-shrink-0">
+                  <button onclick="abrirModalAtributo({{ s.id }}, {{ a.id }})"
+                          class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[3px_3px_0_0_black]
+                                 text-black font-black text-xs uppercase px-3 py-2">
+                    ✏️
+                  </button>
+                  <button onclick="confirmarEliminar({{ s.id }}, {{ a.id }})"
+                          class="btn-90s bg-[#FF006E] border-4 border-black shadow-[3px_3px_0_0_black]
+                                 text-white font-black text-xs uppercase px-3 py-2">
+                    🗑️
+                  </button>
+                </div>
+                {% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-gray-400 font-bold text-sm border-4 border-dashed border-gray-200 p-4 text-center">
+              Sin atributos todavía. Ponle, no seas flojo. 👀
+            </p>
+            {% endif %}
+
+          </div>
+          {% endif %}
+          {% endfor %}
+
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- COLUMNA DERECHA — Lista de categorías padre                 -->
+    <!-- ============================================================ -->
+    <div class="w-full lg:w-72 flex-shrink-0 border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden order-1 lg:order-2">
+
+      <div class="bg-black px-5 py-4 border-b-4 border-black">
+        <p class="font-black text-white uppercase tracking-widest text-sm">📁 Categorías</p>
+        <p class="text-white/50 text-xs font-semibold mt-0.5">Pícale para ver subcategorías</p>
+      </div>
+
+      <div class="divide-y-4 divide-black">
+        {% for padre in categorias_padre %}
+        <button type="button"
+                onclick="seleccionarCategoria('panel-{{ padre.id }}', this)"
+                class="cat-row w-full text-left px-5 py-4 bg-white hover:bg-[#F0FFF4]
+                       transition-colors border-b-0 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-black text-black text-base uppercase tracking-wide leading-tight truncate">
+              {{ padre.nombre }}
+            </p>
+            <p class="text-gray-400 text-xs font-bold uppercase tracking-widest mt-0.5">
+              {{ padre.subcategorias.count }} subcategoría{{ padre.subcategorias.count|pluralize:"s" }}
+            </p>
+          </div>
+          <svg class="w-5 h-5 text-black flex-shrink-0 rotate-90"
+               fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        {% empty %}
+        <div class="p-6 text-center">
+          <p class="text-gray-400 font-semibold text-sm">Sin categorías.</p>
         </div>
         {% endfor %}
+      </div>
 
     </div>
 
+  </div>
+
+  <!-- MODO SOLO LECTURA -->
+  {% if solo_lectura %}
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#00F5D4] p-6 text-center">
+    <p class="font-black text-black text-base uppercase tracking-widest">Modo consulta 👀</p>
+    <p class="text-black/70 font-semibold text-sm mt-1">
+      Puedes ver los atributos pero no puedes tocarlos. Habla con el dueño. 🙏
+    </p>
+  </div>
+  {% endif %}
+
 </div>
 
-<!-- ============================= -->
-<!-- MODAL AGREGAR / EDITAR ATRIBUTO -->
-<!-- ============================= -->
+<!-- MODAL ATRIBUTO -->
 <div id="modalAtributo"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-    <div id="modalAtributoContent"
-         class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-    </div>
+     class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+  <div id="modalAtributoContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-md p-6">
+  </div>
 </div>
 
-<!-- ============================= -->
 <!-- MODAL CONFIRMAR ELIMINACIÓN -->
-<!-- ============================= -->
 <div id="modalConfirmar"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+     class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
 
-        <h2 class="text-xl font-semibold mb-4 text-gray-800">Confirmar eliminación</h2>
-        <p class="text-gray-700 mb-6">¿Seguro que deseas eliminar este atributo?</p>
+    <h2 class="text-xl font-black text-black uppercase tracking-widest mb-2">⚠️ Eliminar</h2>
+    <p class="text-gray-700 font-semibold text-base mb-6">
+      ¿Seguro? Esta acción no se puede deshacer.
+    </p>
 
-        <div class="flex justify-end gap-3">
-            <button class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition"
-                    onclick="cerrarConfirmar()">
-                Cancelar
-            </button>
-
-            <button id="btnConfirmarEliminar"
-                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition">
-                Eliminar
-            </button>
-        </div>
-
+    <div class="flex justify-end gap-3">
+      <button onclick="cerrarConfirmar()"
+              class="btn-90s bg-gray-100 border-4 border-black shadow-[4px_4px_0_0_black]
+                     font-black text-sm uppercase tracking-widest px-4 py-2">
+        Cancelar
+      </button>
+      <button id="btnConfirmarEliminar"
+              class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black]
+                     text-white font-black text-sm uppercase tracking-widest px-4 py-2">
+        Sí, eliminar
+      </button>
     </div>
+
+  </div>
 </div>
+
+<script>
+let panelActivo = null;
+let rowActiva = null;
+
+function seleccionarCategoria(panelId, row) {
+  const panelVacio = document.getElementById("panelVacio");
+
+  if (panelActivo === panelId) {
+    document.getElementById(panelId).classList.add("hidden");
+    document.getElementById(panelId).classList.remove("visible");
+    panelVacio.classList.remove("hidden");
+    row.classList.remove("activa");
+    panelActivo = null;
+    rowActiva = null;
+    return;
+  }
+
+  if (panelActivo) {
+    const prev = document.getElementById(panelActivo);
+    prev.classList.add("hidden");
+    prev.classList.remove("visible");
+  }
+  if (rowActiva) rowActiva.classList.remove("activa");
+
+  panelVacio.classList.add("hidden");
+  const panel = document.getElementById(panelId);
+  panel.classList.remove("hidden");
+  requestAnimationFrame(() => panel.classList.add("visible"));
+
+  row.classList.add("activa");
+  panelActivo = panelId;
+  rowActiva = row;
+}
+</script>
 
 <script src="{% static 'js/atributo_form.js' %}"></script>
 

@@ -3,151 +3,283 @@
 
 {% block content %}
 
-<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+<style>
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
 
-    <!-- TÍTULO -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-10">
-        <h1 class="text-3xl font-extrabold text-gray-800">🗂️ Categorías y Subcategorías</h1>
+  .accordion-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .accordion-body.open {
+    max-height: 2000px;
+  }
 
-        {% if not solo_lectura %}
-        <button onclick="abrirModalCategoria()"
-                class="mt-4 sm:mt-0 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition">
-            ➕ Registrar categoría padre
-        </button>
-        {% endif %}
+  .chevron {
+    transition: transform 0.3s ease;
+  }
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+</style>
+
+<div class="max-w-4xl mx-auto px-4 py-10 space-y-10">
+
+  <!-- ENCABEZADO -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#F0FFF4] p-8">
+    <h1 class="text-5xl sm:text-6xl font-black text-black uppercase tracking-tight leading-none">
+      🗂️ Categorías
+    </h1>
+    <p class="text-gray-700 font-bold text-lg mt-4">
+      Aquí organizamos el inventario pa' que no sea un desmadre. 📦
+    </p>
+
+    <!-- EXPLICACIÓN DEL SISTEMA -->
+    <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <div class="border-4 border-black bg-[#00BBF9] p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest">📁 Categoría padre</p>
+        <p class="text-black font-semibold text-sm mt-1">
+          El gran jefe. El departamento. Lo que agrupa todo lo demás. Ej: <em>Productos para uñas</em>.
+        </p>
+      </div>
+
+      <div class="border-4 border-black bg-[#00F5D4] p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest">📂 Subcategoría</p>
+        <p class="text-black font-semibold text-sm mt-1">
+          La familia dentro del departamento. La agrupación. Ej: <em>Gelish, Esmaltes, Top Coat</em>.
+        </p>
+      </div>
+
+      <div class="border-4 border-black bg-[#CCFF00] p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest">🏷️ Producto</p>
+        <p class="text-black font-semibold text-sm mt-1">
+          Lo que es, wey. El artículo real que vendes. Ej: <em>Gelish UV 15ml Rosa Shock</em>.
+        </p>
+      </div>
+
     </div>
+  </div>
 
-    <!-- MENSAJES -->
-    <div id="msgSuccess" class="hidden bg-green-600 text-white px-4 py-2 rounded mb-4"></div>
-    <div id="msgError" class="hidden bg-red-600 text-white px-4 py-2 rounded mb-4"></div>
+  <!-- MENSAJES -->
+  <div id="msgSuccess"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#00F5D4]
+              text-black font-black px-6 py-3 uppercase tracking-widest text-base">
+  </div>
+  <div id="msgError"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+              text-white font-black px-6 py-3 uppercase tracking-widest text-base">
+  </div>
 
-    <!-- GRID DE CATEGORÍAS PADRE -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+  <!-- BOTÓN NUEVA CATEGORÍA -->
+  {% if not solo_lectura %}
+  <div class="flex justify-end">
+    <button onclick="abrirModalCategoria()"
+            class="btn-90s bg-[#00BBF9] border-4 border-black shadow-[6px_6px_0_0_black]
+                   text-black font-black text-base uppercase tracking-widest px-6 py-3">
+      ➕ Nueva categoría padre
+    </button>
+  </div>
+  {% endif %}
 
-        {% for padre in categorias_padre %}
-        <div class="bg-white border rounded-xl shadow p-6 hover:shadow-lg transition">
+  <!-- ACCORDIONS -->
+  <div class="space-y-4">
 
-            <!-- HEADER DE CATEGORÍA PADRE -->
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-red-600">{{ padre.nombre }}</h2>
+    {% for padre in categorias_padre %}
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden bg-white">
 
-                {% if not solo_lectura %}
-                <button onclick="abrirModalCategoria({{ padre.id }})"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold">
-                    ✏️ Editar
-                </button>
-                {% endif %}
+      <!-- HEADER DEL ACCORDION -->
+      <div class="bg-[#F0FFF4] border-b-4 border-black px-6 py-5">
+
+        <!-- FILA SUPERIOR: nombre + botones editar/eliminar -->
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+
+          <h2 class="text-2xl font-black text-black uppercase tracking-wide leading-tight flex-1 min-w-0">
+            {{ padre.nombre }}
+          </h2>
+
+          <div class="flex items-center gap-3 flex-shrink-0 flex-wrap">
+            {% if not solo_lectura %}
+            <button onclick="abrirModalCategoria({{ padre.id }})"
+                    class="btn-90s bg-[#00BBF9] border-4 border-black shadow-[3px_3px_0_0_black]
+                           text-black font-black text-xs uppercase px-3 py-2">
+              ✏️ Editar
+            </button>
+            <button onclick="confirmarEliminarPadre({{ padre.id }})"
+                    class="btn-90s bg-[#FF006E] border-4 border-black shadow-[3px_3px_0_0_black]
+                           text-white font-black text-xs uppercase px-3 py-2">
+              🗑️
+            </button>
+            {% endif %}
+
+            <!-- TEXTO SASSY + CHEVRON -->
+            <button type="button"
+                    onclick="toggleAccordion('acc-{{ padre.id }}', 'chev-{{ padre.id }}')"
+                    class="flex items-center gap-2 border-4 border-black bg-[#CCFF00]
+                           shadow-[3px_3px_0_0_black] px-3 py-2 btn-90s">
+              <span class="font-black text-black text-xs uppercase tracking-widest whitespace-nowrap">
+                piquele aqui oiga 
+              </span>
+              <svg id="chev-{{ padre.id }}" class="chevron w-5 h-5 text-black flex-shrink-0"
+                   fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- DESCRIPCIÓN + CONTEO -->
+        {% if padre.descripcion %}
+        <p class="text-gray-600 font-semibold text-sm mt-2">{{ padre.descripcion }}</p>
+        {% endif %}
+        <p class="text-gray-400 font-bold text-xs mt-1 uppercase tracking-widest">
+          {{ padre.subcategorias.count }} subcategoría{{ padre.subcategorias.count|pluralize:"s" }}
+        </p>
+
+      </div>
+
+      <!-- BODY DEL ACCORDION -->
+      <div id="acc-{{ padre.id }}" class="accordion-body">
+        <div class="divide-y-4 divide-black">
+
+          {% for sub in padre.subcategorias.all %}
+          <div class="px-6 py-4 flex items-center justify-between gap-4 bg-white hover:bg-blue-50 transition-colors">
+
+            <div class="flex-1 min-w-0">
+              <p class="text-xl font-black text-black uppercase tracking-wide">
+                {{ sub.nombre }}
+              </p>
+              {% if sub.descripcion %}
+              <p class="text-gray-500 font-semibold text-sm mt-0.5">{{ sub.descripcion }}</p>
+              {% endif %}
             </div>
 
-            <!-- DESCRIPCIÓN -->
-            {% if padre.descripcion %}
-            <p class="text-sm text-gray-700 mb-4 whitespace-pre-line">
-                {{ padre.descripcion }}
-            </p>
-            {% else %}
-            <p class="text-xs text-gray-500 italic mb-4">Sin descripción.</p>
-            {% endif %}
-
-            <!-- SUBCATEGORÍAS -->
-            <h3 class="text-sm font-semibold text-gray-800 mb-2">Subcategorías</h3>
-
-            {% if padre.subcategorias.all %}
-            <ul class="space-y-3">
-
-                {% for sub in padre.subcategorias.all %}
-                <li class="p-3 bg-gray-50 border rounded-lg shadow-sm">
-
-                    <div class="flex justify-between items-center">
-                        <span class="font-semibold text-gray-800">{{ sub.nombre }}</span>
-
-                        {% if not solo_lectura %}
-                        <div class="flex gap-2">
-
-                            <button onclick="abrirModalSubcategoria({{ padre.id }}, {{ sub.id }})"
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">
-                                ✏️
-                            </button>
-
-                            <button onclick="confirmarEliminarSub({{ padre.id }}, {{ sub.id }})"
-                                    class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">
-                                🗑️
-                            </button>
-
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% if sub.descripcion %}
-                    <p class="text-xs text-gray-600 mt-1">{{ sub.descripcion }}</p>
-                    {% endif %}
-
-                </li>
-                {% endfor %}
-
-            </ul>
-            {% else %}
-            <p class="text-xs text-gray-500 italic">No hay subcategorías registradas.</p>
-            {% endif %}
-
-            <!-- BOTÓN AGREGAR SUBCATEGORÍA -->
             {% if not solo_lectura %}
-            <button onclick="abrirModalSubcategoria({{ padre.id }})"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm mt-4 font-semibold transition">
-                ➕ Agregar subcategoría
-            </button>
+            <div class="flex gap-2 flex-shrink-0">
+              <button onclick="abrirModalSubcategoria({{ padre.id }}, {{ sub.id }})"
+                      class="btn-90s bg-[#00BBF9] border-4 border-black shadow-[3px_3px_0_0_black]
+                             text-black font-black text-xs uppercase px-3 py-2">
+                ✏️
+              </button>
+              <button onclick="confirmarEliminarSub({{ padre.id }}, {{ sub.id }})"
+                      class="btn-90s bg-[#FF006E] border-4 border-black shadow-[3px_3px_0_0_black]
+                             text-white font-black text-xs uppercase px-3 py-2">
+                🗑️
+              </button>
+            </div>
             {% endif %}
 
+          </div>
+          {% empty %}
+          <div class="px-6 py-5 text-center bg-white">
+            <p class="text-gray-400 font-bold text-base">
+              Sin subcategorías todavía. Ponle, no seas flojo. 👀
+            </p>
+          </div>
+          {% endfor %}
+
+          <!-- BOTÓN AGREGAR SUBCATEGORÍA -->
+          {% if not solo_lectura %}
+          <div class="px-6 py-4 bg-[#F0FFF4]">
+            <button onclick="abrirModalSubcategoria({{ padre.id }})"
+                    class="btn-90s bg-[#00F5D4] border-4 border-black shadow-[4px_4px_0_0_black]
+                           text-black font-black text-sm uppercase tracking-widest px-5 py-2">
+              ➕ Agregar subcategoría
+            </button>
+          </div>
+          {% endif %}
+
         </div>
-        {% endfor %}
+      </div>
 
     </div>
+    {% empty %}
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-white p-14 text-center">
+      <p class="text-gray-300 font-black text-5xl uppercase mb-3">VACÍO</p>
+      <p class="text-gray-500 font-semibold text-base">
+        No hay categorías registradas todavía, padrino. 😬
+      </p>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- MODO SOLO LECTURA -->
+  {% if solo_lectura %}
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#00F5D4] p-6 text-center">
+    <p class="font-black text-black text-base uppercase tracking-widest">Modo consulta 👀</p>
+    <p class="text-black/70 font-semibold text-sm mt-1">
+      Puedes ver las categorías pero no puedes tocarlas. Habla con el dueño. 🙏
+    </p>
+  </div>
+  {% endif %}
 
 </div>
 
-<!-- ============================= -->
 <!-- MODAL CATEGORÍA PADRE -->
-<!-- ============================= -->
 <div id="modalCategoria"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-    <div id="modalCategoriaContent"
-         class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-    </div>
+     class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+  <div id="modalCategoriaContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-md p-6">
+  </div>
 </div>
 
-<!-- ============================= -->
 <!-- MODAL SUBCATEGORÍA -->
-<!-- ============================= -->
 <div id="modalSubcategoria"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-    <div id="modalSubcategoriaContent"
-         class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-    </div>
+     class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+  <div id="modalSubcategoriaContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-md p-6">
+  </div>
 </div>
 
-<!-- ============================= -->
 <!-- MODAL CONFIRMAR ELIMINACIÓN -->
-<!-- ============================= -->
 <div id="modalConfirmar"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+     class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
 
-        <h2 class="text-xl font-semibold mb-4 text-gray-800">Confirmar eliminación</h2>
-        <p class="text-gray-700 mb-6">¿Seguro que deseas eliminar esta subcategoría?</p>
+    <h2 class="text-xl font-black text-black uppercase tracking-widest mb-2">
+      ⚠️ Eliminar
+    </h2>
+    <p class="text-gray-700 font-semibold text-base mb-6">
+      ¿Seguro? Esta acción no se puede deshacer.
+    </p>
 
-        <div class="flex justify-end gap-3">
-            <button class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition"
-                    onclick="cerrarConfirmar()">
-                Cancelar
-            </button>
-
-            <button id="btnConfirmarEliminar"
-                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition">
-                Eliminar
-            </button>
-        </div>
-
+    <div class="flex justify-end gap-3">
+      <button onclick="cerrarConfirmar()"
+              class="btn-90s bg-gray-100 border-4 border-black shadow-[4px_4px_0_0_black]
+                     font-black text-sm uppercase tracking-widest px-4 py-2">
+        Cancelar
+      </button>
+      <button id="btnConfirmarEliminar"
+              onclick="eliminarConfirmado()"
+              class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black]
+                     text-white font-black text-sm uppercase tracking-widest px-4 py-2">
+        Sí, eliminar
+      </button>
     </div>
+
+  </div>
 </div>
+
+<script>
+function toggleAccordion(bodyId, chevId) {
+  const body = document.getElementById(bodyId);
+  const chev = document.getElementById(chevId);
+  body.classList.toggle("open");
+  chev.classList.toggle("open");
+}
+</script>
 
 <script src="{% static 'js/categorias.js' %}"></script>
 

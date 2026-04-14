@@ -122,12 +122,14 @@ function eliminarUbicacion(id) {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                actualizarCardsUbicaciones(data.ubicaciones);
+                const card = document.getElementById(`card-${id}`);
+                if (card) {
+                    card.style.transition = "opacity 0.25s ease, transform 0.25s ease";
+                    card.style.opacity = "0";
+                    card.style.transform = "scale(0.95)";
+                }
                 showSuccess("Ubicación eliminada correctamente");
-
-                // 🔥 Recargar para actualizar sidebar
-                setTimeout(() => window.location.reload(), 800);
-
+                setTimeout(() => window.location.reload(), 600);
             } else {
                 showError("No se pudo eliminar la ubicación");
             }

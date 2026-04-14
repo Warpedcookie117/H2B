@@ -1,144 +1,248 @@
 {% extends 'partials/base.html' %}
 {% load static %}
 
-{% block title %}Panel del Socio - Comercializadora Modelo{% endblock %}
-
 {% block content %}
-<section class="py-10">
-  <div class="max-w-7xl mx-auto px-6">
 
-    <!-- Encabezado -->
-    <header class="mb-12 text-center">
-      <h2 class="text-4xl md:text-5xl font-extrabold text-red-600 tracking-tight drop-shadow">
-        Panel del Socio
-      </h2>
-      <p class="mt-2 text-gray-700 text-lg">Información general del negocio</p>
-    </header>
+<div class="max-w-7xl mx-auto p-6 space-y-14 relative overflow-hidden">
 
-    <!-- MÉTRICAS PRINCIPALES (SOLO LO QUE SÍ PUEDEN VER) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-14">
+  <!-- PATRONES 90s -->
+  <div class="absolute inset-0 pointer-events-none opacity-20">
+    <div class="absolute top-10 left-10 w-24 h-24 bg-[#00F5D4] rotate-12"></div>
+    <div class="absolute top-40 right-20 w-16 h-16 bg-[#00BBF9] rotate-45"></div>
+    <div class="absolute bottom-20 left-1/3 w-20 h-20 bg-[#CCFF00] rounded-full"></div>
+    <div class="absolute bottom-10 right-1/4 w-24 h-4 bg-[#9BF3F0] rotate-12"></div>
+    <div class="absolute top-1/2 left-1/4 w-20 h-4 bg-[#0EAD69] rotate-[-20deg]"></div>
+    <div class="absolute top-1/3 right-1/3 w-12 h-12 bg-[#FFD166] rotate-[30deg]"></div>
+  </div>
 
-      <!-- Movimientos recientes -->
-      <div class="p-6 rounded-2xl shadow-lg bg-gradient-to-br from-blue-500 to-blue-700 text-white">
-        <div class="flex items-center justify-between">
-          <p class="text-sm opacity-90">Movimientos recientes</p>
-          <i class="fas fa-exchange-alt text-3xl opacity-80"></i>
-        </div>
-        <p class="text-4xl font-extrabold mt-2">
-          {{ movimientos|length }}
-        </p>
-      </div>
+  <!-- ENCABEZADO -->
+  <div class="relative text-center mt-4">
+    <h1 class="text-5xl font-extrabold text-gray-900 tracking-tight">
+      Hola, {{ request.user.first_name|default:request.user.username }}. 👋
+    </h1>
+    <p class="text-lg font-bold text-gray-500 mt-1">
+      Panel de socio — {{ ahora|date:"d/m/Y H:i" }}
+    </p>
+  </div>
 
-      <!-- Alertas -->
-      <div class="p-6 rounded-2xl shadow-lg bg-gradient-to-br from-yellow-500 to-yellow-700 text-white">
-        <div class="flex items-center justify-between">
-          <p class="text-sm opacity-90">Alertas activas</p>
-          <i class="fas fa-bell text-3xl opacity-80"></i>
-        </div>
-        <p class="text-4xl font-extrabold mt-2">
-          {{ alertas|length }}
-        </p>
-      </div>
+  <!-- KPIs -->
+  <div class="relative grid grid-cols-1 sm:grid-cols-3 gap-6">
 
+    <!-- Total de productos registrados -->
+    <div class="bg-[#00F5D4] border-4 border-black shadow-[8px_8px_0_0_black] p-8
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#CCFF00] rotate-45 opacity-60"></div>
+      <p class="text-sm font-black text-black uppercase tracking-widest">📦 Productos registrados</p>
+      <p class="text-7xl font-black text-black mt-3">{{ total_productos }}</p>
+      <p class="text-xs font-bold text-black/60 mt-1">en Comercializadora Modelo</p>
     </div>
 
-    <!-- BOTÓN INVENTARIO GLOBAL (A LISTA DE PRODUCTOS) -->
-    <div class="text-center mb-14">
-      <a href="{% url 'inventario:lista_productos' %}"
-         class="inline-block bg-gradient-to-r from-red-600 to-red-700 text-white px-12 py-4 rounded-2xl text-xl font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition">
-        Ver Inventario Global
-      </a>
+    <!-- Productos disponibles en piso -->
+    <div class="bg-[#00BBF9] border-4 border-black shadow-[8px_8px_0_0_black] p-8
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#00F5D4] rounded-full opacity-40"></div>
+      <p class="text-sm font-black text-black uppercase tracking-widest">🛒 Disponibles en piso</p>
+      <p class="text-7xl font-black text-black mt-3">{{ productos_en_piso }}</p>
+      <p class="text-xs font-bold text-black/60 mt-1">productos con stock en piso hoy</p>
     </div>
 
-    <!-- GRÁFICA: INVENTARIO POR CATEGORÍA -->
-    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200 mb-14">
-      <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        <i class="fas fa-chart-pie text-red-500"></i>
-        Inventario por categoría
-      </h3>
-      <canvas id="chartCategorias" class="w-full h-64"></canvas>
-    </div>
-
-    <!-- ALERTAS DETALLADAS -->
-    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200 mb-14">
-      <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
-        <i class="fas fa-exclamation-circle text-red-500"></i>
-        Alertas importantes
-      </h3>
-
-      {% if alertas %}
-        <ul class="space-y-3">
-          {% for alerta in alertas %}
-            <li class="flex items-center gap-3 text-gray-700 bg-red-50 p-3 rounded-lg border border-red-200">
-              <i class="fas fa-exclamation-triangle text-red-500"></i>
-              {{ alerta }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-600 italic">No hay alertas por el momento.</p>
-      {% endif %}
-    </div>
-
-    <!-- MOVIMIENTOS RECIENTES -->
-    <div class="p-6 rounded-2xl shadow-xl bg-white border border-gray-200">
-      <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        <i class="fas fa-history text-gray-600"></i>
-        Movimientos recientes
-      </h3>
-
-      {% if movimientos %}
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead>
-              <tr class="text-gray-600 border-b bg-gray-50">
-                <th class="py-2 px-2">Producto</th>
-                <th class="py-2 px-2">Tipo</th>
-                <th class="py-2 px-2">Cantidad</th>
-                <th class="py-2 px-2">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for mov in movimientos %}
-                <tr class="border-b hover:bg-gray-50 transition">
-                  <td class="py-2 px-2">{{ mov.producto.nombre }}</td>
-                  <td class="py-2 px-2 capitalize">{{ mov.tipo }}</td>
-                  <td class="py-2 px-2">{{ mov.cantidad }}</td>
-                  <td class="py-2 px-2">{{ mov.fecha|date:"d/m/Y H:i" }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <p class="text-gray-600 italic">No hay movimientos recientes.</p>
-      {% endif %}
+    <!-- Familias de productos -->
+    <div class="bg-[#CCFF00] border-4 border-black shadow-[8px_8px_0_0_black] p-8
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-4 -right-4 w-14 h-14 bg-[#FFD166] rotate-45 opacity-60"></div>
+      <p class="text-sm font-black text-black uppercase tracking-widest">📂 Familias de productos</p>
+      <p class="text-7xl font-black text-black mt-3">{{ total_familias }}</p>
+      <p class="text-xs font-bold text-black/60 mt-1">diferentes familias de productos</p>
     </div>
 
   </div>
-</section>
 
-<!-- CHART.JS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- STOCK BAJO -->
+  {% if stock_bajo %}
+  <div class="relative border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+    <div class="bg-[#FFD166] px-6 py-4 border-b-4 border-black">
+      <h2 class="text-lg font-black text-black uppercase tracking-widest">
+        ⚠️ Productos con stock bajo — reabastece pronto
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 bg-white">
+      {% for inv in stock_bajo %}
+      <div class="border-r-4 border-b-4 border-black p-5 relative overflow-hidden hover:bg-yellow-50 transition-colors">
+        <div class="absolute top-0 right-0 w-6 h-6 bg-[#FFD166] border-l-4 border-b-4 border-black"></div>
+        <p class="text-sm font-black text-gray-900 truncate">{{ inv.producto.nombre }}</p>
+        <p class="text-xs text-gray-500 mb-2">{{ inv.ubicacion.nombre }}</p>
+        <p class="text-3xl font-black text-[#0EAD69]">
+          {{ inv.cantidad_actual }}
+          <span class="text-xs text-gray-400 font-normal">uds</span>
+        </p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- GRÁFICAS POR SUCURSAL -->
+  <div class="relative space-y-6">
+
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
+      📊 Más y menos vendido — última semana
+    </h2>
+
+    {% for s in graficas_sucursal %}
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+      <div class="bg-[#0EAD69] px-6 py-4 border-b-4 border-black">
+        <h3 class="text-xl font-black text-white uppercase tracking-widest">
+          🏬 {{ s.sucursal }}
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-0 bg-white">
+
+        <div class="border-r-4 border-black p-6 relative overflow-hidden">
+          <div class="absolute -top-3 -right-3 w-10 h-10 bg-[#00F5D4] rotate-45 opacity-40"></div>
+          <h4 class="text-sm font-black uppercase tracking-widest text-gray-600 mb-4">🔥 Más vendidos</h4>
+          <div class="relative w-full h-[260px]">
+            <canvas id="mas_{{ forloop.counter }}"></canvas>
+          </div>
+          {% if not s.mas_labels %}
+          <p class="text-center text-gray-400 text-sm font-semibold mt-4">Sin datos esta semana</p>
+          {% endif %}
+        </div>
+
+        <div class="p-6 relative overflow-hidden">
+          <div class="absolute -bottom-3 -left-3 w-10 h-10 bg-[#CCFF00] rotate-45 opacity-40"></div>
+          <h4 class="text-sm font-black uppercase tracking-widest text-gray-600 mb-4">🐢 Menos vendidos</h4>
+          <div class="relative w-full h-[260px]">
+            <canvas id="menos_{{ forloop.counter }}"></canvas>
+          </div>
+          {% if not s.menos_labels %}
+          <p class="text-center text-gray-400 text-sm font-semibold mt-4">Sin datos esta semana</p>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% empty %}
+    <div class="border-4 border-black p-6 bg-white text-gray-500 font-semibold">
+      No hay sucursales registradas.
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- ACCIONES RÁPIDAS -->
+  <div class="relative space-y-4">
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase">⚡ Acciones rápidas</h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+
+      <a href="{% url 'inventario:nuevo_producto' %}"
+         class="bg-[#00BBF9] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute -top-4 right-4 w-12 h-12 bg-[#CCFF00] rotate-45 opacity-50"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mx-auto">+</div>
+        <p class="mt-3 font-black text-base uppercase">Registrar producto</p>
+        <p class="text-xs font-semibold opacity-70 mt-1">Agregar nuevo artículo</p>
+      </a>
+
+      <a href="{% url 'inventario:ubicaciones' %}"
+         class="bg-[#00F5D4] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute bottom-2 left-2 w-8 h-8 bg-[#00BBF9] rounded-full opacity-40"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mx-auto">📍</div>
+        <p class="mt-3 font-black text-base uppercase">Ver ubicaciones</p>
+        <p class="text-xs font-semibold opacity-70 mt-1">Sucursales y almacenes</p>
+      </a>
+
+      <a href="{% url 'inventario:lista_productos' %}"
+         class="bg-[#CCFF00] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+        <div class="absolute top-2 right-2 w-8 h-4 bg-[#0EAD69] rotate-12 opacity-40"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mx-auto">📦</div>
+        <p class="mt-3 font-black text-base uppercase">Inventario global</p>
+        <p class="text-xs font-semibold opacity-70 mt-1">Ver todos los productos</p>
+      </a>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
-  const catLabels = {{ graf_categorias_labels|safe }};
-  const catData = {{ graf_categorias_data|safe }};
+  const GRAFICAS = {{ graficas_sucursal_json|safe }};
 
-  new Chart(document.getElementById('chartCategorias'), {
-    type: 'bar',
-    data: {
-      labels: catLabels,
-      datasets: [{
-        label: 'Cantidad total',
-        data: catData,
-        backgroundColor: '#ef4444'
-      }]
-    },
-    options: {
-      scales: {
-        y: { beginAtZero: true }
-      }
+  const COLORES_MAS   = ["#00F5D4", "#00BBF9", "#0EAD69", "#9BF3F0", "#CCFF00"];
+  const COLORES_MENOS = ["#FFD166", "#FF6B6B", "#FFA552", "#FF9F1C", "#E07A5F"];
+
+  GRAFICAS.forEach((s, i) => {
+    const idx = i + 1;
+
+    const ctxMas = document.getElementById(`mas_${idx}`);
+    if (ctxMas && s.mas_labels && s.mas_labels.length > 0) {
+      new Chart(ctxMas, {
+        type: "bar",
+        data: {
+          labels: s.mas_labels,
+          datasets: [{
+            label: "Unidades vendidas",
+            data: s.mas_data,
+            backgroundColor: s.mas_labels.map((_, j) => COLORES_MAS[j % COLORES_MAS.length]),
+            borderWidth: 0,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw} unidades` } }
+          },
+          scales: {
+            x: { ticks: { color: "#374151", font: { weight: "bold", size: 11 } }, grid: { display: false }, border: { display: false } },
+            y: { ticks: { color: "#6B7280", font: { size: 11 } }, grid: { color: "#F3F4F6" }, border: { display: false } }
+          }
+        }
+      });
+    }
+
+    const ctxMenos = document.getElementById(`menos_${idx}`);
+    if (ctxMenos && s.menos_labels && s.menos_labels.length > 0) {
+      new Chart(ctxMenos, {
+        type: "bar",
+        data: {
+          labels: s.menos_labels,
+          datasets: [{
+            label: "Unidades vendidas",
+            data: s.menos_data,
+            backgroundColor: s.menos_labels.map((_, j) => COLORES_MENOS[j % COLORES_MENOS.length]),
+            borderWidth: 0,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw} unidades` } }
+          },
+          scales: {
+            x: { ticks: { color: "#374151", font: { weight: "bold", size: 11 } }, grid: { display: false }, border: { display: false } },
+            y: { ticks: { color: "#6B7280", font: { size: 11 } }, grid: { color: "#F3F4F6" }, border: { display: false } }
+          }
+        }
+      });
     }
   });
 </script>

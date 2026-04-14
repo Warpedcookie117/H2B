@@ -1,8 +1,10 @@
+import json
+from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from inventario.forms import  ProductoForm, TemporadaForm
-from inventario.models import Atributo, Categoria, Inventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
+from inventario.models import Atributo, Categoria, Inventario, MovimientoInventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
 from inventario.services.barcode_render_service import BarcodeRenderService
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
@@ -19,6 +21,8 @@ from rapidfuzz import process, fuzz
 from inventario.services.atributo_service import AtributoService
 from inventario.models import ValorAtributo, Atributo, Categoria
 import re
+from django.views.decorators.http import require_POST
+
 
 
 
@@ -31,18 +35,18 @@ def productos_por_ubicacion(request, ubicacion_id):
 
     productos = (
         Inventario.objects
-        .filter(ubicacion=ubicacion)
+        .filter(ubicacion=ubicacion, producto__activo=True)
         .select_related("producto", "producto__categoria", "producto__categoria_padre")
         .order_by("producto__nombre")
     )
 
     inventario_todas = (
         Inventario.objects
+        .filter(producto__activo=True)
         .select_related("producto", "ubicacion")
         .order_by("producto__nombre")
     )
 
-    # ⭐ SERIALIZAR AQUÍ
     inventario_todas_json = list(
         inventario_todas.values(
             "producto_id",
@@ -56,7 +60,7 @@ def productos_por_ubicacion(request, ubicacion_id):
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,
         "productos": productos,
-        "inventario_todas_json": inventario_todas_json,   # ⭐ ESTO SE ENVÍA
+        "inventario_todas_json": inventario_todas_json,
         "ubicaciones": ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
     })
@@ -67,14 +71,12 @@ def productos_por_ubicacion(request, ubicacion_id):
 def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
 
-    # Inventarios por ubicación
     inventarios = (
         Inventario.objects
-        .filter(producto=producto)
+        .filter(producto=producto, cantidad_actual__gt=0)
         .select_related("ubicacion")
     )
 
-    # Valores actuales del producto
     valores_qs = (
         ValorAtributo.objects
         .filter(producto=producto)
@@ -82,20 +84,22 @@ def detalle_producto(request, producto_id):
     )
 
     valores = {v.atributo.id: v for v in valores_qs}
-
-    # Atributos de la subcategoría
     sub_atributos = producto.categoria.atributos.all()
 
-    # Permisos
     empleado = getattr(request.user, "empleado", None)
     puede_editar = empleado and empleado.rol == "dueño"
 
-    # ============================
-    # GUARDAR CAMBIOS (solo dueño)
-    # ============================
     if request.method == "POST" and puede_editar:
 
-        # 1. Guardar datos del producto
+        # ⭐ Guardado solo del costo
+        if request.POST.get("solo_costo"):
+            costo = request.POST.get("costo", "").strip()
+            producto.costo = costo if costo else None
+            producto.save(update_fields=["costo"])
+            messages.success(request, "Costo guardado.")
+            return redirect("inventario:detalle_producto", producto_id=producto.id)
+
+        # Guardado general
         producto.nombre = request.POST.get("nombre", producto.nombre)
         producto.descripcion = request.POST.get("descripcion", producto.descripcion)
         producto.precio_menudeo = request.POST.get("precio_menudeo", producto.precio_menudeo)
@@ -103,20 +107,15 @@ def detalle_producto(request, producto_id):
         producto.precio_docena = request.POST.get("precio_docena", producto.precio_docena)
         producto.save()
 
-        # 2. Guardar valores de atributos
         for attr in sub_atributos:
             field_name = f"attr_{attr.nombre}"
-
             if field_name in request.POST:
                 nuevo_valor = request.POST.get(field_name).strip()
-
                 if attr.id in valores:
-                    # Ya existe → actualizar
                     val_obj = valores[attr.id]
                     val_obj.valor = nuevo_valor
                     val_obj.save()
                 else:
-                    # No existe → crear
                     ValorAtributo.objects.create(
                         producto=producto,
                         atributo=attr,
@@ -126,9 +125,6 @@ def detalle_producto(request, producto_id):
         messages.success(request, "Cambios guardados correctamente.")
         return redirect("inventario:detalle_producto", producto_id=producto.id)
 
-    # ============================
-    # PREPARAR DATOS PARA EL TEMPLATE
-    # ============================
     atributos = []
     for attr in sub_atributos:
         atributos.append({
@@ -145,26 +141,24 @@ def detalle_producto(request, producto_id):
     })
 
 
-
 @login_required
 def lista_productos(request):
-    # Base queryset con relaciones optimizadas
     productos = (
         Producto.objects
+        .filter(activo=True)
         .select_related(
             'registrado_por__user',
             'dueño__user',
             'categoria',
-            'categoria__padre'
+            'categoria__padre',
+            'categoria_padre',
         )
         .prefetch_related(
             'inventarios__ubicacion',
             'temporada'
         )
-        .all()
     )
 
-    # Filtros GET
     dueño_id = request.GET.get('dueño')
     registrado_por_id = request.GET.get('usuario')
     categoria_padre_id = request.GET.get('categoria_padre')
@@ -175,30 +169,23 @@ def lista_productos(request):
 
     if dueño_id:
         productos = productos.filter(dueño__id=dueño_id)
-
     if registrado_por_id:
         productos = productos.filter(registrado_por__id=registrado_por_id)
-
     if subcategoria_id:
         productos = productos.filter(categoria__id=subcategoria_id)
-
     if categoria_padre_id:
         productos = productos.filter(categoria__padre__id=categoria_padre_id)
-
     if precio_tipo in ['menudeo', 'mayoreo', 'docena']:
         if precio_min:
             productos = productos.filter(**{f'precio_{precio_tipo}__gte': precio_min})
         if precio_max:
             productos = productos.filter(**{f'precio_{precio_tipo}__lte': precio_max})
 
-    # Datos para filtros
     empleados = Empleado.objects.select_related('user').all()
     dueños = empleados.filter(rol='dueño')
     registradores = empleados.exclude(rol='dueño')
     categorias_padre = Categoria.objects.filter(padre__isnull=True)
     subcategorias = Categoria.objects.filter(padre__isnull=False)
-
-    # 🔥 UBICACIONES DINÁMICAS (la parte que arregla TODO)
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
     return render(request, 'inventario/productos.html', {
@@ -208,8 +195,6 @@ def lista_productos(request):
         'registradores': registradores,
         'categorias_padre': categorias_padre,
         'subcategorias': subcategorias,
-
-        # 🔥 ahora el template recibe TODAS las ubicaciones
         'ubicaciones': ubicaciones,
     })
     
@@ -283,16 +268,19 @@ def nuevo_producto(request):
             s = str(v).strip()
 
             if tipo_attr == "numero":
+                # Solo enteros en sugerencias — decimales se guardan exactos
                 solo_num = re.findall(r"[0-9]+(?:\.[0-9]+)?", s)
                 if solo_num:
                     try:
                         num = float(solo_num[0])
-                        s = str(int(num)) if num.is_integer() else str(num)
-                    except:
+                        # Si tiene decimales → mostrar exacto, no redondear
+                        s = str(num) if num != int(num) else str(int(num))
+                    except Exception:
                         s = AtributoService.normalizar_texto(s)
                 else:
                     s = AtributoService.normalizar_texto(s)
             else:
+                # Texto — incluyendo códigos como 8.11, 8.12
                 s = AtributoService.normalizar_texto(s)
 
             normalizados.append(s)
@@ -327,6 +315,7 @@ def nuevo_producto(request):
     # POST → procesar formulario
     # ============================
 
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     sucursal_actual = request.session.get("sucursal_actual")
 
     form = ProductoForm(
@@ -337,6 +326,9 @@ def nuevo_producto(request):
     form.request = request
 
     if not form.is_valid():
+        if is_ajax:
+            errores = [e for errs in form.errors.values() for e in errs]
+            return JsonResponse({"success": False, "errors": errores})
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
     # ============================
@@ -358,12 +350,16 @@ def nuevo_producto(request):
                 tamano_etiqueta=tam
             )
         except ValidationError as e:
+            if is_ajax:
+                return JsonResponse({"success": False, "errors": e.messages})
             messages.error(request, str(e))
             return render(request, "inventario/nuevo_producto.html", contexto(form))
 
-        messages.success(request, "Producto registrado correctamente.")
         url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
-        return redirect(f"{url}?highlight={producto.id}&new=1")
+        redirect_url = f"{url}?highlight={producto.id}&new=1"
+        if is_ajax:
+            return JsonResponse({"success": True, "redirect": redirect_url})
+        return redirect(redirect_url)
 
     # ============================
     # CASO 2: Código interno
@@ -371,6 +367,8 @@ def nuevo_producto(request):
 
     tam = form.cleaned_data.get("tamano_etiqueta")
     if not tam:
+        if is_ajax:
+            return JsonResponse({"success": False, "errors": ["Debes seleccionar un tamaño de etiqueta."]})
         messages.error(request, "Debes seleccionar un tamaño de etiqueta.")
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
@@ -392,13 +390,16 @@ def nuevo_producto(request):
             tamano_etiqueta=tam
         )
     except ValidationError as e:
+        if is_ajax:
+            return JsonResponse({"success": False, "errors": e.messages})
         messages.error(request, str(e))
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
-    messages.success(request, "Producto registrado correctamente.")
-
     url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
-    return redirect(f"{url}?highlight={producto.id}&new=1")
+    redirect_url = f"{url}?highlight={producto.id}&new=1"
+    if is_ajax:
+        return JsonResponse({"success": True, "redirect": redirect_url})
+    return redirect(redirect_url)
 
 
 
@@ -533,22 +534,169 @@ def temporada_view(request):
     })
     
     
+    
+    
+# ============================================================
+# LISTA DE PRODUCTOS INACTIVOS
+# ============================================================
+ 
 @login_required
-def eliminar_producto_completo(request, producto_id):
-    if request.method != "DELETE":
-        return JsonResponse(
-            {"success": False, "errors": ["Método no permitido"]},
-            status=405
+def productos_inactivos(request):
+    empleado = request.user.empleado
+
+    if empleado.rol not in ["dueño", "cajero", "almacenista"]:
+        messages.error(request, "No tienes permiso para ver esta sección.")
+        return redirect("tienda_temp:dashboard_socio")
+
+    productos = (
+        Producto.objects
+        .filter(activo=False)
+        .select_related(
+            "categoria",
+            "categoria_padre",
+            "dueño",
+            "desactivado_por"
         )
+        .order_by("nombre")
+    )
+
+    ubicaciones = Ubicacion.objects.all().order_by("nombre")
+
+    return render(request, "inventario/productos_inactivos.html", {
+        "productos": productos,
+        "ubicaciones": ubicaciones,
+    })
+ 
+# ============================================================
+# REACTIVAR PRODUCTO
+# ============================================================
+ 
+@login_required
+@require_POST
+def reactivar_producto(request, producto_id):
+    """
+    Reactiva un producto inactivo y le asigna inventario
+    en la ubicación y cantidad indicadas.
+    """
+    empleado = request.user.empleado
+ 
+    if empleado.rol not in ["dueño"]:
+        return JsonResponse({"success": False, "errors": "Sin permiso."}, status=403)
+ 
+    producto = get_object_or_404(Producto, id=producto_id, activo=False)
+ 
+    try:
+        data = json.loads(request.body)
+        ubicacion_id = data.get("ubicacion_id")
+        cantidad = int(data.get("cantidad", 0))
+    except Exception:
+        return JsonResponse({"success": False, "errors": "JSON inválido."}, status=400)
+ 
+    if not ubicacion_id:
+        return JsonResponse({"success": False, "errors": "Debes seleccionar una ubicación."}, status=400)
+ 
+    if cantidad <= 0:
+        return JsonResponse({"success": False, "errors": "La cantidad debe ser mayor a 0."}, status=400)
+ 
+    ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
+ 
+    # Reactivar el producto
+    producto.reactivar()
+ 
+    # Asignar o actualizar inventario en la ubicación seleccionada
+    inv, created = Inventario.objects.get_or_create(
+        producto=producto,
+        ubicacion=ubicacion,
+        defaults={"cantidad_actual": cantidad}
+    )
+ 
+    if not created:
+        inv.cantidad_actual += cantidad
+        inv.save()
+ 
+    # Registrar movimiento
+    MovimientoInventario.objects.create(
+        producto=producto,
+        tipo="entrada",
+        motivo="reabastecimiento",
+        cantidad=cantidad,
+        destino=ubicacion,
+        realizado_por=empleado,
+    )
+ 
+    return JsonResponse({
+        "success": True,
+        "mensaje": f"Producto '{producto.nombre}' reactivado con {cantidad} unidades en {ubicacion.nombre}."
+    })
+ 
+ 
+# ============================================================
+# ELIMINAR PRODUCTO DEFINITIVO (HARD DELETE)
+# ============================================================
+ 
+@login_required
+@require_http_methods(["DELETE"])
+def eliminar_producto_definitivo(request, producto_id):
+    """
+    Elimina un producto COMPLETAMENTE de la base de datos.
+    Solo disponible para productos inactivos.
+    Solo dueño puede hacerlo.
+    """
+    empleado = request.user.empleado
+ 
+    if empleado.rol not in ["dueño"]:
+        return JsonResponse({"success": False, "errors": "Sin permiso."}, status=403)
+ 
+    producto = get_object_or_404(Producto, id=producto_id, activo=False)
+ 
+    nombre = producto.nombre
+    producto.delete()
+ 
+    return JsonResponse({
+        "success": True,
+        "mensaje": f"Producto '{nombre}' eliminado definitivamente."
+    })
+    
+
+@login_required
+@require_POST
+def desactivar_producto(request, producto_id):
+    """
+    Desactiva un producto (soft delete).
+    Recibe el motivo desde el modal via JSON.
+    Solo dueño, cajero y almacenista pueden desactivar.
+    """
+    empleado = request.user.empleado
+
+    # Validar rol
+    roles_permitidos = ["dueño", "cajero", "almacenista"]
+    if empleado.rol not in roles_permitidos:
+        return JsonResponse({"success": False, "errors": "No tienes permiso para desactivar productos."}, status=403)
 
     producto = Producto.objects.filter(id=producto_id).first()
-
     if not producto:
-        return JsonResponse({
-            "success": False,
-            "errors": ["El producto no existe."]
-        })
+        return JsonResponse({"success": False, "errors": "El producto no existe."}, status=404)
 
-    producto.delete()
+    if not producto.activo:
+        return JsonResponse({"success": False, "errors": "El producto ya está desactivado."}, status=400)
 
-    return JsonResponse({"success": True})
+    try:
+        data = json.loads(request.body)
+        motivo = data.get("motivo", "").strip()
+    except Exception:
+        return JsonResponse({"success": False, "errors": "JSON inválido."}, status=400)
+
+    if not motivo:
+        return JsonResponse({"success": False, "errors": "El motivo es obligatorio."}, status=400)
+
+    # Desactivar usando el método del modelo
+    producto.desactivar(empleado=empleado, motivo=motivo)
+
+    return JsonResponse({
+        "success": True,
+        "mensaje": f"Producto '{producto.nombre}' desactivado correctamente."
+    })
+    
+
+
+

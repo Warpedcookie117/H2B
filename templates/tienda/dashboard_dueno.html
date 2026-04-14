@@ -3,142 +3,195 @@
 
 {% block content %}
 
-<div class="max-w-7xl mx-auto p-6 space-y-12 relative overflow-hidden">
+<div class="max-w-7xl mx-auto p-6 space-y-14 relative overflow-hidden">
 
-  <!-- PATRONES THE NANNY (sobrios pero coloridos) -->
-  <div class="absolute inset-0 pointer-events-none opacity-25">
-    <div class="absolute top-10 left-10 w-24 h-24 bg-[#B33951] rotate-12"></div>
-    <div class="absolute top-40 right-20 w-16 h-16 bg-[#2C4C7A] rotate-45"></div>
-    <div class="absolute bottom-20 left-1/3 w-20 h-20 bg-[#E3B23C] rounded-full"></div>
-    <div class="absolute bottom-10 right-1/4 w-24 h-4 bg-[#3C8D7A] rotate-12"></div>
-    <div class="absolute top-1/2 left-1/4 w-20 h-4 bg-[#D6458C] rotate-[-20deg]"></div>
+  <!-- PATRONES 90s -->
+  <div class="absolute inset-0 pointer-events-none opacity-20">
+    <div class="absolute top-10 left-10 w-24 h-24 bg-[#FF006E] rotate-12"></div>
+    <div class="absolute top-40 right-20 w-16 h-16 bg-[#8338EC] rotate-45"></div>
+    <div class="absolute bottom-20 left-1/3 w-20 h-20 bg-[#FFBE0B] rounded-full"></div>
+    <div class="absolute bottom-10 right-1/4 w-24 h-4 bg-[#3A86FF] rotate-12"></div>
+    <div class="absolute top-1/2 left-1/4 w-20 h-4 bg-[#FB5607] rotate-[-20deg]"></div>
+    <div class="absolute top-1/3 right-1/3 w-12 h-12 bg-[#06D6A0] rotate-[30deg]"></div>
   </div>
 
-  <!-- Encabezado -->
-  <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">
-      Panel del Dueño
+  <!-- ENCABEZADO -->
+  <div class="relative text-center mt-4">
+    <h1 class="text-5xl font-extrabold text-gray-900 tracking-tight">
+      Hola, {{ request.user.first_name|default:request.user.username }}. 👋
     </h1>
-    <span class="text-xs sm:text-sm text-gray-500">
-      Última actualización: {{ ahora|date:"d/m/Y H:i" }}
-    </span>
+    <p class="text-lg font-bold text-gray-500 mt-1">
+      Bienvenida al panel del dueño — {{ ahora|date:"d/m/Y H:i" }}
+    </p>
   </div>
 
-  <!-- KPIs estilo The Nanny -->
-  <div class="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- KPIs PRINCIPALES -->
+  <div class="relative grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-    <!-- KPI 1 — Rojo vino -->
-    <div class="bg-[#B33951] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+    <div class="bg-[#FF006E] border-4 border-black shadow-[8px_8px_0_0_black] p-8
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-      <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#E3B23C] rotate-45 opacity-40"></div>
-      <p class="text-sm font-black text-black uppercase">Productos registrados</p>
-      <p class="text-5xl font-black text-black mt-2">{{ total_productos }}</p>
+      <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+      <p class="text-base font-black text-black uppercase tracking-widest">Productos activos a mi nombre</p>
+      <p class="text-7xl font-black text-black mt-3">{{ productos_dueno }}</p>
     </div>
 
-    <!-- KPI 2 — Azul petróleo -->
-    <div class="bg-[#2C4C7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white
+    <div class="bg-[#8338EC] border-4 border-black shadow-[8px_8px_0_0_black] p-8 text-white
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-      <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#D6458C] rounded-full opacity-40"></div>
-      <p class="text-sm font-black uppercase">Ventas totales</p>
-      <p class="text-5xl font-black mt-2">${{ ventas_totales|default:0 }} MXN</p>
-    </div>
-
-    <!-- KPI 3 — Verde esmeralda apagado -->
-    <div class="bg-[#3C8D7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute top-1/2 right-0 w-24 h-4 bg-[#B33951] rotate-12 opacity-40"></div>
-      <p class="text-sm font-black uppercase">Ubicaciones activas</p>
-      <p class="text-5xl font-black mt-2">{{ ubicaciones|length }}</p>
+      <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#FB5607] rounded-full opacity-40"></div>
+      <p class="text-base font-black uppercase tracking-widest">
+        Vendido en {{ mes_actual }} — solo mis productos
+      </p>
+      <p class="text-7xl font-black mt-3">${{ ventas_mes_dueno|default:0 }}</p>
+      <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
     </div>
 
   </div>
 
-  <!-- Gráficas -->
-  <div class="relative grid grid-cols-1 md:grid-cols-2 gap-10">
+  <!-- VENTAS HOY — CARDS POR CAJA -->
+  <div class="relative space-y-6">
 
-    <!-- Chart 1 — Rosa fucsia -->
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
+      📍 Ventas de hoy — por caja
+    </h2>
+
+    {% for s in ventas_por_sucursal %}
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+      <div class="bg-[#3A86FF] px-6 py-4 border-b-4 border-black">
+        <h3 class="text-xl font-black text-white uppercase tracking-widest">
+          🏬 {{ s.sucursal }}
+        </h3>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
+        {% for caja in s.cajas %}
+        <div class="border-r-4 border-b-4 border-black p-6 bg-white
+                    hover:bg-yellow-50 transition-colors duration-150 relative overflow-hidden"
+             data-caja-key="{{ s.sucursal }}__{{ caja.nombre }}">
+
+          <div class="absolute top-0 right-0 w-8 h-8 bg-[#FFBE0B] border-l-4 border-b-4 border-black"></div>
+
+          <p class="text-sm font-black uppercase text-gray-500 mb-4 tracking-widest">
+            💳 {{ caja.nombre }}
+          </p>
+
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-black uppercase text-gray-600">💵 Efectivo</span>
+            <span class="caja-efectivo text-2xl font-black text-[#06D6A0]">${{ caja.efectivo }}</span>
+          </div>
+
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-black uppercase text-gray-600">💳 Tarjeta</span>
+            <span class="caja-tarjeta text-2xl font-black text-[#8338EC]">${{ caja.tarjeta }}</span>
+          </div>
+
+          <div class="border-t-2 border-black border-dashed my-3"></div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-black uppercase text-black">Total</span>
+            <span class="caja-total text-3xl font-black text-[#FF006E]">${{ caja.total }}</span>
+          </div>
+
+          <p class="caja-hora text-xs text-gray-400 mt-3 font-semibold">
+            {% if caja.ultima_actualizacion %}
+              Última venta: {{ caja.ultima_actualizacion|date:"H:i" }} hrs
+            {% else %}
+              Sin ventas hoy
+            {% endif %}
+          </p>
+
+        </div>
+        {% empty %}
+        <div class="col-span-full p-6 text-gray-400 text-sm font-semibold bg-white">
+          Sin cajas registradas.
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+    {% empty %}
+    <div class="border-4 border-black p-6 bg-white text-gray-500 font-semibold">
+      No hay sucursales registradas.
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- GRÁFICAS -->
+  <div class="relative grid grid-cols-1 md:grid-cols-2 gap-8">
+
     <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-      <div class="absolute -top-3 left-3 w-10 h-10 bg-[#D6458C] rotate-45 opacity-40"></div>
-      <h2 class="text-xl font-black text-black mb-4 uppercase">Productos más vendidos</h2>
-      <div class="relative w-full h-[320px] bg-white">
-        <canvas id="chartMasVendidos"></canvas>
+      <div class="absolute -top-3 left-3 w-10 h-10 bg-[#FF006E] rotate-45 opacity-40"></div>
+      <h2 class="text-lg font-black text-black mb-4 uppercase tracking-wide">
+        📊 Ventas hoy por sucursal
+      </h2>
+      <div class="relative w-full h-[300px]">
+        <canvas id="chartVentasHoySucursal"></canvas>
       </div>
     </div>
 
-    <!-- Chart 2 — Amarillo mostaza -->
     <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-      <div class="absolute bottom-3 right-3 w-12 h-12 bg-[#E3B23C] rounded-full opacity-40"></div>
-      <h2 class="text-xl font-black text-black mb-4 uppercase">Ventas totales por mes</h2>
-      <div class="relative w-full h-[320px] bg-white">
-        <canvas id="chartVentasMes"></canvas>
+      <div class="absolute -top-3 right-3 w-10 h-10 bg-[#8338EC] rotate-45 opacity-40"></div>
+      <h2 class="text-lg font-black text-black mb-4 uppercase tracking-wide">
+        📦 Mis productos más vendidos (última semana)
+      </h2>
+      <div class="relative w-full h-[300px]">
+        <canvas id="chartMasVendidosSemana"></canvas>
       </div>
     </div>
 
   </div>
 
-  <!-- Acciones rápidas -->
+  <!-- ACCIONES RÁPIDAS -->
   <div class="relative space-y-4">
-    <h2 class="text-xl font-extrabold text-gray-900 uppercase">Acciones rápidas</h2>
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase">⚡ Acciones rápidas</h2>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-      <!-- Acción 1 — Registrar producto -->
       <a href="{% url 'inventario:nuevo_producto' %}"
-         class="bg-[#2C4C7A] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
+         class="bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-        <div class="absolute -top-4 right-4 w-12 h-12 bg-[#E3B23C] rotate-45 opacity-40"></div>
-        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
-          +
-        </div>
-        <p class="mt-4 font-black text-lg uppercase">Registrar producto</p>
-        <p class="text-sm font-semibold">Agregar un nuevo artículo</p>
+        <div class="absolute -top-4 right-4 w-12 h-12 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white text-black flex items-center justify-center text-2xl font-black mx-auto">+</div>
+        <p class="mt-3 font-black text-base uppercase">Registrar producto</p>
+        <p class="text-xs font-semibold opacity-80 mt-1">Agregar un nuevo artículo al sistema</p>
       </a>
 
-      <!-- Acción 2 — Inventario Global -->
       <a href="{% url 'inventario:lista_productos' %}"
-         class="bg-[#E8A2A8] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+         class="bg-[#FFBE0B] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-        <div class="absolute bottom-2 left-2 w-10 h-10 bg-[#3C8D7A] rounded-full opacity-40"></div>
-        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
-          📦
-        </div>
-        <p class="mt-4 font-black text-lg uppercase">Inventario Global</p>
-        <p class="text-sm font-semibold">Consulta todos los productos</p>
+        <div class="absolute bottom-2 left-2 w-8 h-8 bg-[#FF006E] rounded-full opacity-40"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white text-black flex items-center justify-center text-2xl font-black mx-auto">📦</div>
+        <p class="mt-3 font-black text-base uppercase">Inventario Global</p>
+        <p class="text-xs font-semibold opacity-70 mt-1">Ver todos los productos de todos lados</p>
       </a>
 
-      <!-- Acción 3 — Administrar ubicaciones -->
       <a href="{% url 'inventario:ubicaciones' %}"
-         class="bg-[#F4C095] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
+         class="bg-[#06D6A0] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-black text-center
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-        <div class="absolute top-3 right-3 w-12 h-4 bg-[#B33951] rotate-12 opacity-40"></div>
-        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
-          📍
-        </div>
-        <p class="mt-4 font-black text-lg uppercase">Administrar ubicaciones</p>
-        <p class="text-sm font-semibold">Editar sucursales y almacenes</p>
+        <div class="absolute top-2 right-2 w-8 h-4 bg-[#8338EC] rotate-12 opacity-40"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white text-black flex items-center justify-center text-2xl font-black mx-auto">📍</div>
+        <p class="mt-3 font-black text-base uppercase">Ubicaciones</p>
+        <p class="text-xs font-semibold opacity-70 mt-1">Aquí puedes ver dónde guardamos los productos</p>
       </a>
 
-      <!-- Acción 4 — Crear sucursal -->
       <a href="{% url 'sucursales:crear_sucursal' %}"
-         class="bg-[#D6458C] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
+         class="bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black] p-6 text-white text-center
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
-        <div class="absolute top-3 left-3 w-12 h-12 bg-[#2C4C7A] rotate-45 opacity-40"></div>
-        <div class="w-16 h-16 border-4 border-black bg-white text-black flex items-center justify-center text-3xl font-black mx-auto">
-          🏬
-        </div>
-        <p class="mt-4 font-black text-lg uppercase">Crear sucursal</p>
-        <p class="text-sm font-semibold">Abrir una nueva ubicación</p>
+        <div class="absolute top-2 left-2 w-10 h-10 bg-[#3A86FF] rotate-45 opacity-40"></div>
+        <div class="w-14 h-14 border-4 border-black bg-white text-black flex items-center justify-center text-2xl font-black mx-auto">🏬</div>
+        <p class="mt-3 font-black text-base uppercase">Crear sucursal</p>
+        <p class="text-xs font-semibold opacity-80 mt-1">Para crear tienditas nuevas</p>
       </a>
 
     </div>
@@ -146,70 +199,12 @@
 
 </div>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<!-- Variables para JS -->
 <script>
-  const masVendidos = {{ mas_vendidos|default:"[]"|safe }};
-  const ventasMes = {{ ventas_mes_data|default:"[]"|safe }};
-
-  const palette = {
-    blue: "#2C4C7A",
-    yellow: "#E3B23C",
-    red: "#B33951",
-    redLight: "rgba(179,57,81,0.25)",
-    text: "#000000"
-  };
-
-  new Chart(document.getElementById('chartMasVendidos'), {
-    type: 'bar',
-    data: {
-      labels: masVendidos.map(x => x.nombre),
-      datasets: [{
-        label: 'Ventas',
-        data: masVendidos.map(x => x.cantidad),
-        backgroundColor: palette.blue,
-        borderRadius: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 1200, easing: "easeOutBounce" },
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: palette.text } },
-        y: { ticks: { color: palette.text }, beginAtZero: true }
-      }
-    }
-  });
-
-  new Chart(document.getElementById('chartVentasMes'), {
-    type: 'line',
-    data: {
-      labels: ventasMes.map(x => x.mes),
-      datasets: [{
-        label: 'Ventas',
-        data: ventasMes.map(x => x.total),
-        borderColor: palette.red,
-        backgroundColor: palette.redLight,
-        tension: 0.1,
-        borderWidth: 4,
-        pointRadius: 6,
-        pointBackgroundColor: palette.red
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 1200, easing: "easeOutBounce" },
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: palette.text } },
-        y: { ticks: { color: palette.text }, beginAtZero: true }
-      }
-    }
-  });
+  window.INIT_MAS_VENDIDOS_SEMANA = {{ mas_vendidos_semana|safe }};
+  window.INIT_VENTAS_HOY_SUCURSAL = {{ ventas_chart_sucursal|safe }};
 </script>
+
+<script src="{% static 'js/dashboard_dueno.js' %}"></script>
 
 {% endblock %}

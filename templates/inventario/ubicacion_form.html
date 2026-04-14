@@ -1,42 +1,83 @@
-<div class="space-y-4">
+<div class="space-y-6">
 
-    <h2 class="text-xl font-semibold mb-4">
-        {% if ubicacion %}Editar ubicación{% else %}Nueva ubicación{% endif %}
+  <!-- TÍTULO -->
+  <div class="border-b-4 border-black pb-3">
+    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-widest">
+      {% if ubicacion %}✏️ Editar ubicación{% else %}➕ Nueva ubicación{% endif %}
     </h2>
+    {% if ubicacion %}
+    <p class="text-xs text-gray-500 font-semibold uppercase tracking-widest mt-1">
+      Modifica los datos de esta ubicación
+    </p>
+    {% else %}
+    <p class="text-xs text-gray-500 font-semibold uppercase tracking-widest mt-1">
+      Completa los datos para registrar un nuevo almacén global
+    </p>
+    {% endif %}
+  </div>
 
-    <form id="formUbicacion" class="space-y-4">
-        {% csrf_token %}
+  <form id="formUbicacion" class="space-y-5">
+    {% csrf_token %}
 
-        <div>
-            <label class="font-medium text-gray-700 mb-1">Nombre</label>
-            {{ form.nombre }}
-            {% if form.nombre.errors %}
-                <p class="text-red-600 text-sm">{{ form.nombre.errors.0 }}</p>
-            {% endif %}
-        </div>
+    <!-- NOMBRE -->
+    <div class="space-y-2">
+      <label class="block text-xs font-black uppercase tracking-widest text-gray-700">
+        Nombre
+      </label>
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black]
+                  focus-within:-translate-x-0.5 focus-within:-translate-y-0.5
+                  transition-all duration-150">
+        {{ form.nombre }}
+      </div>
+      {% if form.nombre.errors %}
+      <p class="text-xs font-black text-[#FF006E] uppercase tracking-widest">
+        ⚠️ {{ form.nombre.errors.0 }}
+      </p>
+      {% endif %}
+    </div>
 
-        <div>
-            <label class="font-medium text-gray-700 mb-1">Dirección</label>
-            {{ form.direccion }}
-            {% if form.direccion.errors %}
-                <p class="text-red-600 text-sm">{{ form.direccion.errors.0 }}</p>
-            {% endif %}
-        </div>
+    <!-- DIRECCIÓN -->
+    <div class="space-y-2">
+      <label class="block text-xs font-black uppercase tracking-widest text-gray-700">
+        Dirección
+      </label>
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black]
+                  focus-within:-translate-x-0.5 focus-within:-translate-y-0.5
+                  transition-all duration-150">
+        {{ form.direccion }}
+      </div>
+      {% if form.direccion.errors %}
+      <p class="text-xs font-black text-[#FF006E] uppercase tracking-widest">
+        ⚠️ {{ form.direccion.errors.0 }}
+      </p>
+      {% endif %}
+    </div>
 
-        <div class="flex justify-end gap-2 pt-2">
-            <button type="button"
-                    class="bg-gray-400 text-white px-4 py-2 rounded"
-                    onclick="cerrarModalUbicacion()">
-                Cancelar
-            </button>
+    <!-- BOTONES -->
+    <div class="flex justify-end gap-3 pt-2">
 
-            <button type="button"
-                    class="bg-green-600 text-white px-4 py-2 rounded"
-                    onclick="guardarUbicacion({{ ubicacion.id|default:'null' }})">
-                Guardar
-            </button>
-        </div>
+      <button type="button"
+              onclick="cerrarModalUbicacion()"
+              class="bg-gray-200 border-4 border-black shadow-[4px_4px_0_0_black] px-5 py-2
+                     font-black text-xs uppercase tracking-widest text-gray-800
+                     hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_black]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_0_black]
+                     transition-all duration-100">
+        Cancelar
+      </button>
 
-    </form>
+      <button type="button"
+              onclick="guardarUbicacion({{ ubicacion.id|default:'null' }})"
+              class="bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black] px-5 py-2
+                     font-black text-xs uppercase tracking-widest text-black
+                     hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_black]
+                     active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_0_black]
+                     transition-all duration-100">
+        Guardar
+      </button>
+
+    </div>
+
+  </form>
 
 </div>

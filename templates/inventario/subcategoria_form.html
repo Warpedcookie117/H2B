@@ -1,40 +1,54 @@
 <form method="POST"
-      action="
-        {% if subcategoria %}
-            {% url 'inventario:subcategoria_guardar' padre.id subcategoria.id %}
-        {% else %}
-            {% url 'inventario:subcategoria_guardar_nueva' padre.id %}
-        {% endif %}
-      "
+      action="{% if subcategoria %}{% url 'inventario:subcategoria_guardar' padre.id subcategoria.id %}{% else %}{% url 'inventario:subcategoria_guardar_nueva' padre.id %}{% endif %}"
       onsubmit="enviarSubcategoria(event)">
 
-    {% csrf_token %}
+  {% csrf_token %}
 
-    <h2 class="text-xl font-semibold mb-4 text-gray-800">
-        {% if subcategoria %}Editar subcategoría{% else %}Nueva subcategoría{% endif %}
+  <!-- TÍTULO -->
+  <div class="border-b-4 border-black pb-3 mb-5">
+    <h2 class="text-xl font-black text-gray-900 uppercase tracking-widest">
+      {% if subcategoria %}✏️ Editar subcategoría{% else %}➕ Nueva subcategoría{% endif %}
     </h2>
-
-    <p class="text-sm text-gray-600 mb-4">
-        Categoría padre: <strong>{{ padre.nombre }}</strong>
+    <p class="text-xs font-black text-gray-500 uppercase tracking-widest mt-1">
+      Categoría padre: <span class="text-[#8338EC]">{{ padre.nombre }}</span>
     </p>
+  </div>
 
-    <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700">Nombre</label>
-        {{ form.nombre }}
+  <!-- NOMBRE -->
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-gray-700">Nombre</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      {{ form.nombre }}
     </div>
+    {% if form.nombre.errors %}
+    <p class="text-xs font-black text-[#FF006E] uppercase">⚠️ {{ form.nombre.errors.0 }}</p>
+    {% endif %}
+  </div>
 
-    <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700">Descripción</label>
-        {{ form.descripcion }}
+  <!-- DESCRIPCIÓN -->
+  <div class="space-y-1 mb-6">
+    <label class="text-xs font-black uppercase tracking-widest text-gray-700">Descripción</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      {{ form.descripcion }}
     </div>
+    {% if form.descripcion.errors %}
+    <p class="text-xs font-black text-[#FF006E] uppercase">⚠️ {{ form.descripcion.errors.0 }}</p>
+    {% endif %}
+  </div>
 
-    <div class="flex justify-end gap-2 mt-6">
-        <button type="button"
-                onclick="closeModal('modalSubcategoria')"
-                class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded transition">
-            Cancelar
-        </button>
+  <!-- BOTONES -->
+  <div class="flex justify-end gap-3">
+    <button type="button"
+            onclick="closeModal('modalSubcategoria')"
+            class="btn-90s bg-gray-200 border-4 border-black shadow-[4px_4px_0_0_black]
+                   font-black text-xs uppercase tracking-widest px-4 py-2">
+      Cancelar
+    </button>
+    <button type="submit"
+            class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
+                   text-black font-black text-xs uppercase tracking-widest px-4 py-2">
+      Guardar
+    </button>
+  </div>
 
-        <button type="submit"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded transition">
-            Guard
+</form>

@@ -1,154 +1,175 @@
-// -------------------------------------------------------------
-// SIDEBAR + MODALES DINÁMICOS (ENTRAR CAJA)
-// -------------------------------------------------------------
-
 document.addEventListener("DOMContentLoaded", () => {
+
   const sidebar = document.getElementById("sidebar");
-  const toggle = document.getElementById("sidebar-toggle");
-  const tab = document.getElementById("sidebar-tab");
-  const icon = document.getElementById("tab-icon");
+  const toggle  = document.getElementById("sidebar-toggle");
+  const tab     = document.getElementById("sidebar-tab");
 
   if (!sidebar) return;
 
-  // -----------------------------
-  // Restaurar estado pinned
-  // -----------------------------
-  const restorePinnedState = () => {
-    const pinned = localStorage.getItem("sidebarPinned") === "true";
+  // ============================================================
+  // AJUSTAR SIDEBAR AL NAVBAR Y FOOTER DINÁMICAMENTE
+  // ============================================================
+  function ajustarSidebar() {
+    if (window.innerWidth < 768) return; // móvil lo maneja el CSS
 
-    if (pinned) {
-      sidebar.classList.add("pinned");
-      if (icon) {
-        icon.classList.remove("fa-chevron-right");
-        icon.classList.add("fa-chevron-left");
+    const navbar  = document.getElementById("navbar");
+    const footer  = document.querySelector("footer");
+
+    const navH      = navbar ? navbar.getBoundingClientRect().height : 64;
+    const scrollY   = window.scrollY;
+
+    // Top del sidebar = fondo del navbar visible
+    const topOffset = Math.max(0, navH - scrollY);
+
+    // Bottom del sidebar = top del footer visible (o fondo de ventana)
+    let bottomOffset = window.innerHeight;
+    if (footer) {
+      const footerRect = footer.getBoundingClientRect();
+      if (footerRect.top < window.innerHeight) {
+        bottomOffset = footerRect.top;
+      }
+    }
+
+    const sidebarHeight = Math.max(0, bottomOffset - topOffset);
+
+    sidebar.style.top    = topOffset + "px";
+    sidebar.style.height = sidebarHeight + "px";
+
+    // Mover pestaña de anclaje también
+    if (tab) {
+      tab.style.top = (topOffset + 12) + "px";
+    }
+  }
+
+  ajustarSidebar();
+  window.addEventListener("scroll", ajustarSidebar);
+  window.addEventListener("resize", ajustarSidebar);
+
+  // ============================================================
+  // ESTADO PINNED
+  // ============================================================
+  const isPinned = () => localStorage.getItem("sidebarPinned") === "true";
+
+  const applyPinned = (pinned) => {
+    sidebar.classList.toggle("pinned", pinned);
+    localStorage.setItem("sidebarPinned", pinned);
+    // Mover pestaña según estado
+    if (tab) {
+      tab.style.left = pinned ? "16rem" : "4rem";
+    }
+    // Empujar contenido solo en desktop
+    if (window.innerWidth >= 768) {
+      const main = document.getElementById("main-content");
+      if (main) {
+        // Pinned → empujar a 16rem; no pinned → el CSS md:ml-16 (4rem) toma el control
+        main.style.marginLeft = pinned ? "16rem" : "";
       }
     }
   };
-  restorePinnedState();
 
-  // -----------------------------
-  // Toggle móvil
-  // -----------------------------
+  applyPinned(isPinned());
+
+  // ============================================================
+  // PESTAÑA DE ANCLAJE
+  // ============================================================
+  if (tab) {
+    tab.addEventListener("click", (e) => {
+      e.stopPropagation();
+      applyPinned(!isPinned());
+    });
+  }
+
+  // Mover pestaña también en hover (sin pinned)
+  sidebar.addEventListener("mouseenter", () => {
+    if (!isPinned() && tab) tab.style.left = "16rem";
+  });
+  sidebar.addEventListener("mouseleave", () => {
+    if (!isPinned() && tab) tab.style.left = "4rem";
+  });
+
+  // ============================================================
+  // HAMBURGUESA MÓVIL
+  // ============================================================
   if (toggle) {
     toggle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
     });
   }
 
-  // -----------------------------
-  // Cerrar en móvil
-  // -----------------------------
-  const closeOnMobileClick = () => {
-    if (window.innerWidth < 768) {
-      sidebar.querySelectorAll("a").forEach((link) => {
-        link.onclick = () => sidebar.classList.remove("open");
-      });
-    }
-  };
-  closeOnMobileClick();
-
-  // -----------------------------
-  // Botón de anclaje
-  // -----------------------------
-  if (tab && icon) {
-    tab.addEventListener("click", (e) => {
-      e.stopPropagation();
-
-      const pinned = sidebar.classList.toggle("pinned");
-
-      icon.classList.toggle("fa-chevron-left", pinned);
-      icon.classList.toggle("fa-chevron-right", !pinned);
-
-      localStorage.setItem("sidebarPinned", pinned);
+  // Cerrar móvil al hacer clic en un link
+  sidebar.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (window.innerWidth < 768) {
+        sidebar.classList.remove("open");
+      }
     });
-  }
+  });
 
-  // -----------------------------
-  // Dropdown Inventario
-  // -----------------------------
-  const btnInv = document.getElementById("btn-inventario");
-  const submenuInv = document.getElementById("submenu-inventario");
-  const flechaInv = document.getElementById("flecha-inventario");
-
-  if (btnInv && submenuInv && flechaInv) {
-    btnInv.addEventListener("click", (e) => {
-      e.stopPropagation();
-
-      const abierto = submenuInv.classList.contains("submenu-open");
-
-      submenuInv.classList.toggle("submenu-open", !abierto);
-      flechaInv.classList.toggle("rotate-180", !abierto);
-    });
-  }
-
-  // -----------------------------
-  // Resize
-  // -----------------------------
   window.addEventListener("resize", () => {
     if (window.innerWidth >= 768) {
       sidebar.classList.remove("open");
+      // Re-aplicar margen correcto al volver a desktop
+      applyPinned(isPinned());
+    } else {
+      // En móvil, el sidebar es overlay → sin margen
+      const main = document.getElementById("main-content");
+      if (main) main.style.marginLeft = "";
     }
-    closeOnMobileClick();
   });
 
-  // -----------------------------
-  // Dropdown Sucursales
-  // -----------------------------
-  const btnSuc = document.getElementById("btn-sucursales");
-  const submenuSuc = document.getElementById("submenu-sucursales");
-  const flechaSuc = document.getElementById("flecha-sucursales");
-
-  if (btnSuc && submenuSuc && flechaSuc) {
-    btnSuc.addEventListener("click", (e) => {
-      e.stopPropagation();
-
-      const abierto = submenuSuc.classList.contains("submenu-open");
-
-      submenuSuc.classList.toggle("submenu-open", !abierto);
-      flechaSuc.classList.toggle("rotate-180", !abierto);
-    });
-  }
-
-  // -----------------------------
-  // Dropdown por sucursal
-  // -----------------------------
-  const sucursalBtns = document.querySelectorAll(".sucursal-btn");
-
-  sucursalBtns.forEach((btn) => {
-    const submenu = btn.parentElement.querySelector(".sucursal-submenu");
-    const flecha = btn.querySelector(".sucursal-flecha");
-
-    if (!submenu || !flecha) return;
-
+  // ============================================================
+  // HELPER SUBMENÚ
+  // ============================================================
+  function toggleSubmenu(btn, submenu, flecha) {
+    if (!btn || !submenu || !flecha) return;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-
       const abierto = submenu.classList.contains("submenu-open");
-
       submenu.classList.toggle("submenu-open", !abierto);
       flecha.classList.toggle("rotate-180", !abierto);
     });
-  });
-
-  // ============================================================
-  // 🟣 FUNCIÓN PROFESIONAL: MENSAJE CONTEXTUAL
-  // ============================================================
-  function showCajaMessage(btn, msg) {
-      const wrapper = btn.parentElement;
-      const box = wrapper.querySelector(".msg-caja");
-
-      if (!box) return;
-
-      box.textContent = msg;
-      box.classList.remove("hidden");
-
-      setTimeout(() => {
-          box.classList.add("hidden");
-      }, 3000);
   }
 
   // ============================================================
-  // 🟣 DELEGACIÓN: ABRIR MODAL ENTRAR CAJA
+  // SUBMENÚ ALMACENES
+  // ============================================================
+  toggleSubmenu(
+    document.getElementById("btn-inventario"),
+    document.getElementById("submenu-inventario"),
+    document.getElementById("flecha-inventario")
+  );
+
+  // ============================================================
+  // SUBMENÚ SUCURSALES
+  // ============================================================
+  toggleSubmenu(
+    document.getElementById("btn-sucursales"),
+    document.getElementById("submenu-sucursales"),
+    document.getElementById("flecha-sucursales")
+  );
+
+  // ============================================================
+  // SUBMENÚ POR SUCURSAL
+  // ============================================================
+  document.querySelectorAll(".sucursal-btn").forEach((btn) => {
+    const submenu = btn.parentElement.querySelector(".sucursal-submenu");
+    const flecha  = btn.querySelector(".sucursal-flecha");
+    toggleSubmenu(btn, submenu, flecha);
+  });
+
+  // ============================================================
+  // MENSAJE CONTEXTUAL CAJA
+  // ============================================================
+  function showCajaMessage(btn, msg) {
+    const box = btn.parentElement.querySelector(".msg-caja");
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.remove("hidden");
+    setTimeout(() => box.classList.add("hidden"), 3000);
+  }
+
+  // ============================================================
+  // MODAL ENTRAR CAJA
   // ============================================================
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-entrar-caja");
@@ -157,77 +178,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const cajaId = btn.dataset.cajaId;
     const nombre = btn.dataset.cajaNombre;
 
-    // 🔥 Si ya estoy en esta caja → ir directo al POS
     if (window.cajaActual && window.cajaActual == cajaId) {
       window.location.href = "/ventas/pos/";
       return;
     }
 
-    // 🔥 Si estoy en otra caja → bloquear
     if (window.cajaActual && window.cajaActual != cajaId) {
       showCajaMessage(btn, "Debes salir de tu caja actual antes de entrar a otra.");
       return;
     }
 
-    // Abrir modal
     fetch(`/sucursales/modal-entrar-caja/?caja_id=${cajaId}&nombre=${encodeURIComponent(nombre)}`)
       .then((r) => r.json())
       .then((data) => {
-        const modal = document.getElementById("modalEntrarCaja");
+        const modal   = document.getElementById("modalEntrarCaja");
         const content = document.getElementById("modalEntrarCajaContent");
-
         content.innerHTML = data.html;
         modal.classList.remove("hidden");
-
-        conectarEventosModalEntrarCaja(cajaId);
+        conectarEventosModal(cajaId);
       });
   });
 
-  // ============================================================
-  // 🟣 FUNCIÓN PARA CONECTAR EVENTOS DEL MODAL ENTRAR CAJA
-  // ============================================================
-  function conectarEventosModalEntrarCaja(cajaId) {
-    const modal = document.getElementById("modalEntrarCaja");
-    const form = document.getElementById("formEntrarCaja");
-    const error = document.getElementById("modalCajaError");
-    const btnCancelar = document.getElementById("modalCajaCancelar");
+  function conectarEventosModal(cajaId) {
+    const modal     = document.getElementById("modalEntrarCaja");
+    const form      = document.getElementById("formEntrarCaja");
+    const error     = document.getElementById("modalCajaError");
+    const btnCancel = document.getElementById("modalCajaCancelar");
 
-    btnCancelar.onclick = () => modal.classList.add("hidden");
+    if (btnCancel) btnCancel.onclick = () => modal.classList.add("hidden");
 
-    form.onsubmit = (e) => {
-      e.preventDefault();
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        formData.append("caja_id", cajaId);
 
-      const formData = new FormData(form);
-      formData.append("caja_id", cajaId);
-
-      fetch("/sucursales/caja/entrar/ajax/", {
-        method: "POST",
-        credentials: "same-origin",
-        body: formData,
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.error) {
-            error.textContent = data.error;
-            error.classList.remove("hidden");
-            return;
-          }
-
-          // ======================================================
-          // 🔥 CORTE AUTOMÁTICO DETECTADO
-          // ======================================================
-          if (data.redirect) {
-            window.location.href = data.redirect;
-            return;
-          }
-
-          // ======================================================
-          // 🔥 ENTRADA NORMAL
-          // ======================================================
-          window.location.href = "/ventas/pos/";
-        });
-    };
+        fetch("/sucursales/caja/entrar/ajax/", {
+          method: "POST",
+          credentials: "same-origin",
+          body: formData,
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.error) {
+              if (error) {
+                error.textContent = data.error;
+                error.classList.remove("hidden");
+              }
+              return;
+            }
+            if (data.redirect) {
+              window.location.href = data.redirect;
+              return;
+            }
+            window.location.href = "/ventas/pos/";
+          });
+      };
+    }
   }
 
-  console.log("✅ Sidebar listo con modal dinámico de entrar caja + mensajes contextuales + CORTE AUTOMÁTICO");
 });

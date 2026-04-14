@@ -1,7 +1,8 @@
 from django.urls import path
+from sucursales import views
 from sucursales.views.sucursales_views import crear_sucursal
 from sucursales.views.dashboard_sucursales_views import dashboard_sucursal
-from sucursales.views.cajas_views import crear_caja_ajax, entrar_caja_ajax, salir_caja, modal_crear_caja, modal_entrar_caja
+from sucursales.views.cajas_views import crear_caja_ajax, entrar_caja_ajax, salir_caja, modal_crear_caja, modal_entrar_caja, eliminar_caja
 
 app_name = "sucursales"
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path("caja/entrar/ajax/", entrar_caja_ajax, name="entrar_caja_ajax"),  # ✔ CORRECTO
     path("caja/salir/", salir_caja, name="salir_caja"),
     path("modal-entrar-caja/", modal_entrar_caja, name="modal_entrar_caja"),
+    path("caja/<int:caja_id>/eliminar/", eliminar_caja, name="eliminar_caja"),
 ]

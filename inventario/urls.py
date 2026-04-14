@@ -3,8 +3,8 @@ from django.urls import path
 
 # Productos
 from .views.productos import (
+    desactivar_producto,
     detalle_producto,
-    eliminar_producto_completo,
     nuevo_producto,
     lista_productos,
     buscar_producto_por_codigo,
@@ -12,6 +12,9 @@ from .views.productos import (
     productos_por_ubicacion,
     temporada_view,
     mis_productos,
+    productos_inactivos,
+    reactivar_producto,
+    eliminar_producto_definitivo,
 
 )
 
@@ -82,8 +85,14 @@ urlpatterns = [
     path('detalle_producto/<int:producto_id>/', detalle_producto, name='detalle_producto'),
     path("ubicacion/<int:ubicacion_id>/", productos_por_ubicacion, name="productos_por_ubicacion"),
     path('producto/<int:producto_id>/codigo_base64/', codigo_base64, name='codigo_base64'),
-    path('api/producto/<int:producto_id>/', eliminar_producto_completo, name='eliminar_producto_completo'),
-
+    path("api/producto/<int:producto_id>/desactivar/", desactivar_producto, name="desactivar_producto"),
+    
+    # Productos inactivos
+    path("productos-inactivos/", productos_inactivos, name="productos_inactivos"),
+    path("api/producto/<int:producto_id>/reactivar/", reactivar_producto, name="reactivar_producto"),
+    path("api/producto/<int:producto_id>/eliminar-definitivo/", eliminar_producto_definitivo, name="eliminar_producto_definitivo"),
+        
+    
     # ============================
     # UBICACIONES
     # ============================

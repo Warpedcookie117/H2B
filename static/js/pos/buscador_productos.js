@@ -12,21 +12,54 @@ export function initBuscador() {
 
     if (!buscarInput) return;
 
-    buscarInput.addEventListener("input", () => {
-        const texto = normalizar(buscarInput.value);
+    // Filtrar cards — también usado al limpiar
+    function filtrarProductos(texto) {
+        texto = normalizar(texto);
+        const items = document.querySelectorAll(".producto-item");
 
-        document.querySelectorAll(".producto-item").forEach(item => {
+        if (!texto) {
+            // Sin texto → mostrar todos
+            items.forEach(item => { item.style.display = "flex"; });
+            return;
+        }
+
+        items.forEach(item => {
             const nombre = normalizar(item.dataset.nombre);
             const codigo = normalizar(item.dataset.codigo || "");
-            const sku = normalizar(item.dataset.sku || "");
-
-            const coincide =
-                nombre.includes(texto) ||
-                codigo.includes(texto) ||
-                sku.includes(texto);
-
+            const sku    = normalizar(item.dataset.sku    || "");
+            const coincide = nombre.includes(texto) || codigo.includes(texto) || sku.includes(texto);
             item.style.display = coincide ? "flex" : "none";
         });
+    }
+
+    // Búsqueda al escribir
+    buscarInput.addEventListener("input", () => {
+        filtrarProductos(buscarInput.value);
+    });
+
+    // Enter en el buscador → si hay exactamente 1 resultado, agregar al carrito
+    buscarInput.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const texto = normalizar(buscarInput.value.trim());
+        if (!texto) return;
+
+        const visibles = Array.from(document.querySelectorAll(".producto-item"))
+            .filter(item => item.style.display !== "none");
+
+        if (visibles.length === 1) {
+            agregarDesdeCard(visibles[0]);
+            buscarInput.value = "";
+            filtrarProductos("");
+        } else {
+            // Buscar coincidencia exacta de código de barras
+            const exacto = buscarProductoPorTextoExacto(texto);
+            if (exacto) {
+                agregarDesdeCard(exacto);
+                buscarInput.value = "";
+                filtrarProductos("");
+            }
+        }
     });
 
     // ============================================================
@@ -105,33 +138,73 @@ export function initDragDrop() {
 
 
 // ============================================================
-// 3. ESCANEO (FUNCIONA EN AMBOS INPUTS)
+// 3. ESCANEO — input dedicado (siempre va al carrito)
 // ============================================================
 
 export function initEscaneo() {
-    const scanInputs = [
-        document.getElementById("scan-input"),        // input principal
-        document.getElementById("buscar-producto")    // input de la columna derecha
-    ];
+    const scanInput = document.getElementById("scan-input");
 
-    scanInputs.forEach(input => {
-        if (!input) return;
-
-        input.addEventListener("keydown", (e) => {
+    if (scanInput) {
+        scanInput.addEventListener("keydown", (e) => {
             if (e.key !== "Enter") return;
 
-            const texto = normalizar(input.value.trim());
+            const texto = normalizar(scanInput.value.trim());
             if (!texto) return;
 
             const producto = buscarProductoPorTexto(texto);
 
             if (producto) {
                 agregarDesdeCard(producto);
-                input.value = "";
+                scanInput.value = "";
             } else {
                 alert("Producto no encontrado");
             }
         });
+    }
+
+    // ============================================================
+    // 4. ESCANEO GLOBAL — Enter desde cualquier lugar menos el buscador
+    // ============================================================
+
+    let scanBuffer = "";
+    let scanTimer = null;
+
+    document.addEventListener("keydown", (e) => {
+        const active = document.activeElement;
+
+        // Si el foco está en el buscador de productos → dejar que el usuario escriba ahí
+        if (active && active.id === "buscar-producto") return;
+
+        // Si el foco está en el scan-input → su propio listener lo maneja
+        if (active && active.id === "scan-input") return;
+
+        // Si algún modal está abierto → no capturar
+        const modalAbierto = document.querySelector(
+            "#modal-pago:not(.pos-modal--hidden), #modal-resultado:not(.pos-modal--hidden), #modal-consulta-precios:not(.pos-modal--hidden)"
+        );
+        if (modalAbierto) return;
+
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const texto = normalizar(scanBuffer.trim());
+            scanBuffer = "";
+
+            if (!texto) return;
+
+            const producto = buscarProductoPorTextoExacto(texto);
+            if (producto) agregarDesdeCard(producto);
+            return;
+        }
+
+        // Acumular caracteres del escáner — siempre, sin importar qué input esté enfocado
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            scanBuffer += e.key;
+
+            // Limpiar buffer después de 500ms sin actividad (los escáneres son rápidos)
+            if (scanTimer) clearTimeout(scanTimer);
+            scanTimer = setTimeout(() => { scanBuffer = ""; }, 500);
+        }
     });
 }
 
@@ -147,6 +220,15 @@ function buscarProductoPorTexto(texto) {
             normalizar(p.dataset.nombre).includes(texto) ||
             normalizar(p.dataset.codigo || "").includes(texto) ||
             normalizar(p.dataset.sku || "").includes(texto)
+        );
+}
+
+// Búsqueda exacta para escaneo global (barcode)
+function buscarProductoPorTextoExacto(texto) {
+    return Array.from(document.querySelectorAll(".producto-item"))
+        .find(p =>
+            normalizar(p.dataset.codigo || "") === texto ||
+            normalizar(p.dataset.sku || "") === texto
         );
 }
 

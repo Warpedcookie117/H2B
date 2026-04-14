@@ -8,24 +8,18 @@
 </button>
 
 <!-- SIDEBAR -->
-<aside id="sidebar"
-       class="fixed left-0 top-16 bg-white text-red-600 shadow-md transition-all duration-300 z-40
-              md:w-16 md:hover:w-64 md:pinned:w-64
-              transform -translate-x-full opacity-0
-              md:translate-x-0 md:opacity-100 md:pointer-events-auto">
+<aside id="sidebar">
 
-    <!-- PESTAÑA DE ANCLAJE -->
-    <div id="sidebar-tab"
-         class="hidden md:flex absolute top-3 -right-3 w-7 h-10 bg-red-600 text-white rounded-r-lg shadow-md
-                cursor-pointer items-center justify-center z-50">
-        <i id="tab-icon" class="fas fa-chevron-right text-sm"></i>
+    <!-- PESTAÑA DE ANCLAJE — sin hidden, el CSS la oculta en móvil -->
+    <div id="sidebar-tab">
+        <i id="tab-icon" class="fas fa-chevron-right"></i>
     </div>
 
     <!-- NAV -->
     <nav class="p-4 space-y-4 font-semibold">
 
         <!-- CATÁLOGO -->
-        <p class="text-xs text-gray-500 px-2 uppercase tracking-wider sidebar-text">Catálogo</p>
+        <p class="sidebar-text text-xs text-gray-500 px-2 uppercase tracking-wider">Catálogo</p>
 
         <a href="{% url 'inventario:categorias' %}" class="sidebar-link">
             <i class="fas fa-tags"></i>
@@ -42,11 +36,18 @@
             <span class="sidebar-text">Atributos</span>
         </a>
 
-        <div class="border-t border-gray-300 my-4"></div>
+        <hr class="border-gray-200 my-2">
 
-        <!-- ALMACENES (UBICACIONES GLOBALES) -->
+        <!-- CENTRO DE INVENTARIO -->
+        <a href="{% url 'inventario:dashboard_inventario' %}" class="sidebar-link">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span class="sidebar-text">Centro de Inventario</span>
+        </a>
+
+        <hr class="border-gray-200 my-2">
+
+        <!-- ALMACENES -->
         <div class="space-y-1">
-
             <button id="btn-inventario" class="sidebar-link w-full flex items-center justify-between">
                 <span class="flex items-center gap-2">
                     <i class="fas fa-warehouse"></i>
@@ -56,35 +57,23 @@
             </button>
 
             <div id="submenu-inventario" class="submenu-transition space-y-1 pl-6">
-
-                <a href="{% url 'inventario:dashboard_inventario' %}" class="sidebar-link">
-                    <i class="fa-solid fa-chart-pie"></i>
-                    <span class="sidebar-text">Dashboard</span>
-                </a>
-
                 {% for u in ubicaciones_sidebar %}
                 <a href="{% url 'inventario:productos_por_ubicacion' u.id %}"
                    class="sidebar-link"
-                   style="
-                       --color-base: {{ u.color }};
-                       --color-hover: {{ u.color }}33;
-                   ">
-                    <i class="fa-solid fa-building-circle-arrow-right"
-                       style="color: var(--color-base);"></i>
+                   style="--color-base: {{ u.color }}; --color-hover: {{ u.color }}33;">
+                    <i class="fa-solid fa-building-circle-arrow-right" style="color: var(--color-base);"></i>
                     <span class="sidebar-text">{{ u.nombre }}</span>
                 </a>
                 {% empty %}
-                <p class="text-gray-500 text-sm pl-2">No hay almacenes globales.</p>
+                <p class="sidebar-text text-gray-400 text-xs pl-2">Sin almacenes globales.</p>
                 {% endfor %}
-
             </div>
         </div>
 
-        <div class="border-t border-gray-300 my-4"></div>
+        <hr class="border-gray-200 my-2">
 
         <!-- SUCURSALES -->
         <div class="space-y-1">
-
             <button id="btn-sucursales" class="sidebar-link w-full flex items-center justify-between">
                 <span class="flex items-center gap-2">
                     <i class="fa-solid fa-store"></i>
@@ -94,17 +83,12 @@
             </button>
 
             <div id="submenu-sucursales" class="submenu-transition space-y-2 pl-6">
-
                 {% for s in sucursales_sidebar %}
                 <div class="space-y-1">
 
-                    <!-- BOTÓN SUCURSAL -->
                     <button class="sidebar-link w-full flex items-center justify-between sucursal-btn"
                             data-sucursal-id="{{ s.id }}"
-                            style="
-                                --color-base: {{ s.color }};
-                                --color-hover: {{ s.color }}33;
-                            ">
+                            style="--color-base: {{ s.color }}; --color-hover: {{ s.color }}33;">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-shop" style="color: var(--color-base);"></i>
                             <span class="sidebar-text">{{ s.nombre }}</span>
@@ -112,78 +96,57 @@
                         <i class="fas fa-chevron-down text-xs transition-transform sucursal-flecha"></i>
                     </button>
 
-                    <!-- SUBMENÚ SUCURSAL -->
                     <div class="submenu-transition space-y-1 pl-6 sucursal-submenu">
 
-                        <!-- Dashboard -->
-                        <a href="{% url 'sucursales:dashboard_sucursal' s.id %}"
-                           class="sidebar-link">
+                        <a href="{% url 'sucursales:dashboard_sucursal' s.id %}" class="sidebar-link">
                             <i class="fa-solid fa-chart-line"></i>
                             <span class="sidebar-text">Dashboard</span>
                         </a>
 
-                        <!-- Piso -->
                         {% if s.piso %}
                         <a href="{% url 'inventario:productos_por_ubicacion' s.piso.id %}"
                            class="sidebar-link"
-                           style="
-                               --color-base: {{ s.color }};
-                               --color-hover: {{ s.color }}33;
-                           ">
+                           style="--color-base: {{ s.color }}; --color-hover: {{ s.color }}33;">
                             <i class="fa-solid fa-layer-group" style="color: var(--color-base);"></i>
                             <span class="sidebar-text">Piso</span>
                         </a>
                         {% endif %}
 
-                        <!-- Bodega interna -->
                         {% if s.bodega_interna %}
                         <a href="{% url 'inventario:productos_por_ubicacion' s.bodega_interna.id %}"
                            class="sidebar-link"
-                           style="
-                               --color-base: {{ s.color }};
-                               --color-hover: {{ s.color }}33;
-                           ">
+                           style="--color-base: {{ s.color }}; --color-hover: {{ s.color }}33;">
                             <i class="fa-solid fa-boxes-stacked" style="color: var(--color-base);"></i>
                             <span class="sidebar-text">Bodega interna</span>
                         </a>
                         {% endif %}
 
-                        <!-- Cajas -->
                         {% for caja in s.cajas.all %}
                         <div>
                             <button class="sidebar-link btn-entrar-caja"
                                     data-caja-id="{{ caja.id }}"
                                     data-caja-nombre="{{ caja.nombre }}"
-                                    style="
-                                        --color-base: {{ s.color }};
-                                        --color-hover: {{ s.color }}33;
-                                    ">
+                                    style="--color-base: {{ s.color }}; --color-hover: {{ s.color }}33;">
                                 <i class="fa-solid fa-cash-register" style="color: var(--color-base);"></i>
                                 <span class="sidebar-text">{{ caja.nombre }}</span>
                             </button>
-
-                            <!-- 🔥 MENSAJE CONTEXTUAL PROFESIONAL -->
-                            <div class="msg-caja hidden text-red-600 text-sm font-semibold mt-1"></div>
+                            <div class="msg-caja hidden text-red-600 text-xs font-semibold mt-1 pl-2"></div>
                         </div>
                         {% endfor %}
 
                     </div>
-
                 </div>
                 {% endfor %}
-
             </div>
         </div>
 
-        <div class="border-t border-gray-300 my-4"></div>
+        <hr class="border-gray-200 my-2">
 
-        <!-- REPORTES -->
         <a href="{% url 'inventario:reportes' %}" class="sidebar-link">
             <i class="fas fa-chart-line"></i>
             <span class="sidebar-text">Reportes</span>
         </a>
 
-        <!-- BASE DE CONOCIMIENTOS -->
         <a href="{% url 'tienda_temp:base_conocimientos' %}" class="sidebar-link">
             <i class="fas fa-book"></i>
             <span class="sidebar-text">Base de conocimientos</span>

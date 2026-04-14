@@ -3,178 +3,292 @@
 
 {% block content %}
 
-<!-- Importa tu CSS azul -->
-<link rel="stylesheet" href="{% static 'css/temporadas.css' %}">
+<style>
+  .card-temporada {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-temporada:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 10px 10px 0 0 black;
+  }
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r,0deg)); }
+    50%       { transform: translateY(-12px) rotate(var(--r,0deg)); }
+  }
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay:.8s; animation-duration:5s; }
+  .shape:nth-child(3) { animation-delay:1.6s; animation-duration:3.5s; }
+  .shape:nth-child(4) { animation-delay:.4s; animation-duration:4.5s; }
+  .shape:nth-child(5) { animation-delay:1.2s; animation-duration:6s; }
+</style>
 
-<div class="container mx-auto px-4 py-6">
+<div class="max-w-7xl mx-auto px-4 py-8 space-y-10">
 
-  <!-- TÍTULO -->
-  <h2 class="text-2xl font-bold mb-6 text-center text-blue-700">
-    Temporadas
-  </h2>
+  <!-- ENCABEZADO HERO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] bg-[#06D6A0] p-8 text-center">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-20 h-20 bg-[#FF006E] rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-14 h-14 bg-[#8338EC] rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-16 h-16 bg-[#FFBE0B] rounded-full"></div>
+      <div class="shape absolute bottom-2 right-1/4 w-24 h-4 bg-[#3A86FF]" style="--r:-10deg"></div>
+      <div class="shape absolute top-1/2 left-1/5 w-10 h-10 bg-[#FB5607] rotate-[30deg]" style="--r:30deg"></div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-4xl sm:text-6xl font-black text-black uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,0.3)]">
+        🌸 Temporadas
+      </h1>
+      <p class="text-black font-black text-base sm:text-xl mt-3">
+        Aquí se estudian las temporadas, papito. 📅<br>
+        <span class="text-[#8338EC]">Sirven pa' decirle al sistema en qué época del año se vende cada producto.</span>
+      </p>
+      <p class="text-black/60 font-bold text-sm mt-2">
+        ¿Navidad? ¿Día de Muertos? ¿Verano? Todo eso vive aquí, compa. 🎄💀☀️
+      </p>
+    </div>
+  </div>
 
-  <!-- GRID DE TEMPORADAS -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    {% for temporada in temporadas %}
-      <div class="temporada-card">
+  <!-- MENSAJE EXPLICATIVO -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FFBE0B] p-6 relative overflow-hidden">
+    <div class="absolute -top-3 -right-3 w-10 h-10 bg-[#FF006E] rotate-45 opacity-60"></div>
+    <p class="font-black text-black text-sm uppercase tracking-widest mb-1">¿Pa' qué sirve esto?</p>
+    <p class="text-black font-semibold text-sm">
+      Cuando registras un producto le puedes asignar una temporada. Así el sistema sabe que ese producto
+      solo se mueve en cierta época — y tú sabes cuándo abastecerte antes de que llegue la temporada
+      y no quedarte sin chamba. <span class="font-black">No le falles a tus clientes. 💪</span>
+    </p>
+  </div>
 
-        <h3 class="temporada-title">
-          {{ temporada.nombre }}
-        </h3>
+  {% if messages %}
+  {% for message in messages %}
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black]
+              {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}
+              font-black px-6 py-3 uppercase tracking-widest text-sm">
+    {{ message }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- ============================================================ -->
+  <!-- GRID DE TEMPORADAS                                           -->
+  <!-- ============================================================ -->
+  <div class="space-y-4">
+    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-wide">
+      📋 Temporadas registradas
+    </h2>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {% for temporada in temporadas %}
+      <div class="card-temporada border-4 border-black shadow-[8px_8px_0_0_black] bg-white relative overflow-hidden">
+
+        <!-- Esquina decorativa -->
+        <div class="absolute top-0 right-0 w-10 h-10 bg-[#FFBE0B] border-l-4 border-b-4 border-black"></div>
 
         {% if mostrar_formulario %}
-          <!-- FORMULARIO DE EDICIÓN -->
-          <form method="POST" action="{% url 'inventario:temporadas' %}" class="space-y-3">
-            {% csrf_token %}
-            <input type="hidden" name="temporada_id" value="{{ temporada.id }}">
+        <!-- MODO EDICIÓN — dueño -->
+        <div class="bg-[#06D6A0] border-b-4 border-black px-5 py-3">
+          <h3 class="font-black text-black uppercase tracking-widest text-sm">{{ temporada.nombre }}</h3>
+        </div>
 
-            <div>
-              <label class="temporada-label">Descripción</label>
-              <textarea name="descripcion"
-                        rows="3"
-                        class="temporada-input">{{ temporada.descripcion }}</textarea>
+        <form method="POST" action="{% url 'inventario:temporadas' %}" class="p-5 space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="temporada_id" value="{{ temporada.id }}">
+
+          <div class="space-y-1">
+            <label class="text-xs font-black uppercase tracking-widest text-gray-600">Descripción</label>
+            <div class="border-4 border-black shadow-[3px_3px_0_0_black] focus-within:shadow-[5px_5px_0_0_black] transition-all">
+              <textarea name="descripcion" rows="2"
+                        class="w-full px-3 py-2 text-sm font-semibold text-gray-900 outline-none bg-white resize-none">{{ temporada.descripcion }}</textarea>
             </div>
+          </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="temporada-label">Inicio (mes)</label>
-                <input type="number" name="inicio_mes"
-                       value="{{ temporada.inicio_mes }}"
-                       min="1" max="12"
-                       class="temporada-input">
-              </div>
-
-              <div>
-                <label class="temporada-label">Inicio (día)</label>
-                <input type="number" name="inicio_dia"
-                       value="{{ temporada.inicio_dia }}"
-                       min="1" max="31"
-                       class="temporada-input">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-black uppercase tracking-widest text-gray-600">Inicio mes</label>
+              <div class="border-4 border-black shadow-[3px_3px_0_0_black]">
+                <input type="number" name="inicio_mes" value="{{ temporada.inicio_mes }}" min="1" max="12"
+                       class="w-full px-3 py-2 text-sm font-semibold outline-none bg-white">
               </div>
             </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="temporada-label">Fin (mes)</label>
-                <input type="number" name="fin_mes"
-                       value="{{ temporada.fin_mes }}"
-                       min="1" max="12"
-                       class="temporada-input">
-              </div>
-
-              <div>
-                <label class="temporada-label">Fin (día)</label>
-                <input type="number" name="fin_dia"
-                       value="{{ temporada.fin_dia }}"
-                       min="1" max="31"
-                       class="temporada-input">
+            <div class="space-y-1">
+              <label class="text-xs font-black uppercase tracking-widest text-gray-600">Inicio día</label>
+              <div class="border-4 border-black shadow-[3px_3px_0_0_black]">
+                <input type="number" name="inicio_dia" value="{{ temporada.inicio_dia }}" min="1" max="31"
+                       class="w-full px-3 py-2 text-sm font-semibold outline-none bg-white">
               </div>
             </div>
+          </div>
 
-            <button type="submit" class="temporada-btn">
-              Guardar cambios
-            </button>
-          </form>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-black uppercase tracking-widest text-gray-600">Fin mes</label>
+              <div class="border-4 border-black shadow-[3px_3px_0_0_black]">
+                <input type="number" name="fin_mes" value="{{ temporada.fin_mes }}" min="1" max="12"
+                       class="w-full px-3 py-2 text-sm font-semibold outline-none bg-white">
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-black uppercase tracking-widest text-gray-600">Fin día</label>
+              <div class="border-4 border-black shadow-[3px_3px_0_0_black]">
+                <input type="number" name="fin_dia" value="{{ temporada.fin_dia }}" min="1" max="31"
+                       class="w-full px-3 py-2 text-sm font-semibold outline-none bg-white">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit"
+                  class="btn-90s w-full bg-[#3A86FF] border-4 border-black shadow-[4px_4px_0_0_black]
+                         text-white font-black text-xs uppercase tracking-widest py-2">
+            Guardar cambios
+          </button>
+        </form>
 
         {% else %}
-          <!-- SOLO LECTURA -->
-          <p class="text-sm text-gray-700 mb-2">{{ temporada.descripcion }}</p>
+        <!-- MODO LECTURA -->
+        <div class="bg-[#00BBF9] border-b-4 border-black px-5 py-3">
+          <h3 class="font-black text-black uppercase tracking-widest text-sm">{{ temporada.nombre }}</h3>
+        </div>
+
+        <div class="p-5 space-y-3">
+          <p class="text-sm text-gray-700 font-semibold">
+            {{ temporada.descripcion|default:"Sin descripción." }}
+          </p>
 
           {% if temporada.inicio_mes and temporada.inicio_dia and temporada.fin_mes and temporada.fin_dia %}
-            <p class="temporada-rango">
-              {{ temporada.inicio_dia }}/{{ temporada.inicio_mes }} → {{ temporada.fin_dia }}/{{ temporada.fin_mes }}
+          <div class="bg-[#CCFF00] border-4 border-black px-4 py-2 inline-block">
+            <p class="font-black text-black text-sm">
+              📅 {{ temporada.inicio_dia }}/{{ temporada.inicio_mes }}
+              → {{ temporada.fin_dia }}/{{ temporada.fin_mes }}
             </p>
+          </div>
           {% else %}
-            <p class="temporada-sin-rango">Sin rango definido</p>
+          <p class="text-xs font-black text-gray-400 uppercase tracking-widest">Sin rango definido</p>
           {% endif %}
+        </div>
         {% endif %}
 
       </div>
-    {% endfor %}
+      {% empty %}
+      <div class="col-span-full border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-10 text-center">
+        <p class="text-gray-400 font-black uppercase tracking-widest text-sm">
+          No hay temporadas registradas todavía, padrino. 😬
+        </p>
+      </div>
+      {% endfor %}
+
+    </div>
   </div>
 
-  <!-- FORMULARIO PARA CREAR TEMPORADA -->
+  <!-- ============================================================ -->
+  <!-- FORMULARIO NUEVA TEMPORADA — solo dueño                     -->
+  <!-- ============================================================ -->
   {% if mostrar_formulario %}
-    <div class="max-w-lg mx-auto temporada-card mt-10">
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
 
-      <h3 class="text-xl font-semibold mb-4 text-center text-blue-700">
-        Registrar nueva temporada
-      </h3>
-
-      <form method="POST" action="{% url 'inventario:temporadas' %}" class="space-y-4">
-        {% csrf_token %}
-
-            <div>
-            <label class="temporada-label">Nombre</label>
-            <input type="text"
-                    name="{{ form.nombre.name }}"
-                    value="{{ form.nombre.value|default:'' }}"
-                    class="temporada-input">
-            </div>
-
-            <div>
-            <label class="temporada-label">Descripción</label>
-            <textarea name="{{ form.descripcion.name }}"
-                        class="temporada-input"
-                        rows="3">{{ form.descripcion.value|default:'' }}</textarea>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="temporada-label">Inicio (mes)</label>
-                <input type="number"
-                    name="{{ form.inicio_mes.name }}"
-                    value="{{ form.inicio_mes.value|default:'' }}"
-                    min="1" max="12"
-                    class="temporada-input">
-            </div>
-
-            <div>
-                <label class="temporada-label">Inicio (día)</label>
-                <input type="number"
-                    name="{{ form.inicio_dia.name }}"
-                    value="{{ form.inicio_dia.value|default:'' }}"
-                    min="1" max="31"
-                    class="temporada-input">
-            </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="temporada-label">Fin (mes)</label>
-                <input type="number"
-                    name="{{ form.fin_mes.name }}"
-                    value="{{ form.fin_mes.value|default:'' }}"
-                    min="1" max="12"
-                    class="temporada-input">
-            </div>
-
-            <div>
-                <label class="temporada-label">Fin (día)</label>
-                <input type="number"
-                    name="{{ form.fin_dia.name }}"
-                    value="{{ form.fin_dia.value|default:'' }}"
-                    min="1" max="31"
-                    class="temporada-input">
-            </div>
-            </div>
-
-        <button type="submit" class="temporada-btn">
-          Guardar temporada
-        </button>
-      </form>
-
-    </div>
-
-  {% else %}
-    <!-- MODO SOLO LECTURA -->
-    <div class="max-w-lg mx-auto temporada-card mt-10">
-      <h3 class="text-sm font-semibold text-center text-blue-600 mb-2">Modo solo lectura</h3>
-      <p class="text-xs text-gray-600 text-center">
-        Puedes consultar las temporadas, pero no tienes permisos para modificarlas ni registrar nuevas.
+    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4">
+      <h2 class="text-xl font-black text-white uppercase tracking-widest">
+        ➕ Registrar nueva temporada
+      </h2>
+      <p class="text-white/70 text-xs font-semibold mt-1">
+        Dale un nombre chido y ponle fechas, no seas flojo.
       </p>
     </div>
+
+    <form method="POST" action="{% url 'inventario:temporadas' %}" class="bg-white p-6 space-y-5">
+      {% csrf_token %}
+
+      <div class="space-y-1">
+        <label class="text-xs font-black uppercase tracking-widest text-gray-700">Nombre</label>
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+          <input type="text" name="{{ form.nombre.name }}"
+                 value="{{ form.nombre.value|default:'' }}"
+                 placeholder="Ej: Navidad, Verano, Día de Muertos..."
+                 class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white">
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <label class="text-xs font-black uppercase tracking-widest text-gray-700">Descripción</label>
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+          <textarea name="{{ form.descripcion.name }}" rows="3"
+                    placeholder="¿Qué se vende en esta temporada?"
+                    class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white resize-none">{{ form.descripcion.value|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-xs font-black uppercase tracking-widest text-gray-700">Inicio mes</label>
+          <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+            <input type="number" name="{{ form.inicio_mes.name }}"
+                   value="{{ form.inicio_mes.value|default:'' }}"
+                   min="1" max="12" placeholder="1-12"
+                   class="w-full px-4 py-3 font-semibold outline-none bg-white">
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-black uppercase tracking-widest text-gray-700">Inicio día</label>
+          <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+            <input type="number" name="{{ form.inicio_dia.name }}"
+                   value="{{ form.inicio_dia.value|default:'' }}"
+                   min="1" max="31" placeholder="1-31"
+                   class="w-full px-4 py-3 font-semibold outline-none bg-white">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-xs font-black uppercase tracking-widest text-gray-700">Fin mes</label>
+          <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+            <input type="number" name="{{ form.fin_mes.name }}"
+                   value="{{ form.fin_mes.value|default:'' }}"
+                   min="1" max="12" placeholder="1-12"
+                   class="w-full px-4 py-3 font-semibold outline-none bg-white">
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-black uppercase tracking-widest text-gray-700">Fin día</label>
+          <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+            <input type="number" name="{{ form.fin_dia.name }}"
+                   value="{{ form.fin_dia.value|default:'' }}"
+                   min="1" max="31" placeholder="1-31"
+                   class="w-full px-4 py-3 font-semibold outline-none bg-white">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit"
+              class="btn-90s w-full bg-[#FF006E] border-4 border-black shadow-[6px_6px_0_0_black]
+                     text-white font-black text-sm uppercase tracking-widest py-3">
+        🌸 Guardar temporada
+      </button>
+
+    </form>
+  </div>
+
+  {% else %}
+  <!-- SOLO LECTURA -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#CCFF00] p-6 text-center relative overflow-hidden">
+    <div class="absolute -top-3 -left-3 w-10 h-10 bg-[#06D6A0] rotate-45 opacity-60"></div>
+    <p class="font-black text-black text-sm uppercase tracking-widest">Modo consulta 👀</p>
+    <p class="text-black/70 text-xs font-semibold mt-1">
+      Puedes ver las temporadas pero no puedes tocarlas. Habla con el dueño si necesitas hacer cambios. 🙏
+    </p>
+  </div>
   {% endif %}
 
 </div>
+
 {% endblock %}

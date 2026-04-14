@@ -10,10 +10,36 @@
 {% endblock %}
 
 {% block content %}
-<section class="flex justify-center items-center min-h-screen py-10">
-  <div class="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
 
-    <h2 class="text-2xl font-bold text-red-600 mb-6 text-center">
+<section class="flex justify-center items-center min-h-screen py-10 px-4">
+
+  <!-- CARD PRINCIPAL -->
+  <div class="
+      relative w-full max-w-lg border-4 border-black shadow-[12px_12px_0_0_black]
+      rounded-2xl p-10 overflow-hidden
+
+      {% if form.rol.value == 'dueño' %}
+        bg-[#FFE36A]   <!-- FONDO DUEÑO MEJORADO -->
+      {% else %}
+        bg-[#BDE0FE]   <!-- FONDO EMPLEADO MEJORADO -->
+      {% endif %}
+  ">
+
+    <!-- DECORACIÓN 90s SUAVE -->
+    <div class="absolute -top-6 -left-6 w-20 h-20 
+      {% if form.rol.value == 'dueño' %} bg-[#FFBE0B] {% else %} bg-[#3A86FF] {% endif %}
+      rotate-12 opacity-40"></div>
+
+    <div class="absolute -bottom-6 -right-6 w-24 h-24 
+      {% if form.rol.value == 'dueño' %} bg-[#FF006E] {% else %} bg-[#8338EC] {% endif %}
+      rounded-full opacity-40"></div>
+
+    <div class="absolute top-1/3 -right-4 w-14 h-14 
+      {% if form.rol.value == 'dueño' %} bg-[#3A86FF] {% else %} bg-[#06D6A0] {% endif %}
+      rotate-45 opacity-40"></div>
+
+    <!-- TÍTULO -->
+    <h2 class="text-4xl font-black text-black text-center mb-8 uppercase tracking-wide drop-shadow-[3px_3px_0px_white]">
       {% if form.rol.value == "dueño" %}
         Registro de Dueños
       {% else %}
@@ -21,142 +47,147 @@
       {% endif %}
     </h2>
 
+    <!-- MENSAJES -->
     {% if messages %}
-      <div class="mb-4">
+      <div class="mb-6 text-black font-black text-lg bg-white border-4 border-black p-4 rounded-xl shadow-[6px_6px_0_0_black]">
         {% for message in messages %}
-          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+          <p>• {{ message }}</p>
         {% endfor %}
       </div>
     {% endif %}
 
     {% if form.non_field_errors %}
-      <div class="bg-red-100 text-red-700 p-2 rounded mb-4">
+      <div class="mb-6 text-black font-black text-lg bg-[#FFBE0B] border-4 border-black p-4 rounded-xl shadow-[6px_6px_0_0_black]">
         {{ form.non_field_errors }}
       </div>
     {% endif %}
 
+    <!-- FORMULARIO -->
     <form method="POST" action="" autocomplete="off">
       {% csrf_token %}
 
-      <div class="mb-4">
-        <label for="id_username">Nombre de Usuario</label>
+      <!-- CAMPOS GENERALES -->
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Nombre de Usuario</label>
         {{ form.username }}
         {{ form.username.errors }}
       </div>
 
-      <!-- PASSWORD 1 -->
-      <div class="mb-4">
-        <label for="id_password1">Contraseña</label>
-        <div class="relative">
-          {{ form.password1 }}
-          <button type="button"
-                  onclick="togglePassword('id_password1')"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
-            👁
-          </button>
-        </div>
-        {{ form.password1.errors }}
-      </div>
-
-      <!-- PASSWORD 2 -->
-      <div class="mb-4">
-        <label for="id_password2">Confirmar Contraseña</label>
-        <div class="relative">
-          {{ form.password2 }}
-          <button type="button"
-                  onclick="togglePassword('id_password2')"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">
-            👁
-          </button>
-        </div>
-        {{ form.password2.errors }}
-      </div>
-
-      <div class="mb-4">
-        <label for="id_first_name">Nombre(s)</label>
-        {{ form.first_name }}
-        {{ form.first_name.errors }}
-      </div>
-
-      <div class="mb-4">
-        <label for="id_last_name">Apellido(s)</label>
-        {{ form.last_name }}
-        {{ form.last_name.errors }}
-      </div>
-
-      <div class="mb-4">
-        <label for="id_email">Correo Electrónico</label>
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Correo Electrónico</label>
         {{ form.email }}
         {{ form.email.errors }}
       </div>
 
-      <div class="mb-4">
-        <label for="id_edad">Edad</label>
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Contraseña</label>
+        {{ form.password1 }}
+        {{ form.password1.errors }}
+      </div>
+
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Confirmar Contraseña</label>
+        {{ form.password2 }}
+        {{ form.password2.errors }}
+      </div>
+
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Nombre(s)</label>
+        {{ form.first_name }}
+        {{ form.first_name.errors }}
+      </div>
+
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Apellido(s)</label>
+        {{ form.last_name }}
+        {{ form.last_name.errors }}
+      </div>
+
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Edad</label>
         {{ form.edad }}
         {{ form.edad.errors }}
       </div>
 
-      <div class="mb-4">
-        <label for="id_direccion">Dirección</label>
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Dirección</label>
         {{ form.direccion }}
         {{ form.direccion.errors }}
       </div>
 
-      <div class="mb-4">
-        <label for="id_numero_contacto">Número de Contacto</label>
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Número de Contacto</label>
         {{ form.numero_contacto }}
         {{ form.numero_contacto.errors }}
       </div>
 
+      <!-- ROL -->
       {% if form.rol.value == "dueño" %}
-        {{ form.rol }}
+        <!-- Registro de dueño: NO mostrar select -->
+        <input type="hidden" name="rol" value="dueño">
       {% else %}
-        <div class="mb-4">
-          <label for="id_rol">Rol</label>
-          <select name="rol" id="id_rol" class="form-control" required>
+        <!-- Registro de empleado: mostrar select SIN dueño -->
+        <div class="mb-6">
+          <label class="font-black text-black uppercase text-lg">Rol</label>
+          <select name="rol"
+                  class="w-full border-4 border-black px-4 py-3 rounded-xl bg-white text-xl font-black focus:border-[#3A86FF] focus:outline-none"
+                  required>
             <option value="" disabled selected>Selecciona un rol</option>
+
             {% for value, label in form.fields.rol.choices %}
               {% if value != "dueño" %}
-                <option value="{{ value }}">{{ label }}</option>
+                <option value="{{ value }}"
+                  {% if form.rol.value == value %}selected{% endif %}>
+                  {{ label }}
+                </option>
               {% endif %}
             {% endfor %}
           </select>
         </div>
       {% endif %}
 
-      <div class="mb-4">
-        <label for="id_contacto_emergencia">Contacto de Emergencia</label>
+      <div class="mb-6">
+        <label class="font-black text-black uppercase text-lg">Contacto de Emergencia</label>
         {{ form.contacto_emergencia }}
         {{ form.contacto_emergencia.errors }}
       </div>
 
-      <div class="mb-6">
-        <label for="id_descripcion_contacto_emergencia">Descripción del Contacto</label>
+      <div class="mb-8">
+        <label class="font-black text-black uppercase text-lg">Descripción del Contacto</label>
         {{ form.descripcion_contacto_emergencia }}
         {{ form.descripcion_contacto_emergencia.errors }}
       </div>
 
-      <button type="submit" class="btn-submit" id="btn-submit">
-        <span>Registrar</span>
-        <div class="spinner" id="btn-spinner" style="display: none;"></div>
+      <!-- BOTÓN REGISTRAR (MISMA ANIMACIÓN QUE CLIENTES) -->
+      <button type="submit"
+              class="w-full bg-black text-white font-black uppercase border-4 border-black py-4 rounded-xl
+                     shadow-[6px_6px_0_0_white] text-2xl tracking-wide
+                     transition-all duration-150
+                     active:translate-x-1 active:translate-y-1 active:shadow-[3px_3px_0_0_white]
+                     hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[12px_12px_0_0_white]">
+        Registrar
       </button>
+
     </form>
 
-    <div class="mt-4 text-sm text-center text-gray-600">
-      <p>¿Ya estás registrado?
-        <a href="{% url 'tienda_temp:login' %}" class="text-red-600 hover:underline">Inicia sesión</a>
+    <!-- YA ESTÁS REGISTRADO -->
+    <div class="mt-10 text-center">
+      <p class="text-3xl font-black text-black mb-4 tracking-wide drop-shadow-[3px_3px_0px_white]">
+        ¿Ya estás registrado?
       </p>
+
+      <a href="{% url 'tienda_temp:login' %}"
+        class="block bg-[#3A86FF] text-white font-black uppercase border-4 border-black py-4 rounded-xl
+                shadow-[6px_6px_0_0_black] text-2xl tracking-wide
+                transition-all duration-150
+                active:translate-x-1 active:translate-y-1 active:shadow-[3px_3px_0_0_black]
+                hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[12px_12px_0_0_black]">
+        Iniciar sesión
+      </a>
     </div>
 
   </div>
-</section>
 
-<!-- 🔥 OJITO FUNCIONAL -->
-<script>
-function togglePassword(id) {
-  const input = document.getElementById(id);
-  input.type = input.type === "password" ? "text" : "password";
-}
-</script>
+</section>
 
 {% endblock %}

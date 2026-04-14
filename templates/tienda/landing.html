@@ -1,59 +1,232 @@
 {% extends 'partials/base.html' %}
-{% block title %}Landing Page{% endblock %}
+{% block title %}Comercializadora Modelo{% endblock %}
 {% load static %}
 
 {% block content %}
-<!-- Sección de bienvenida con video llamativo y mensaje visible -->
-<section class="relative flex justify-center items-center min-h-[60vh] mt-4 mb-4">
-  <video 
-    autoplay muted loop playsinline 
-    class="mx-auto rounded-2xl ring-4 ring-green-500 shadow-green-500 shadow-lg w-full max-w-5xl transition duration-500 ease-in-out hover:shadow-[0_0_40px_#22c55e] hover:scale-105">
+
+<!-- ========================================================= -->
+<!-- MENSAJE SI YA ESTÁ LOGUEADO -->
+<!-- ========================================================= -->
+{% if user.is_authenticated %}
+<div class="max-w-4xl mx-auto mt-4 mb-4 p-4 bg-[#FFBE0B] border-4 border-black shadow-[6px_6px_0_0_black] text-center">
+  <p class="font-black uppercase text-lg text-black tracking-wide">
+    ¿Qué haces acá pinche metichón?
+  </p>
+</div>
+{% endif %}
+
+<!-- ========================================================= -->
+<!-- HERO — VIDEO -->
+<!-- ========================================================= -->
+<section class="relative flex justify-center items-center min-h-[60vh] mt-4 mb-4 overflow-hidden">
+  <video
+    autoplay muted loop playsinline
+    class="mx-auto rounded-none w-full max-w-5xl border-4 border-black shadow-[8px_8px_0_0_black]">
     <source src="{% static 'videos/landing.mp4' %}" type="video/mp4">
     Tu navegador no soporta video HTML5.
   </video>
-  <div class="absolute z-10 text-center px-4">
-    <h1 class="text-5xl font-extrabold text-white drop-shadow-lg">Bienvenido a Comercializadora Modelo</h1>
-    <p class="mt-4 text-lg text-white font-medium drop-shadow-md">Confianza, calidad y atención personalizada desde el primer clic.</p>
+
+  <!-- Overlay ligero -->
+  <div class="absolute inset-0 bg-black/20 pointer-events-none"></div>
+
+  <!-- Texto centrado -->
+  <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-10">
+    <h1 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight
+               drop-shadow-[4px_4px_0_rgba(0,0,0,1)] leading-tight">
+      Bienvenido a<br>
+      <span class="text-[#FFBE0B]">Comercializadora Modelo</span>
+    </h1>
+    <p class="mt-4 text-base sm:text-lg font-bold text-white
+              drop-shadow-[2px_2px_0_rgba(0,0,0,1)] max-w-xl">
+      Confianza, calidad y atención personalizada desde el primer clic.
+    </p>
+
+    {% if not user.is_authenticated %}
+    <!-- BOTÓN INICIAR SESIÓN -->
+    <a href="{% url 'tienda_temp:login' %}"
+       class="mt-6 inline-block bg-[#3A86FF] border-4 border-black shadow-[4px_4px_0_0_black]
+              text-white font-black uppercase px-6 py-3 text-sm
+              hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
+              transition-all duration-150">
+      Iniciar sesión →
+    </a>
+
+    <!-- BOTÓN REGISTRARME -->
+    <a href="{% url 'tienda_temp:registro_cliente' %}"
+       class="mt-3 inline-block bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
+              text-black font-black uppercase px-6 py-3 text-sm
+              hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
+              transition-all duration-150">
+      Registrarme →
+    </a>
+    {% endif %}
   </div>
 </section>
 
-<!-- Beneficios con cards responsivas y espacio ajustado -->
-<section id="productos" class="pt-10 pb-2">
-  <div class="max-w-6xl mx-auto px-4 text-center">
-    <h2 class="text-3xl font-bold mb-12" data-aos="fade-up">¿Por qué elegirnos?</h2>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-left">
-        <h3 class="text-xl font-semibold mb-2">🚚 Envíos rápidos</h3>
-        <p>Recibe tu pedido en tiempo récord, sin complicaciones.</p>
+<!-- ========================================================= -->
+<!-- MARQUEE -->
+<!-- ========================================================= -->
+<div class="bg-[#FFBE0B] border-y-4 border-black py-3 overflow-hidden">
+  <div class="flex whitespace-nowrap animate-marquee gap-12 text-black font-black uppercase text-sm tracking-widest">
+    <span>📦 Inventario en tiempo real</span>
+    <span>⭐ Calidad garantizada</span>
+    <span>🏬 Múltiples sucursales</span>
+    <span>💳 Pago en efectivo y tarjeta</span>
+    <span>🚀 Sistema POS integrado</span>
+    <span>📊 Reportes y cortes de caja</span>
+    <span>🔥 Comercializadora Modelo</span>
+    <span>📦 Inventario en tiempo real</span>
+    <span>⭐ Calidad garantizada</span>
+    <span>🏬 Múltiples sucursales</span>
+    <span>💳 Pago en efectivo y tarjeta</span>
+    <span>🚀 Sistema POS integrado</span>
+    <span>📊 Reportes y cortes de caja</span>
+    <span>🔥 Comercializadora Modelo</span>
+  </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- BENEFICIOS -->
+<!-- ========================================================= -->
+<section class="max-w-7xl mx-auto px-4 py-16 space-y-6">
+
+  <h2 class="text-3xl font-black text-gray-900 uppercase text-center tracking-wide mb-10">
+    ¿Por qué elegirnos?
+  </h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- Card 1 -->
+    <div class="bg-[#FF006E] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-4 -right-4 w-14 h-14 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
+        🚚
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-up">
-        <h3 class="text-xl font-semibold mb-2">✅ Calidad garantizada</h3>
-        <p>Productos seleccionados con los más altos estándares.</p>
+      <h3 class="text-xl font-black text-white uppercase mb-2">Envíos rápidos</h3>
+      <p class="text-white font-semibold text-sm">
+        Tan rápido que tu pedido llega antes de que te arrepientas.
+      </p>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="bg-[#8338EC] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-[#FB5607] rounded-full opacity-40"></div>
+      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
+        ✅
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-lg transition-transform hover:scale-105 hover:shadow-xl" data-aos="flip-right">
-        <h3 class="text-xl font-semibold mb-2">📞 Atención personalizada</h3>
-        <p>Estamos aquí para ayudarte en cada paso.</p>
+      <h3 class="text-xl font-black text-white uppercase mb-2">Calidad garantizada</h3>
+      <p class="text-white font-semibold text-sm">
+        Si no te gusta, le echamos la culpa a tu mal gusto. (Broma, siempre tienes razón.)
+      </p>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-3 right-3 w-10 h-10 bg-[#06D6A0] rotate-45 opacity-50"></div>
+      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
+        📞
       </div>
+      <h3 class="text-xl font-black text-white uppercase mb-2">Atención personalizada</h3>
+      <p class="text-white font-semibold text-sm">
+        Contestamos más rápido que tu ex.
+      </p>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ========================================================= -->
+<!-- TESTIMONIOS -->
+<!-- ========================================================= -->
+<section class="max-w-7xl mx-auto px-4 pb-16">
+
+  <h2 class="text-3xl font-black text-gray-900 uppercase text-center tracking-wide mb-10">
+    Lo que dicen nuestros clientes
+  </h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="bg-[#06D6A0] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-3 -right-3 w-10 h-10 bg-[#FFBE0B] rotate-45 opacity-60"></div>
+      <p class="text-black font-bold text-sm italic mb-4">
+        "Excelente servicio y productos de calidad. ¡Recomendado! Mi negocio creció un chingo desde que los uso."
+      </p>
+      <p class="text-black font-black uppercase text-xs tracking-widest">— María G., cliente desde 2022</p>
+    </div>
+
+    <div class="bg-[#FFBE0B] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -bottom-3 -left-3 w-12 h-12 bg-[#FF006E] rounded-full opacity-50"></div>
+      <p class="text-black font-bold text-sm italic mb-4">
+        "Pensé que era otra empresa más del montón. Me equivoqué completamente. El sistema es súper fácil de usar."
+      </p>
+      <p class="text-black font-black uppercase text-xs tracking-widest">— Carlos R., dueño de tienda</p>
+    </div>
+
+    <div class="bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-4 left-4 w-12 h-12 bg-[#8338EC] rotate-45 opacity-50"></div>
+      <p class="text-white font-bold text-sm italic mb-4">
+        "Antes llevaba el inventario en un cuaderno. Ahora soy una empresaria del siglo XXI. ¡Gracias!"
+      </p>
+      <p class="text-white font-black uppercase text-xs tracking-widest">— Ana P., emprendedora</p>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ========================================================= -->
+<!-- CTA FINAL (ANIMADO, SIN ACCIÓN) -->
+<!-- ========================================================= -->
+<section class="max-w-7xl mx-auto px-4 pb-20">
+  <div class="bg-black border-4 border-black shadow-[8px_8px_0_0_#3A86FF] p-10 text-center relative overflow-hidden">
+    <div class="absolute -top-6 -left-6 w-20 h-20 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+    <div class="absolute -bottom-6 -right-6 w-20 h-20 bg-[#8338EC] rotate-45 opacity-50"></div>
+
+    <h2 class="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight mb-4">
+      ¿Listo para dejar de perder el control?
+    </h2>
+    <p class="text-gray-400 font-bold mb-8 max-w-xl mx-auto">
+      Únete a Comercializadora Modelo y deja que el sistema haga el trabajo duro.
+    </p>
+
+    <div
+      class="inline-block px-10 py-4 border-4 border-white text-white font-black uppercase text-lg
+             shadow-[4px_4px_0_0_white] cursor-default animate-pulse-neon">
+      ¡Explora el sistema!
     </div>
   </div>
 </section>
 
-<!-- Testimonios con animación AOS -->
-<section class="py-20">
-  <div class="max-w-4xl mx-auto text-center px-4">
-    <h2 class="text-3xl font-bold mb-6" data-aos="fade-up">Lo que dicen nuestros clientes</h2>
-    <blockquote class="italic text-lg text-gray-700" data-aos="fade-in">
-      "Excelente servicio y productos de calidad. ¡Recomendado!"
-    </blockquote>
-  </div>
-</section>
+<style>
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+  }
 
-<!-- AOS Script -->
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<script>
-  AOS.init({
-    once: true,
-    duration: 800
-  });
-</script>
+  @keyframes pulseNeon {
+    0% { box-shadow: 0 0 8px #3A86FF, 0 0 16px #3A86FF; }
+    50% { box-shadow: 0 0 16px #3A86FF, 0 0 32px #3A86FF; }
+    100% { box-shadow: 0 0 8px #3A86FF, 0 0 16px #3A86FF; }
+  }
+  .animate-pulse-neon {
+    animation: pulseNeon 1.8s ease-in-out infinite;
+  }
+</style>
+
 {% endblock %}

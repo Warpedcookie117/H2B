@@ -1,77 +1,148 @@
 {% load static %}
 
-
-<nav id="navbar" class="bg-red-600 text-white sticky top-0 z-50 shadow-md transition-transform duration-300">
+<nav id="navbar" class="bg-red-600 text-white fixed top-0 left-0 right-0 z-50 shadow-md transition-transform duration-300">
   <div class="container mx-auto px-4 py-3 flex items-center justify-between relative">
 
     <!-- Logo -->
     <div class="flex-shrink-0">
-      <h1 class="text-xl md:text-2xl font-bold">
-        <a href="{% url 'landing' %}" class="no-underline">Comercializadora Modelo</a>
+      <h1 class="text-lg md:text-xl lg:text-2xl font-bold truncate max-w-[160px] sm:max-w-none">
+        <a href="{% url 'landing' %}" class="no-underline whitespace-nowrap">Comercializadora Modelo</a>
       </h1>
     </div>
 
-    <!-- Menú principal (desktop) -->
-    <div class="hidden md:flex flex-1 justify-center space-x-6">
+    <!-- Menú principal — centrado en desktop, hamburguesa en móvil -->
+    <div class="hidden md:flex flex-1 justify-center space-x-1 lg:space-x-4">
 
       {% if request.user.is_authenticated %}
 
-        {# 🔥 1) Dueño #}
         {% if request.user.empleado and request.user.empleado.rol == 'dueño' %}
-          <a href="{% url 'tienda_temp:dashboard_dueno' %}" class="nav-link">Dashboard</a>
-          <a href="{% url 'inventario:solicitudes_pendientes' %}" class="nav-link">Solicitudes Pendientes</a>
-          <a href="{% url 'inventario:mis_productos' %}" class="nav-link block">Mis Productos</a>
+          <a href="{% url 'tienda_temp:dashboard_dueno' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Dashboard</a>
+          <a href="{% url 'inventario:solicitudes_pendientes' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Solicitudes Pendientes</a>
+          <a href="{% url 'inventario:mis_productos' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Mis Productos</a>
+          <a href="{% url 'inventario:productos_inactivos' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Productos Inactivos</a>
 
-        {# 🔥 2) Empleado normal #}
+        {% elif request.user.empleado and request.user.empleado.rol == 'cajero' %}
+          <a href="{% url 'tienda_temp:dashboard_socio' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Dashboard</a>
+          <a href="{% url 'inventario:mis_solicitudes' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Mis Solicitudes</a>
+          <a href="{% url 'inventario:productos_inactivos' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Productos Inactivos</a>
+
+        {% elif request.user.empleado and request.user.empleado.rol == 'almacenista' %}
+          <a href="{% url 'tienda_temp:dashboard_socio' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Dashboard</a>
+          <a href="{% url 'inventario:mis_solicitudes' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Mis Solicitudes</a>
+          <a href="{% url 'inventario:productos_inactivos' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Productos Inactivos</a>
+
         {% elif request.user.empleado %}
-          <div class="bg-yellow-700 px-2 rounded text-xs">DEBUG: BLOQUE EMPLEADO NORMAL</div>
-          <a href="{% url 'tienda_temp:dashboard_socio' %}" class="nav-link">Dashboard</a>
-          <a href="{% url 'inventario:mis_solicitudes' %}" class="nav-link">Mis Solicitudes</a>
+          <a href="{% url 'tienda_temp:dashboard_socio' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Dashboard</a>
+          <a href="{% url 'inventario:mis_solicitudes' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Mis Solicitudes</a>
 
-        {# 🔥 3) Cliente #}
         {% elif request.user.cliente %}
-          <div class="bg-purple-700 px-2 rounded text-xs">DEBUG: BLOQUE CLIENTE</div>
-          <a href="{% url 'landing' %}" class="nav-link">Inicio</a>
-          <a href="/productos/" class="nav-link">Productos</a>
-          <a href="/comprar/" class="nav-link">Comprar ahora</a>
-          <a href="/mayoristas/" class="nav-link">Atención mayorista</a>
+          <a href="{% url 'landing' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Inicio</a>
+          <a href="/productos/" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Productos</a>
+          <a href="/comprar/" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Comprar</a>
+          <a href="/mayoristas/" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Mayoristas</a>
 
         {% endif %}
 
       {% else %}
-        <div class="bg-red-700 px-2 rounded text-xs">DEBUG: BLOQUE INVITADO</div>
-        <a href="{% url 'landing' %}" class="nav-link">Inicio</a>
-        <a href="{% url 'about-us' %}" class="nav-link">Sobre nosotros</a>
-        <a href="{% url 'contacto' %}" class="nav-link">Contacto</a>
+        <a href="{% url 'landing' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Inicio</a>
+        <a href="{% url 'about-us' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Sobre nosotros</a>
+        <a href="{% url 'contacto' %}" class="nav-link text-xs lg:text-sm xl:text-base whitespace-nowrap">Contacto</a>
       {% endif %}
+
     </div>
 
-    <!-- Perfil -->
-    <div class="hidden md:flex space-x-2 items-center">
+    <!-- Perfil — solo visible en desktop -->
+    <div class="hidden md:flex space-x-2 items-center flex-shrink-0">
       {% if request.user.is_authenticated %}
         <div class="relative">
-          <button id="profileMenuBtn" class="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold">
+          <button id="profileMenuBtn"
+                  class="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
             {{ request.user.username|slice:":1"|upper }}
           </button>
-          <div id="profileDropdown" class="hidden absolute top-full right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50 text-gray-800">
-            <a href="{% url 'profile_settings' %}" class="block px-4 py-2 hover:bg-gray-100">Configuración</a>
+          <div id="profileDropdown"
+               class="hidden absolute top-full right-0 mt-2 w-48 bg-white border rounded shadow-lg z-50 text-gray-800">
+            <a href="{% url 'profile_settings' %}" class="block px-4 py-2 hover:bg-gray-100 text-sm">Configuración</a>
             <form method="post" action="{% url 'tienda_temp:logout' %}">
               {% csrf_token %}
-              <button type="submit" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600">Cerrar sesión</button>
+              <button type="submit" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600 text-sm">
+                Cerrar sesión
+              </button>
             </form>
           </div>
         </div>
       {% else %}
-        <a href="{% url 'tienda_temp:login' %}" class="btn-auth bg-white text-red-600 font-bold border-2 border-red-600">Iniciar sesión</a>
-        <a href="{% url 'tienda_temp:registro_cliente' %}" class="btn-auth bg-white text-green-600 font-bold border-2 border-green-600">Registrarse</a>
+        <a href="{% url 'tienda_temp:login' %}"
+           class="btn-auth bg-white text-red-600 font-bold border-2 border-red-600 text-xs lg:text-sm">
+          Iniciar sesión
+        </a>
+        <a href="{% url 'tienda_temp:registro_cliente' %}"
+           class="btn-auth bg-white text-green-600 font-bold border-2 border-green-600 text-xs lg:text-sm">
+          Registrarse
+        </a>
       {% endif %}
     </div>
 
     <!-- Botón hamburguesa -->
-    <button id="menu-toggle" class="md:hidden text-white focus:outline-none ml-2">
+    <button id="menu-toggle" class="md:hidden text-white focus:outline-none ml-2 flex-shrink-0">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
     </button>
+
+  </div>
+
+  <!-- Menú mobile — con clases de transición -->
+  <div id="menu"
+       class="hidden md:hidden bg-red-700 px-4 pb-4 pt-2 space-y-1
+              opacity-0 -translate-y-4 pointer-events-none
+              transition-all duration-250">
+
+    {% if request.user.is_authenticated %}
+
+      {% if request.user.empleado and request.user.empleado.rol == 'dueño' %}
+        <a href="{% url 'tienda_temp:dashboard_dueno' %}" class="block nav-link py-2">Dashboard</a>
+        <a href="{% url 'inventario:solicitudes_pendientes' %}" class="block nav-link py-2">Solicitudes Pendientes</a>
+        <a href="{% url 'inventario:mis_productos' %}" class="block nav-link py-2">Mis Productos</a>
+        <a href="{% url 'inventario:productos_inactivos' %}" class="block nav-link py-2">Productos Inactivos</a>
+
+      {% elif request.user.empleado and request.user.empleado.rol == 'cajero' %}
+        <a href="{% url 'tienda_temp:dashboard_socio' %}" class="block nav-link py-2">Dashboard</a>
+        <a href="{% url 'inventario:mis_solicitudes' %}" class="block nav-link py-2">Mis Solicitudes</a>
+        <a href="{% url 'inventario:productos_inactivos' %}" class="block nav-link py-2">Productos Inactivos</a>
+
+      {% elif request.user.empleado and request.user.empleado.rol == 'almacenista' %}
+        <a href="{% url 'tienda_temp:dashboard_socio' %}" class="block nav-link py-2">Dashboard</a>
+        <a href="{% url 'inventario:mis_solicitudes' %}" class="block nav-link py-2">Mis Solicitudes</a>
+        <a href="{% url 'inventario:productos_inactivos' %}" class="block nav-link py-2">Productos Inactivos</a>
+
+      {% elif request.user.empleado %}
+        <a href="{% url 'tienda_temp:dashboard_socio' %}" class="block nav-link py-2">Dashboard</a>
+        <a href="{% url 'inventario:mis_solicitudes' %}" class="block nav-link py-2">Mis Solicitudes</a>
+
+      {% elif request.user.cliente %}
+        <a href="{% url 'landing' %}" class="block nav-link py-2">Inicio</a>
+        <a href="/productos/" class="block nav-link py-2">Productos</a>
+        <a href="/comprar/" class="block nav-link py-2">Comprar ahora</a>
+        <a href="/mayoristas/" class="block nav-link py-2">Atención mayorista</a>
+
+      {% endif %}
+
+      <hr class="border-red-500">
+      <a href="{% url 'profile_settings' %}" class="block nav-link py-2">Configuración</a>
+      <form method="post" action="{% url 'tienda_temp:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full text-left nav-link py-2 text-yellow-300 font-bold">
+          Cerrar sesión
+        </button>
+      </form>
+
+    {% else %}
+      <a href="{% url 'landing' %}" class="block nav-link py-2">Inicio</a>
+      <a href="{% url 'about-us' %}" class="block nav-link py-2">Sobre nosotros</a>
+      <a href="{% url 'contacto' %}" class="block nav-link py-2">Contacto</a>
+      <a href="{% url 'tienda_temp:login' %}" class="block nav-link py-2 font-bold">Iniciar sesión</a>
+      <a href="{% url 'tienda_temp:registro_cliente' %}" class="block nav-link py-2 font-bold">Registrarse</a>
+    {% endif %}
+
   </div>
 </nav>

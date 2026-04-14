@@ -1,0 +1,279 @@
+/* ============================================================
+   NUEVO PRODUCTO — Estilos propios
+   ============================================================ */
+
+/* ============================
+   BOTONES 90s
+   ============================ */
+.btn-90s {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn-90s:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 black;
+}
+.btn-90s:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 black;
+}
+
+/* ============================
+   INPUT WRAPPER BASE
+   Borde negro, fondo blanco siempre.
+   Al focus: cambia el COLOR del borde y la sombra.
+   El fondo del input nunca cambia.
+   ============================ */
+.input-wrapper {
+  border: 4px solid black;
+  box-shadow: 4px 4px 0 0 black;
+  background: white;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.input-wrapper:focus-within {
+  box-shadow: 6px 6px 0 0 black;
+  transform: translate(-1px, -1px);
+}
+
+/* Inputs dentro del wrapper — fondo blanco siempre */
+#form-producto .input-wrapper .form-control {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: white !important;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+  color: #111;
+  font-size: 0.95rem;
+}
+#form-producto .input-wrapper .form-control:focus {
+  border: none !important;
+  background: white !important;
+  animation: none !important;
+  box-shadow: none !important;
+}
+#form-producto .input-wrapper .form-control:hover {
+  border: none !important;
+  background: white !important;
+}
+#form-producto .input-wrapper textarea.form-control {
+  resize: vertical;
+  min-height: 6rem;
+}
+#form-producto .input-wrapper select.form-control {
+  appearance: auto;
+  cursor: pointer;
+  background: white !important;
+}
+
+/* ============================
+   COLORES DE BORDE/SOMBRA POR CAMPO AL FOCUS
+   Fondo siempre blanco — solo el contorno cambia
+   ============================ */
+
+.wrapper-codigo:focus-within {
+  border-color: #FFBE0B;
+  box-shadow: 6px 6px 0 0 #FFBE0B;
+}
+.wrapper-nombre:focus-within {
+  border-color: #00F5D4;
+  box-shadow: 6px 6px 0 0 #00F5D4;
+}
+.wrapper-descripcion:focus-within {
+  border-color: #8338EC;
+  box-shadow: 6px 6px 0 0 #8338EC;
+}
+.wrapper-menudeo:focus-within {
+  border-color: #06D6A0;
+  box-shadow: 6px 6px 0 0 #06D6A0;
+}
+.wrapper-mayoreo:focus-within {
+  border-color: #3A86FF;
+  box-shadow: 6px 6px 0 0 #3A86FF;
+}
+.wrapper-docena:focus-within {
+  border-color: #FB5607;
+  box-shadow: 6px 6px 0 0 #FB5607;
+}
+.wrapper-dueno:focus-within {
+  border-color: #FF006E;
+  box-shadow: 6px 6px 0 0 #FF006E;
+}
+.wrapper-categoria:focus-within {
+  border-color: #06D6A0;
+  box-shadow: 6px 6px 0 0 #06D6A0;
+}
+.wrapper-subcategoria:focus-within {
+  border-color: #00BBF9;
+  box-shadow: 6px 6px 0 0 #00BBF9;
+}
+.wrapper-ubicacion:focus-within {
+  border-color: #FFBE0B;
+  box-shadow: 6px 6px 0 0 #FFBE0B;
+}
+.wrapper-cantidad:focus-within {
+  border-color: #CCFF00;
+  box-shadow: 6px 6px 0 0 #CCFF00;
+}
+
+/* ============================
+   FOTO CIRCULAR
+   ============================ */
+#foto-circle {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 4px solid black;
+  box-shadow: 6px 6px 0 0 black;
+  object-fit: cover;
+  display: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+#foto-circle:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 black;
+}
+#foto-placeholder {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 4px dashed black;
+  box-shadow: 6px 6px 0 0 black;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: #F0FFF4;
+  transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+#foto-placeholder:hover {
+  background: #dcfce7;
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 black;
+}
+
+/* ============================
+   BARRA DE PROGRESO
+   ============================ */
+#barra-progreso-container {
+  display: none;
+}
+#barra-fill {
+  transition: width 0.4s ease;
+  height: 100%;
+  background: #FF006E;
+}
+
+/* ============================
+   TEMPORADAS
+   ============================ */
+.temporada-checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+.temporada-checkbox-group > * {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 3px solid black;
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background 0.15s ease;
+}
+.temporada-checkbox-group > *:hover {
+  background: #F0FFF4;
+}
+.temporada-checkbox-group input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #06D6A0;
+}
+
+/* ============================
+   BANNER DE ATRIBUTOS
+   ============================ */
+#atributos-banner {
+  display: none;
+}
+#atributos-banner.visible {
+  display: block;
+}
+
+/* ============================
+   ATRIBUTOS GENERADOS POR JS
+   ============================ */
+#atributos-container .atributo-wrapper {
+  border: 4px solid black;
+  box-shadow: 4px 4px 0 0 black;
+  background: white;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+#atributos-container .atributo-wrapper:focus-within {
+  border-color: #FFBE0B;
+  box-shadow: 6px 6px 0 0 #FFBE0B;
+  transform: translate(-1px, -1px);
+}
+#atributos-container .atributo-input {
+  border: none;
+  outline: none;
+  background: white;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+  color: #111;
+  font-size: 0.95rem;
+}
+#atributos-container .atributo-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+/* ============================
+   FUZZY DROPDOWN
+   ============================ */
+.fuzzy-dropdown {
+  position: absolute;
+  background: white;
+  border: 3px solid black;
+  box-shadow: 4px 4px 0 0 black;
+  width: 100%;
+  z-index: 999;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.fuzzy-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.fuzzy-option:hover {
+  background: #00F5D4;
+}
+
+/* ============================
+   LABEL ESTILO 90s
+   ============================ */
+.label-90s {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}

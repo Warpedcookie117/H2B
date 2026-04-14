@@ -2,7 +2,8 @@ from django.db import transaction
 from ventas.models import Venta, VentaDetalle
 from inventario.services.inventario_service import InventarioService
 from inventario.models import Producto
-from ventas.services.ticket_service import generar_texto_ticket   # 🔥 IMPORTANTE
+from ventas.services.ticket_service import generar_texto_ticket, imprimir_silencioso
+from sucursales.models import Caja
 
 
 class POSService:
@@ -50,11 +51,19 @@ class POSService:
         # 4) Ubicación de venta
         ubicacion_venta = sucursal.ubicaciones.get(tipo="piso")
 
-        # 5) Crear Venta
+        # 5) Snapshot del nombre de la caja
+        try:
+            caja = Caja.objects.get(pk=caja_id)
+            caja_nombre = caja.nombre
+        except Caja.DoesNotExist:
+            caja_nombre = None
+
+        # 6) Crear Venta
         venta = Venta.objects.create(
             empleado=empleado,
             ubicacion=ubicacion_venta,
             caja_id=caja_id,
+            caja_nombre=caja_nombre,
             subtotal=subtotal,
             descuento=descuento,
             total=total,
@@ -64,32 +73,42 @@ class POSService:
             cambio=cambio,
         )
 
-        # 6) Crear detalles + descontar inventario
+        # 7) Crear detalles + descontar inventario
         for d in detalles:
+            producto = d["producto"]
+
+            # Construir atributos snapshot
+            atributos_snap = {
+                v.atributo.nombre: v.valor
+                for v in producto.valores_atributo.select_related("atributo").all()
+            }
 
             VentaDetalle.objects.create(
                 venta=venta,
-                producto=d["producto"],
+                producto=producto,
+                nombre_snapshot=producto.nombre,
+                atributos_snapshot=atributos_snap,
                 cantidad=d["cantidad"],
                 precio_unitario=d["precio_unitario"],
                 subtotal=d["subtotal"],
             )
 
             InventarioService.salida_inteligente(
-                producto=d["producto"],
+                producto=producto,
                 cantidad=d["cantidad"],
                 empleado=empleado,
                 sucursal=sucursal
             )
 
-        # 7) 🔥 Generar ticket ESC/POS
+        # 8) Generar ticket e imprimir silenciosamente
         ticket_texto = generar_texto_ticket(venta)
+        imprimir_silencioso(ticket_texto)
 
-        # 8) Regresar venta + detalles + ticket
+        # 9) Regresar venta + detalles + ticket
         return {
             "venta": venta,
             "detalles": detalles,
-            "ticket_texto": ticket_texto   # 🔥 AHORA SÍ EXISTE
+            "ticket_texto": ticket_texto,
         }
 
     @staticmethod

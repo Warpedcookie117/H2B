@@ -3,69 +3,167 @@
 {% load static %}
 
 {% block content %}
-<section class="min-h-screen flex flex-col items-center justify-center px-4 py-12 space-y-12">
+<section class="min-h-screen flex items-center justify-center px-4 py-12">
 
-  <!-- Card de información de contacto -->
-  <div class="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full text-gray-700 animate__animated animate__fadeInDown" data-aos="fade-down">
-    <h2 class="text-3xl font-bold text-red-600 mb-4 text-center">Información de la tienda</h2>
-    <ul class="space-y-3 text-lg">
-      <li><strong>📍 Dirección:</strong> 15 de mayo #220 PTE. Col. Centro, Monterrey, Nuevo León</li>
-      <li><strong>🕒 Horario:</strong> Lunes a sabado de 10 a.m. a 7:30 p.m. , Domingos de 10 a.m. a 6 p.m.</li>
-      <li><strong>📞 Teléfono:</strong> +52 81 1234 5678</li>
-      <li><strong>✉️ Email:</strong> contacto@comercializadoramodelo.mx</li>
-    </ul>
-  </div>
+  <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-  <!-- Card del formulario -->
-  <div class="bg-white rounded-2xl shadow-2xl p-10 max-w-2xl w-full animate__animated animate__fadeInUp" data-aos="zoom-in">
-    <h2 class="text-4xl font-bold text-red-600 mb-6 text-center">Contáctanos</h2>
-    <p class="text-gray-600 text-center mb-8 text-lg">¿Tienes dudas, sugerencias o quieres cotizar? ¡Estamos para ayudarte!</p>
+    <!-- Card de información (con fondo propio) -->
+    <div class="bg-gray-50 border-4 border-black shadow-[8px_8px_0_0_black]
+                rounded-xl p-8 relative overflow-hidden">
+      <div class="absolute -top-3 left-3 w-10 h-10 bg-[#FFBE0B] rotate-45 opacity-40"></div>
+      <h2 class="text-2xl md:text-3xl font-black text-red-600 uppercase mb-4 tracking-wide">
+        Información de la tienda
+      </h2>
 
-    {% if messages %}
-      <div class="mb-6">
-        {% for message in messages %}
-          <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded animate__animated animate__fadeInDown">
-            {{ message }}
+      <ul class="space-y-3 text-base md:text-lg text-gray-800 font-semibold leading-relaxed break-words">
+        <li><strong>📍 Dirección:</strong> 15 de mayo #220 PTE. Col. Centro, Monterrey, Nuevo León</li>
+        <li><strong>🕒 Horario:</strong> Lunes a sábado 10:00 – 19:30, Domingo 10:00 – 18:00</li>
+        <li><strong>📞 Teléfono:</strong> +52 81 1234 5678</li>
+        <li><strong>✉️ Email:</strong> contacto@comercializadoramodelo.mx</li>
+      </ul>
+
+      <!-- Nota contextual (si aplica) -->
+      <p class="mt-6 text-sm text-gray-600">Atendemos consultas comerciales y soporte en horario de tienda.</p>
+    </div>
+
+    <!-- Card del formulario (con fondo propio) -->
+    <div class="bg-gray-50 border-4 border-black shadow-[8px_8px_0_0_black]
+                rounded-xl p-8 relative overflow-hidden">
+      <div class="absolute -top-3 right-3 w-10 h-10 bg-[#8338EC] rotate-45 opacity-40"></div>
+
+      <h2 class="text-2xl md:text-3xl font-black text-red-600 uppercase mb-2 tracking-wide text-center">
+        Contáctanos
+      </h2>
+      <p class="text-gray-700 text-center mb-6 text-sm md:text-base font-semibold">
+        ¿Tienes dudas, sugerencias o quieres cotizar? Escríbenos y te respondemos.
+      </p>
+
+      <!-- Mensaje de feedback (solo el primer message para evitar duplicados) -->
+      {% if messages %}
+        <div class="mb-4">
+          {% for message in messages|slice:":1" %}
+            <div class="bg-green-100 border-4 border-black text-green-800 px-4 py-3 rounded-md shadow-[4px_4px_0_0_black] font-bold break-words">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="POST" class="space-y-5" novalidate>
+        {% csrf_token %}
+
+        <!-- Nombre -->
+        <div>
+          <label for="{{ form.nombre.id_for_label }}" class="block text-xs md:text-sm font-black text-gray-800 uppercase mb-1">
+            Nombre
+          </label>
+          <input
+            type="text"
+            name="{{ form.nombre.name }}"
+            id="{{ form.nombre.id_for_label }}"
+            value="{{ form.nombre.value|default:'' }}"
+            maxlength="120"
+            required
+            class="w-full bg-white border-4 border-black px-3 py-2 rounded-md
+                   focus:border-[#3A86FF] focus:outline-none transition-all text-sm md:text-base"
+            aria-label="Nombre">
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label for="{{ form.email.id_for_label }}" class="block text-xs md:text-sm font-black text-gray-800 uppercase mb-1">
+            Correo electrónico
+          </label>
+          <input
+            type="email"
+            name="{{ form.email.name }}"
+            id="{{ form.email.id_for_label }}"
+            value="{{ form.email.value|default:'' }}"
+            maxlength="254"
+            required
+            class="w-full bg-white border-4 border-black px-3 py-2 rounded-md
+                   focus:border-[#3A86FF] focus:outline-none transition-all text-sm md:text-base"
+            aria-label="Correo electrónico">
+        </div>
+
+        <!-- Mensaje -->
+        <div>
+          <label for="{{ form.mensaje.id_for_label }}" class="block text-xs md:text-sm font-black text-gray-800 uppercase mb-1">
+            Mensaje
+          </label>
+          <textarea
+            name="{{ form.mensaje.name }}"
+            id="{{ form.mensaje.id_for_label }}"
+            rows="5"
+            maxlength="2000"
+            required
+            class="w-full bg-white border-4 border-black px-3 py-2 rounded-md h-36 resize-vertical
+                   focus:border-[#3A86FF] focus:outline-none transition-all text-sm md:text-base break-words"
+            aria-label="Mensaje">{{ form.mensaje.value|default:'' }}</textarea>
+        </div>
+
+        <!-- Botones: Enviar o mensajes de permiso -->
+        {% if puede_enviar %}
+          <button type="submit"
+                  class="w-full bg-[#FF006E] text-white font-black uppercase border-4 border-black
+                         py-3 rounded-md shadow-[6px_6px_0_0_black]
+                         hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[8px_8px_0_0_black]
+                         transition-all duration-150 text-sm md:text-base">
+            Enviar mensaje →
+          </button>
+
+        {% elif request.user.is_authenticated %}
+          <!-- Mensaje de permiso (único, claro y no repetido) -->
+          <div class="text-center">
+            <p class="inline-block bg-yellow-100 border-4 border-black text-yellow-800 px-4 py-2 rounded-md font-black">
+              No tienes permiso para enviar mensajes.
+            </p>
           </div>
-        {% endfor %}
-      </div>
-    {% endif %}
 
-    <form method="POST" class="space-y-6">
-      {% csrf_token %}
+        {% else %}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a href="{% url 'tienda_temp:login' %}"
+               class="block text-center bg-[#3A86FF] text-white font-black uppercase border-4 border-black
+                      py-2 rounded-md shadow-[4px_4px_0_0_black]
+                      hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
+                      transition-all duration-150 text-sm md:text-base">
+              Iniciar sesión
+            </a>
 
-      <div>
-        <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-medium text-gray-700">Nombre</label>
-        {{ form.nombre }}
-      </div>
+            <a href="{% url 'tienda_temp:registro_cliente' %}"
+               class="block text-center bg-[#FFBE0B] text-black font-black uppercase border-4 border-black
+                      py-2 rounded-md shadow-[4px_4px_0_0_black]
+                      hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
+                      transition-all duration-150 text-sm md:text-base">
+              Registrarse
+            </a>
+          </div>
 
-      <div>
-        <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Correo electrónico</label>
-        {{ form.email }}
-      </div>
+          <p class="mt-3 text-center text-xs md:text-sm text-gray-600">
+            Debes iniciar sesión como cliente para enviar mensajes.
+          </p>
+        {% endif %}
 
-      <div>
-        <label for="{{ form.mensaje.id_for_label }}" class="block text-sm font-medium text-gray-700">Mensaje</label>
-        {{ form.mensaje }}
-      </div>
+      </form>
+    </div>
 
-     {% if puede_enviar %}
-  <button type="submit"
-          class="btn-submit">
-    Enviar mensaje
-  </button>
-    {% elif request.user.is_authenticated %}
-      <p class="text-center text-sm text-red-500">No tienes permiso para enviar mensajes.</p>
-    {% else %}
-      <p class="text-center text-sm text-gray-500">Inicia sesión como cliente para enviar mensajes.</p>
-    {% endif %}
-
-    </form>
   </div>
 </section>
 
-<!-- AOS y Animate.css -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<script>AOS.init();</script>
+<!-- Small inline CSS tweaks to ensure wrapping and responsive behavior -->
+<style>
+  /* Evitar que textos largos salgan de las cards */
+  .break-words { word-wrap: break-word; word-break: break-word; }
+
+  /* Ajustes para pantallas muy pequeñas */
+  @media (max-width: 420px) {
+    .shadow-
+
+\[8px_8px_0_0_black\]
+
+ { box-shadow: 6px 6px 0 0 #000; }
+    .rounded-xl { border-radius: 10px; }
+  }
+</style>
+
 {% endblock %}

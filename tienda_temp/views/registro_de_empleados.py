@@ -7,8 +7,21 @@ from tienda_temp.models import Cliente, Empleado, Usuario
 
 
 def registro_empleado(request):
-    form = RegistroEmpleadoForm(request.POST or None)
 
+    # 1. Leer el rol desde la URL (GET)
+    rol_url = request.GET.get("rol", None)
+
+    if request.method == "POST":
+        # 2. POST normal
+        form = RegistroEmpleadoForm(request.POST)
+    else:
+        # 3. GET → prellenar el rol si viene en la URL
+        if rol_url:
+            form = RegistroEmpleadoForm(initial={"rol": rol_url})
+        else:
+            form = RegistroEmpleadoForm()
+
+    # 4. Procesar POST
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
 
@@ -29,7 +42,7 @@ def registro_empleado(request):
                 edad=data["edad"],
                 direccion=data["direccion"],
                 numero_contacto=data["numero_contacto"],
-                rol=data["rol"],
+                rol=data["rol"],  # 🔥 AQUÍ YA LLEGA "dueño" SI VIENE DE LA URL
                 contacto_emergencia=data["contacto_emergencia"],
                 descripcion_contacto_emergencia=data["descripcion_contacto_emergencia"]
             )

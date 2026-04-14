@@ -1,33 +1,35 @@
 import { initProductoExistente } from "./producto_existente.js";
-import { initCategorias } from "./categorias.js";
-import { initAtributos } from "./atributos.js";
-import { initBotonInventario } from "./boton_inventario_nvproducto.js";
+import { initCategorias }        from "./categorias.js";
+import { initAtributos }         from "./atributos.js";
+import { initBotonInventario }   from "./boton_inventario_nvproducto.js";
+import { iniciarBarraProgreso }  from "./barra_progreso.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
     const form = document.getElementById("form-producto");
 
-    const codigoInput = document.getElementById("id_codigo_barras");
-    const nombreInput = document.getElementById("id_nombre");
-    const descripcionInput = document.getElementById("id_descripcion");
-    const mayoreoInput = document.getElementById("id_precio_mayoreo");
-    const menudeoInput = document.getElementById("id_precio_menudeo");
-    const docenaInput = document.getElementById("id_precio_docena");
-    const tipoCodigoInput = document.getElementById("id_tipo_codigo");
-    const duenioSelect = document.getElementById("id_dueño");
+    const codigoInput        = document.getElementById("id_codigo_barras");
+    const nombreInput        = document.getElementById("id_nombre");
+    const descripcionInput   = document.getElementById("id_descripcion");
+    const mayoreoInput       = document.getElementById("id_precio_mayoreo");
+    const menudeoInput       = document.getElementById("id_precio_menudeo");
+    const docenaInput        = document.getElementById("id_precio_docena");
+    const tipoCodigoInput    = document.getElementById("id_tipo_codigo");
+    const duenioSelect       = document.getElementById("id_dueño");
 
     const categoriaPadreSelect = document.getElementById("id_categoria_padre");
-    const subcategoriaSelect = document.getElementById("id_subcategoria");
+    const subcategoriaSelect   = document.getElementById("id_subcategoria");
 
     const atributosContainer = document.getElementById("atributos-container");
+    const ubicacionSelect    = document.getElementById("id_ubicacion");
+    const submitBtn          = document.getElementById("submit-btn");
 
-    const ubicacionSelect = document.getElementById("id_ubicacion");
-    const submitBtn = document.getElementById("submit-btn");
-
+    // ============================
+    // HELPERS DE UI
+    // ============================
     function setReadOnlyTrue(elements) {
         elements.forEach((el) => {
             if (!el) return;
-
             if (el.tagName === "SELECT") {
                 el.disabled = true;
                 el.classList.add("bg-gray-100");
@@ -38,84 +40,37 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function activarCamposProducto() {
-        [
-            nombreInput,
-            descripcionInput,
-            mayoreoInput,
-            menudeoInput,
-            docenaInput,
-            tipoCodigoInput,
-            duenioSelect,
-            categoriaPadreSelect,
-            subcategoriaSelect
-        ].forEach(el => {
-            el.disabled = false;
-            el.removeAttribute("readonly");
-            el.classList.remove("bg-gray-100");
-        });
-    }
-
     function actualizarTemporadas(temporadasDelProducto) {
-        const checkboxes = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
-
-        checkboxes.forEach(cb => {
-            const id = parseInt(cb.value);
-            cb.checked = temporadasDelProducto.includes(id);
-            cb.disabled = true;
-        });
-    }
-
-    function limpiarTemporadas() {
-        const checkboxes = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
-
-        checkboxes.forEach(cb => {
-            cb.checked = false;
-            cb.disabled = false;
-        });
+        document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]')
+            .forEach(cb => {
+                cb.checked  = temporadasDelProducto.includes(parseInt(cb.value));
+                cb.disabled = true;
+            });
     }
 
     function bloquearFoto() {
-        const fotoInput = document.getElementById("id_foto_url");
-        if (fotoInput) {
-            fotoInput.style.pointerEvents = "none";
-            fotoInput.style.opacity = "0.5";
-        }
-    }
-
-    function habilitarFoto() {
-        const fotoInput = document.getElementById("id_foto_url");
-        if (fotoInput) {
-            fotoInput.style.pointerEvents = "auto";
-            fotoInput.style.opacity = "1";
-        }
+        const f = document.getElementById("id_foto_url");
+        if (f) { f.style.pointerEvents = "none"; f.style.opacity = "0.5"; }
     }
 
     function mostrarFoto(url) {
-        const cont = document.getElementById("preview-foto");
-        if (!cont) return;
-
+        const circle      = document.getElementById("foto-circle");
+        const placeholder = document.getElementById("foto-placeholder");
+        if (!circle || !placeholder) return;
         if (url) {
-            cont.innerHTML = `
-                <img src="${url}"
-                     class="w-32 h-32 object-cover rounded border mb-2">
-            `;
+            circle.src                = url;
+            circle.style.display      = "block";
+            placeholder.style.display = "none";
         } else {
-            cont.innerHTML = "";
+            circle.style.display      = "none";
+            placeholder.style.display = "flex";
         }
-    }
-
-    function limpiarFoto() {
-        const cont = document.getElementById("preview-foto");
-        if (cont) cont.innerHTML = "";
     }
 
     // ============================
     // 1. ATRIBUTOS
     // ============================
-    const atributos = initAtributos({
-        atributosContainer
-    });
+    const atributos = initAtributos({ atributosContainer });
 
     // ============================
     // 2. CATEGORÍAS
@@ -123,7 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const categorias = initCategorias({
         categoriaPadreSelect,
         subcategoriaSelect,
-
         onSubcategoriaCargada: (subId) => {
             atributos.mostrarAtributosDeSubcategoria(subId);
         }
@@ -133,57 +87,32 @@ document.addEventListener("DOMContentLoaded", () => {
     // 3. BOTÓN + INVENTARIO
     // ============================
     const botonInventario = initBotonInventario({
-        form,
-        submitBtn,
-        ubicacionSelect,
-
-        codigoInput,
-        nombreInput,
-        descripcionInput,
-        mayoreoInput,
-        menudeoInput,
-        docenaInput,
-        tipoCodigoInput,
-        duenioSelect,
-        categoriaPadreSelect,
-        subcategoriaSelect
+        form, submitBtn, ubicacionSelect,
+        codigoInput, nombreInput, descripcionInput,
+        mayoreoInput, menudeoInput, docenaInput,
+        tipoCodigoInput, duenioSelect,
+        categoriaPadreSelect, subcategoriaSelect
     });
 
     // ============================
     // 4. PRODUCTO EXISTENTE (AJAX)
     // ============================
     initProductoExistente({
-        form,
-        submitBtn,
-        codigoInput,
-        nombreInput,
-        descripcionInput,
-        mayoreoInput,
-        menudeoInput,
-        docenaInput,
-        tipoCodigoInput,
-        duenioSelect,
-        categoriaPadreSelect,
-        subcategoriaSelect,
-        atributosContainer,
-        ubicacionSelect,
+        form, submitBtn, codigoInput,
+        nombreInput, descripcionInput,
+        mayoreoInput, menudeoInput, docenaInput,
+        tipoCodigoInput, duenioSelect,
+        categoriaPadreSelect, subcategoriaSelect,
+        atributosContainer, ubicacionSelect,
 
         onProductoEncontrado: (data) => {
-
             categorias.cargarSubcategorias(data.categoria_padre_id, data.subcategoria_id);
-
             atributos.renderAtributosReadOnly(data.atributos);
 
             setReadOnlyTrue([
-                nombreInput,
-                descripcionInput,
-                mayoreoInput,
-                menudeoInput,
-                docenaInput,
-                duenioSelect,
-                categoriaPadreSelect,
-                subcategoriaSelect,
-                tipoCodigoInput
+                nombreInput, descripcionInput, mayoreoInput, menudeoInput,
+                docenaInput, duenioSelect, categoriaPadreSelect,
+                subcategoriaSelect, tipoCodigoInput
             ]);
 
             actualizarTemporadas(data.temporadas || []);
@@ -194,19 +123,12 @@ document.addEventListener("DOMContentLoaded", () => {
         },
 
         onProductoNoEncontrado: () => {
-            activarCamposProducto();
-            limpiarTemporadas();
-            habilitarFoto();
-            limpiarFoto();
+            // producto_existente.js maneja el desbloqueo directo
+        },
 
-            // ❗ NO tocar form.action
-            // ❗ NO cambiar el botón aquí
-            // initBotonInventario controla eso
-
-            const subId = subcategoriaSelect.value;
-            if (subId) {
-                atributos.mostrarAtributosDeSubcategoria(subId);
-            }
+        // ← Este callback limpia atributos y banner cuando se borra el código
+        onLimpiar: () => {
+            atributos.mostrarAtributosDeSubcategoria(""); // limpia atributos y oculta banner
         }
     });
 
@@ -218,26 +140,37 @@ document.addEventListener("DOMContentLoaded", () => {
         atributos.mostrarAtributosDeSubcategoria(subIdInicial);
     }
 
+    // ============================
+    // 6. FOCO AUTOMÁTICO AL CAMPO CÓDIGO
+    // ============================
+    codigoInput.focus();
+
+    document.addEventListener("keydown", function (e) {
+        const tag = document.activeElement.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") return;
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if ([
+            "Tab", "Escape", "Enter",
+            "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+            "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
+        ].includes(e.key)) return;
+        codigoInput.focus();
+    });
+
 });
 
 // ============================
 // DEBUG: detectar quién borra el archivo
 // ============================
-
 const fotoInput = document.querySelector("#id_foto_url");
-
 if (fotoInput) {
     let ultimoEstado = fotoInput.files.length;
-
     setInterval(() => {
         const actual = fotoInput.files.length;
-
         if (ultimoEstado === 1 && actual === 0) {
-            console.warn("🔥🔥🔥 EL ARCHIVO SE BORRÓ AQUÍ 🔥🔥🔥");
-            console.trace("Stack donde se borró el archivo:");
-            console.log("Valor actual del input:", fotoInput.value);
+            console.warn("🔥 EL ARCHIVO SE BORRÓ 🔥");
+            console.trace();
         }
-
         ultimoEstado = actual;
     }, 200);
 }

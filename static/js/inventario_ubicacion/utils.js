@@ -3,19 +3,18 @@
    ============================================================ */
 
 function abrirModal(modalId) {
-    const modal = document.getElementById(modalId);
+    const modal   = document.getElementById(modalId);
     const content = document.getElementById(`${modalId}Content`);
 
     if (!modal || !content) {
-        console.error("❌ Modal o contenido no encontrado:", modalId);
+        console.error("❌ Modal no encontrado:", modalId);
         return;
     }
 
-    // ⭐⭐⭐ LIMPIAR ERROR DEL MODAL ANTES DE MOSTRARLO
     const errorBox = modal.querySelector(".modal-error");
     if (errorBox) {
         errorBox.innerHTML = "";
-        errorBox.classList.add("hidden", "d-none");
+        errorBox.classList.add("hidden");
     }
 
     modal.classList.remove("hidden");
@@ -30,62 +29,51 @@ function abrirModal(modalId) {
 }
 
 function cerrarModal(modalId) {
-    const modal = document.getElementById(modalId);
+    const modal   = document.getElementById(modalId);
     const content = document.getElementById(`${modalId}Content`);
 
     if (!modal || !content) return;
 
-    // ⭐⭐⭐ LIMPIAR ERROR AL CERRAR (doble seguridad)
     const errorBox = modal.querySelector(".modal-error");
     if (errorBox) {
         errorBox.innerHTML = "";
-        errorBox.classList.add("hidden", "d-none");
+        errorBox.classList.add("hidden");
     }
 
     content.classList.remove("opacity-100", "scale-100");
     content.classList.add("opacity-0", "scale-95");
 
-    setTimeout(() => {
-        modal.classList.add("hidden");
-    }, 150);
+    setTimeout(() => modal.classList.add("hidden"), 150);
 
     document.removeEventListener("keydown", cerrarConEsc);
     modal.removeEventListener("click", cerrarClickFuera);
 }
 
-
-/* ============================================================
-   EVENTOS GLOBALES
-   ============================================================ */
-
 function cerrarConEsc(e) {
     if (e.key === "Escape") {
-        const modal = document.querySelector(".fixed:not(.hidden)");
+        const modal = document.querySelector(".modal-90s:not(.hidden)");
         if (modal) cerrarModal(modal.id);
     }
 }
 
 function cerrarClickFuera(e) {
-    const modal = e.currentTarget;
-    if (e.target === modal) cerrarModal(modal.id);
+    if (e.target === e.currentTarget) cerrarModal(e.currentTarget.id);
 }
 
-
 /* ============================================================
-   UTILIDADES GENERALES
+   CSRF TOKEN
    ============================================================ */
 
 function getCSRFToken() {
     return document.querySelector("[name=csrfmiddlewaretoken]").value;
 }
 
-
 /* ============================================================
    ACTUALIZAR CARD — REGLA UNIVERSAL
    ============================================================ */
 
 function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
-    let card = document.getElementById(`card_${productoId}_${ubicacionId}`);
+    const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
     if (!card) return;
 
     const cantidadSpan = card.querySelector(".cantidad-ubicacion");
@@ -94,125 +82,60 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
     card.dataset.cantidad = nuevaCantidad;
 
     if (parseInt(nuevaCantidad) === 0) {
-
-        card.classList.remove("bg-white");
-        card.classList.add("bg-gray-100", "border-gray-400");
-
         card.style.backgroundColor = "#f3f4f6";
-        card.style.borderColor = "#9ca3af";
+        card.style.borderColor     = "#9ca3af";
+        card.style.order           = 9999;
 
         let btnEliminar = card.querySelector(".btn-eliminar-inv");
-
         if (!btnEliminar) {
-            btnEliminar = document.createElement("button");
-            btnEliminar.className =
-                "btn-eliminar-inv mt-2 text-red-600 text-xs flex items-center gap-1 hover:text-red-800 font-semibold";
-            btnEliminar.innerHTML = "🗑️ Eliminar inventario";
-            btnEliminar.onclick = () => eliminarInventarioHandler(productoId, ubicacionId);
+            btnEliminar          = document.createElement("button");
+            btnEliminar.className = "btn-eliminar-inv btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black] bg-[#FF006E] text-white font-black text-[10px] uppercase tracking-widest py-1.5 flex items-center justify-center gap-1 mt-1";
+            btnEliminar.innerHTML = "⏳ Cargando...";
+            btnEliminar.disabled  = true;
+            btnEliminar.onclick   = () => eliminarInventarioHandler(productoId, ubicacionId);
 
-            const cantidadP = cantidadSpan.parentElement;
-            cantidadP.insertAdjacentElement("afterend", btnEliminar);
+            cantidadSpan.parentElement.insertAdjacentElement("afterend", btnEliminar);
+
+            fetch(`/inventario/api/ubicaciones-del-producto/${productoId}/`)
+                .then(r => r.json())
+                .then(data => {
+                    const otras = (data.ubicaciones || []).filter(
+                        u => u.id != ubicacionId && u.cantidad > 0
+                    );
+                    btnEliminar.innerHTML = otras.length > 0
+                        ? "🗑 Eliminar de aquí"
+                        : "🚫 Desactivar";
+                    btnEliminar.disabled = false;
+                })
+                .catch(() => {
+                    btnEliminar.innerHTML = "🗑 Eliminar de aquí";
+                    btnEliminar.disabled  = false;
+                });
         }
-
-        card.style.order = 9999;
         return;
     }
 
-    card.style.backgroundColor = "";
-    card.style.borderColor = "";
-    card.classList.remove("bg-gray-100", "border-gray-400");
-    card.classList.add("bg-white");
-    card.style.order = 0;
+    // Restaurar card con cantidad > 0
+    card.style.backgroundColor = card.dataset.color || "";
+    card.style.borderColor     = "";
+    card.style.order           = 0;
 
     const btnEliminar = card.querySelector(".btn-eliminar-inv");
     if (btnEliminar) btnEliminar.remove();
 }
 
-
 /* ============================================================
-   ORDENAMIENTO INICIAL
+   ORDENAMIENTO INICIAL — cantidad 0 al final
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
-    const cards = document.querySelectorAll("#gridProductos .cardProducto");
-
-    cards.forEach(card => {
-        const cantidad = parseInt(card.dataset.cantidad);
-        card.style.order = cantidad === 0 ? 9999 : 0;
+    document.querySelectorAll("#gridProductos .cardProducto").forEach(card => {
+        card.style.order = parseInt(card.dataset.cantidad) === 0 ? 9999 : 0;
     });
 });
 
-
 /* ============================================================
-   BUSCADOR CON ANIMACIÓN + REORDENAMIENTO
-   ============================================================ */
-
-document.getElementById("buscadorProductos").addEventListener("input", function () {
-    const texto = this.value.toLowerCase().trim();
-    const cards = Array.from(document.querySelectorAll("#gridProductos .cardProducto"));
-
-    cards.forEach(card => {
-        const nombre = card.querySelector(".nombre").textContent.toLowerCase();
-        const categoria = card.querySelector(".categoria").textContent.toLowerCase();
-        const subcategoria = card.querySelector(".subcategoria").textContent.toLowerCase();
-        const codigo = card.querySelector(".codigo")
-            ? card.querySelector(".codigo").textContent.toLowerCase()
-            : "";
-
-        const coincide =
-            nombre.includes(texto) ||
-            categoria.includes(texto) ||
-            subcategoria.includes(texto) ||
-            codigo.includes(texto);
-
-        if (coincide) {
-            card.style.display = "flex";
-            requestAnimationFrame(() => {
-                card.style.opacity = "1";
-                card.style.transform = "scale(1)";
-            });
-        } else {
-            card.style.opacity = "0";
-            card.style.transform = "scale(0.95)";
-            setTimeout(() => {
-                if (!texto) return;
-                card.style.display = "none";
-            }, 150);
-        }
-    });
-
-    const coincidencias = cards.filter(card => {
-        const nombre = card.querySelector(".nombre").textContent.toLowerCase();
-        const categoria = card.querySelector(".categoria").textContent.toLowerCase();
-        const subcategoria = card.querySelector(".subcategoria").textContent.toLowerCase();
-        const codigo = card.querySelector(".codigo")
-            ? card.querySelector(".codigo").textContent.toLowerCase()
-            : "";
-
-        return (
-            nombre.includes(texto) ||
-            categoria.includes(texto) ||
-            subcategoria.includes(texto) ||
-            codigo.includes(texto)
-        );
-    });
-
-    const noCoincidencias = cards.filter(card => !coincidencias.includes(card));
-
-    coincidencias.forEach(card => card.style.order = 0);
-    noCoincidencias.forEach(card => card.style.order = 1);
-
-    if (!texto) {
-        cards.forEach(card => {
-            const cantidad = parseInt(card.dataset.cantidad);
-            card.style.order = cantidad === 0 ? 9999 : 0;
-        });
-    }
-});
-
-
-/* ============================================================
-   MENSAJES GLOBALES
+   MENSAJES GLOBALES — estilo 90s
    ============================================================ */
 
 function mostrarMensaje(texto) {
@@ -220,11 +143,11 @@ function mostrarMensaje(texto) {
     if (!cont) return;
 
     cont.innerHTML = `
-        <div class="px-4 py-3 bg-green-100 border border-green-300 text-green-800 rounded-lg shadow mb-4">
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#06D6A0]
+                    text-black font-black px-5 py-3 uppercase tracking-widest text-sm">
             ${texto}
         </div>
     `;
-
     setTimeout(() => cont.innerHTML = "", 4000);
 }
 
@@ -233,11 +156,11 @@ function mostrarError(texto) {
     if (!cont) return;
 
     cont.innerHTML = `
-        <div class="px-4 py-3 bg-red-100 border border-red-300 text-red-800 rounded-lg shadow mb-4">
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+                    text-white font-black px-5 py-3 uppercase tracking-widest text-sm">
             ${texto}
         </div>
     `;
-
     setTimeout(() => cont.innerHTML = "", 5000);
 }
 
@@ -248,13 +171,11 @@ function mostrarErrorEnModal(modalId, mensaje) {
     const box = modal.querySelector(".modal-error");
     if (!box) return;
 
-    // Mostrar error
     box.innerHTML = mensaje;
-    box.classList.remove("hidden", "d-none");
+    box.classList.remove("hidden");
 
-    // ⭐ BORRAR AUTOMÁTICAMENTE A LOS 2 SEGUNDOS
     setTimeout(() => {
         box.innerHTML = "";
-        box.classList.add("hidden", "d-none");
-    }, 2000);
+        box.classList.add("hidden");
+    }, 2500);
 }

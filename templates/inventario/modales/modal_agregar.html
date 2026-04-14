@@ -1,72 +1,80 @@
-<!-- Modal Agregar Inventario -->
-<div id="modalAgregar_{{ inv.producto.id }}" class="modal-overlay hidden">
+<div id="modalAgregar_{{ inv.producto.id }}" class="modal-90s hidden">
+  <div id="modalAgregar_{{ inv.producto.id }}Content"
+       class="modal-box opacity-0 scale-95 transition-all duration-200"
+       style="background-color: {{ color_header }};">
 
-    <div id="modalAgregar_{{ inv.producto.id }}Content"
-         class="modal-content modal-box opacity-0 scale-95 transition-all duration-300">
+    <!-- HEADER -->
+    <div class="border-b-4 border-black pb-3 mb-4 px-2 py-2 -mx-2 -mt-2 rounded-sm" style="background-color: black;">
+      <h2 class="text-xl font-black text-white uppercase tracking-widest">➕ Agregar inventario</h2>
+    </div>
 
-        <!-- Encabezado -->
-        <h2 class="text-2xl font-bold text-gray-900 mb-4 text-center">
-            Agregar inventario
-        </h2>
+    <!-- INFO PRINCIPAL -->
+    <div class="modal-info-box space-y-3">
 
-        <!-- Información del producto -->
-        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 space-y-2">
+      <!-- Nombre del producto grande -->
+      <p class="text-2xl font-black text-black uppercase tracking-wide leading-tight">
+        {{ inv.producto.nombre }}
+      </p>
 
-            <p><strong>Producto:</strong> {{ inv.producto.nombre }}</p>
+      <div class="border-t-4 border-black pt-3 space-y-2">
 
-            <p><strong>Cantidad total del producto:</strong>
-                {{ inv.producto.cantidad_total }}
-            </p>
-
-            <p><strong>Cantidad en esta ubicación:</strong>
-                <span class="cantidad-actual">{{ inv.cantidad_actual }}</span>
-            </p>
-
+        <!-- En esta ubicación -->
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-0.5">
+            En {{ ubicacion.nombre }}
+            {% if ubicacion.sucursal %} — {{ ubicacion.sucursal.nombre }}{% endif %}
+          </p>
+          <p class="text-3xl font-black text-black leading-none">
+            <span class="cantidad-actual">{{ inv.cantidad_actual }}</span>
+            <span class="text-sm font-bold text-gray-500 ml-1">piezas aquí ahorita</span>
+          </p>
         </div>
 
-        <!-- ⭐⭐⭐ CONTENEDOR DE ERRORES DEL MODAL -->
-        <div class="modal-error hidden text-red-700 bg-red-100 border border-red-300 px-3 py-2 rounded mb-3"></div>
+        <!-- Total en toda la DB -->
+        <div class="border-t-2 border-dashed border-black/20 pt-2">
+          <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-0.5">
+            En toda Comercializadora Modelo
+          </p>
+          <p class="text-xl font-black text-black leading-none">
+            {{ inv.producto.cantidad_total }}
+            <span class="text-sm font-bold text-gray-500 ml-1">piezas en total</span>
+          </p>
+        </div>
 
-        <!-- Formulario -->
-        <form id="formAgregar_{{ inv.producto.id }}"
-              method="POST"
-              action="{% url 'inventario:agregar_inventario' inv.producto.id ubicacion.id %}"
-              class="space-y-5">
-
-            {% csrf_token %}
-
-            <input type="hidden" name="producto_id" value="{{ inv.producto.id }}">
-            <input type="hidden" name="ubicacion_id" value="{{ ubicacion.id }}">
-
-            <!-- Cantidad -->
-            <div>
-                <label class="font-semibold mb-1 block">Cantidad a agregar</label>
-
-                <input type="number"
-                       name="cantidad"
-                       min="1"
-                       required
-                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-lg
-                              focus:ring-blue-500 focus:border-blue-500">
-            </div>
-
-            <!-- Botones -->
-            <div class="flex justify-end gap-3 pt-4">
-
-                <button type="button"
-                        onclick="cerrarModal('modalAgregar_{{ inv.producto.id }}')"
-                        class="modal-btn modal-btn-cancel">
-                    Cancelar
-                </button>
-
-                <button type="button"
-                        onclick="confirmarAgregar(event)"
-                        class="modal-btn modal-btn-primary">
-                    Guardar
-                </button>
-
-            </div>
-
-        </form>
+      </div>
     </div>
+
+    <!-- ERROR -->
+    <div class="modal-error hidden"></div>
+
+    <!-- FORM -->
+    <form id="formAgregar_{{ inv.producto.id }}"
+          method="POST"
+          action="{% url 'inventario:agregar_inventario' inv.producto.id ubicacion.id %}"
+          class="space-y-4 mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="producto_id" value="{{ inv.producto.id }}">
+      <input type="hidden" name="ubicacion_id" value="{{ ubicacion.id }}">
+
+      <div>
+        <label class="modal-label">¿Cuántas piezas vas a agregar?</label>
+        <input type="number" name="cantidad" min="1" required
+               class="modal-input" placeholder="Ej: 10">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button"
+                onclick="cerrarModal('modalAgregar_{{ inv.producto.id }}')"
+                class="modal-btn modal-btn-cancel">
+          Cancelar
+        </button>
+        <button type="button"
+                onclick="confirmarAgregar(event)"
+                class="modal-btn modal-btn-primary">
+          Guardar
+        </button>
+      </div>
+    </form>
+
+  </div>
 </div>

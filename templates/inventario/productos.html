@@ -4,137 +4,328 @@
 {% block content %}
 
 <style>
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-@keyframes fadeOut {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.95); }
-}
+  .card-producto {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-producto:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0 0 black;
+  }
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
 
-.animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
-.animate-fadeOut { animation: fadeOut 0.3s ease-in-out; }
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50%       { transform: translateY(-12px) rotate(var(--r, 0deg)); }
+  }
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay: 0.8s; animation-duration: 5s; }
+  .shape:nth-child(3) { animation-delay: 1.6s; animation-duration: 3.5s; }
+  .shape:nth-child(4) { animation-delay: 0.4s; animation-duration: 4.5s; }
+  .shape:nth-child(5) { animation-delay: 1.2s; animation-duration: 6s; }
+
+  .etiqueta-box {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  }
+
+  @media (min-width: 1024px) {
+    .mobile-wrap { display: none !important; }
+    .kanban-wrap {
+      display: flex !important;
+      gap: 20px;
+      overflow-x: auto;
+      padding-bottom: 24px;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .kanban-wrap::-webkit-scrollbar { height: 8px; }
+    .kanban-wrap::-webkit-scrollbar-track { background: #e5e7eb; border: 2px solid black; }
+    .kanban-wrap::-webkit-scrollbar-thumb { background: #FF006E; border: 2px solid black; }
+  }
 </style>
 
-<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 border-b pb-2 gap-3">
-  <h2 class="text-3xl font-bold text-gray-800">Inventario Global</h2>
+<div class="max-w-full px-4 py-6 space-y-8 overflow-x-hidden">
 
-  <div class="flex gap-3 w-full md:w-auto">
-    <input type="text" id="buscadorProductos"
-          placeholder="Buscar producto..."
-          class="px-3 py-2 border rounded-lg shadow-sm focus:ring focus:ring-blue-300 w-full md:w-64">
+  <!-- ENCABEZADO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] bg-[#FF006E] p-8 text-center">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-[#FFBE0B] rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-12 h-12 bg-[#8338EC] rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-14 h-14 bg-white rounded-full"></div>
+      <div class="shape absolute bottom-2 right-1/4 w-20 h-3 bg-[#FFBE0B]" style="--r:-10deg"></div>
+      <div class="shape absolute top-1/2 left-1/4 w-10 h-10 bg-[#06D6A0] rotate-[30deg]" style="--r:30deg"></div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,1)]">
+        📦 Inventario Global
+      </h1>
+      <p class="text-white font-black text-sm sm:text-lg mt-3 drop-shadow-[2px_2px_0_rgba(0,0,0,0.5)]">
+        Aquí está todo lo que tienes, dónde está y cuánto hay.<br>
+        <span class="text-[#FFBE0B]">No se te va a perder nada, padrino. 🤙</span>
+      </p>
+    </div>
+  </div>
 
+  <!-- BUSCADOR -->
+  <div class="flex gap-3 w-full">
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex-1">
+      <input type="text" id="buscadorProductos"
+             placeholder="Busca por nombre, categoría, código de barras o temporada..."
+             class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+    </div>
     <a href="{% url 'inventario:nuevo_producto' %}"
-       class="flex items-center gap-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition whitespace-nowrap">
-      <i class="fa-solid fa-plus"></i> Nuevo producto
+       class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
+              text-black font-black text-sm uppercase tracking-widest px-5 py-3
+              flex items-center gap-1 whitespace-nowrap">
+      + Nuevo
     </a>
   </div>
-</div>
 
-<!-- 🔥 KANBAN RESPONSIVE REAL -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6 w-full">
+  <!-- ============================================================ -->
+  <!-- MÓVIL — IDs con prefijo m-                                   -->
+  <!-- ============================================================ -->
+  <div class="mobile-wrap space-y-8 lg:hidden">
+    {% for u in ubicaciones %}
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black]">
+      <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-3">
+        <h3 class="text-sm font-black text-white uppercase tracking-widest leading-tight">
+          📦 {{ u.nombre }}
+        </h3>
+        <p class="text-xs text-white/70 font-semibold mt-0.5">
+          {% if u.sucursal %}{{ u.sucursal.nombre }}{% else %}Almacén global{% endif %}
+        </p>
+      </div>
+      <div class="bg-gray-100 p-3">
+        <div class="grid grid-cols-2 gap-3 cards-grid">
+          {% for producto in productos %}
+            {% for inv in producto.inventarios.all %}
+              {% if inv.ubicacion.id == u.id and inv.cantidad_actual > 0 %}
+              <div class="producto-card card-producto border-4 border-black shadow-[4px_4px_0_0_black] p-2 flex flex-col bg-white"
+                   data-nombre="{{ producto.nombre|lower }}"
+                   data-descripcion="{{ producto.descripcion|lower }}"
+                   data-categoria="{{ producto.categoria_padre.nombre|default:''|lower }}"
+                   data-subcategoria="{{ producto.categoria.nombre|default:''|lower }}"
+                   data-temporada="{% for temp in producto.temporada.all %}{{ temp.nombre|lower }} {% endfor %}"
+                   data-codigo="{{ producto.codigo_barras|default:'' }}">
 
-{% for u in ubicaciones %}
-<div class="dropzone bg-gray-50 rounded-lg shadow-md p-4 w-full" data-destino="{{ u.id }}">
+                <div class="w-full h-24 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-2">
+                  {% if producto.foto_url %}
+                    <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+                  {% else %}
+                    <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+                  {% endif %}
+                </div>
 
-  <h3 class="text-xl font-semibold text-gray-700 mb-4">
-    📦 {{ u.nombre }}
-  </h3>
+                <h4 class="font-black text-black text-[10px] uppercase tracking-wide mb-1 text-center leading-tight">
+                  {{ producto.nombre }}
+                </h4>
+                <p class="text-[9px] text-gray-600 font-semibold mb-1 text-center leading-tight">
+                  {{ producto.categoria_padre.nombre|default:"—" }} / {{ producto.categoria.nombre|default:"—" }}
+                </p>
+                <div class="flex items-center justify-center gap-1 mb-1">
+                  <span class="text-[9px] font-black uppercase text-gray-600">Piezas:</span>
+                  <span class="font-black text-lg text-black leading-none">{{ inv.cantidad_actual }}</span>
+                </div>
+                <div class="border-t border-dashed border-black/30 pt-1 text-[9px] text-gray-800 space-y-0.5 mb-2 text-center">
+                  <p>Men: <span class="font-black">${{ producto.precio_menudeo }}</span></p>
+                  <p>May: <span class="font-black">${{ producto.precio_mayoreo }}</span></p>
+                </div>
 
-  <div class="space-y-4">
+                {% if producto.codigo_barras %}
+                <button onclick="mostrarEtiquetaInterna(this)"
+                        data-url="{% url 'inventario:codigo_base64' producto.id %}"
+                        data-id="m-{{ producto.id }}"
+                        data-ubicacion="{{ inv.ubicacion.id }}"
+                        class="btn-90s w-full bg-gray-900 border-2 border-black
+                               text-white py-1 text-[9px] font-black uppercase
+                               flex items-center justify-center gap-0.5 mb-1">
+                  <i class="fas fa-barcode text-[8px]"></i> Etiqueta
+                </button>
+                <div id="etiqueta-m-{{ producto.id }}-{{ inv.ubicacion.id }}"
+                     class="etiqueta-box bg-white border-2 border-black text-center mb-1">
+                  <img id="img-m-{{ producto.id }}-{{ inv.ubicacion.id }}" src="" class="mx-auto w-3/4 object-contain"/>
+                  <p class="text-base font-black font-mono text-gray-800 py-2 border-t border-black tracking-widest">{{ producto.codigo_barras }}</p>
+                  <div class="flex gap-1 p-1 border-t border-black">
+                    <button onclick="imprimirEtiqueta('m-{{ producto.id }}', {{ inv.ubicacion.id }})"
+                            class="btn-90s flex-1 bg-[#3A86FF] border-2 border-black text-white py-1 text-[9px] font-black flex items-center justify-center">🖨️</button>
+                    <button onclick="descargarEtiqueta('m-{{ producto.id }}', {{ inv.ubicacion.id }})"
+                            class="btn-90s flex-1 bg-[#06D6A0] border-2 border-black text-black py-1 text-[9px] font-black flex items-center justify-center">⬇️</button>
+                  </div>
+                  <div id="codigo-m-{{ producto.id }}-{{ inv.ubicacion.id }}"
+                       class="codigo text-[8px] bg-gray-100 border-t border-black p-1 font-mono text-center select-all break-all cursor-pointer">
+                    {{ producto.codigo_barras }}
+                  </div>
+                </div>
+                {% endif %}
 
-    {% for producto in productos %}
-      {% for inv in producto.inventarios.all %}
-        {% if inv.ubicacion.id == u.id %}
+                <a href="{% url 'inventario:detalle_producto' producto.id %}"
+                   class="btn-90s w-full bg-[#8338EC] border-2 border-black text-white py-1 text-[9px] font-black uppercase flex items-center justify-center gap-0.5 mb-1">
+                  🔍 Detalle
+                </a>
+                <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}"
+                   class="btn-90s w-full bg-[#FFBE0B] border-2 border-black text-black py-1 text-[9px] font-black uppercase flex items-center justify-center gap-0.5">
+                  📍 Ubicación
+                </a>
+              </div>
+              {% endif %}
+            {% endfor %}
+          {% empty %}
+            <p class="col-span-2 text-gray-400 text-xs italic py-4 text-center">Sin productos aquí.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-gray-500 italic font-semibold">No hay ubicaciones registradas.</p>
+    {% endfor %}
+  </div>
 
-        <div class="bg-white rounded-lg shadow p-4 producto-card transition-all duration-300 w-full overflow-hidden"
-             draggable="true"
-             data-producto="{{ producto.id }}"
-             data-origen="{{ inv.ubicacion.id }}"
-             data-nombre="{{ producto.nombre|lower }}"
-             data-descripcion="{{ producto.descripcion|lower }}"
-             data-categoria="{{ producto.categoria.nombre|default:'' }}"
-             data-temporada="{% for temp in producto.temporada.all %}{{ temp.nombre }} {% endfor %}">
+  <!-- ============================================================ -->
+  <!-- DESKTOP — IDs con prefijo d-                                 -->
+  <!-- ============================================================ -->
+  <div class="kanban-wrap" style="display:none;">
+    {% for u in ubicaciones %}
+    <div class="flex-shrink-0 w-72 bg-gray-100 border-4 border-black shadow-[6px_6px_0_0_black] p-3">
 
-          <div class="warning-msg hidden text-yellow-700 text-sm font-semibold mb-2"></div>
+      <div class="bg-[#3A86FF] border-4 border-black px-4 py-3 mb-4 -mx-3 -mt-3">
+        <h3 class="text-sm font-black text-white uppercase tracking-widest leading-tight">
+          📦 {{ u.nombre }}
+        </h3>
+        <p class="text-xs text-white/70 font-semibold mt-0.5">
+          {% if u.sucursal %}{{ u.sucursal.nombre }}{% else %}Almacén global{% endif %}
+        </p>
+      </div>
 
-          <div class="mb-2">
-            {% if producto.codigo_barras and producto.tipo_codigo %}
+      <div class="space-y-4 cards-grid">
+        {% for producto in productos %}
+          {% for inv in producto.inventarios.all %}
+            {% if inv.ubicacion.id == u.id and inv.cantidad_actual > 0 %}
+            <div class="producto-card card-producto border-4 border-black shadow-[6px_6px_0_0_black] p-3 flex flex-col bg-white"
+                 data-nombre="{{ producto.nombre|lower }}"
+                 data-descripcion="{{ producto.descripcion|lower }}"
+                 data-categoria="{{ producto.categoria_padre.nombre|default:''|lower }}"
+                 data-subcategoria="{{ producto.categoria.nombre|default:''|lower }}"
+                 data-temporada="{% for temp in producto.temporada.all %}{{ temp.nombre|lower }} {% endfor %}"
+                 data-codigo="{{ producto.codigo_barras|default:'' }}">
+
+              <div class="w-full h-36 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-3">
+                {% if producto.foto_url %}
+                  <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+                {% else %}
+                  <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+                {% endif %}
+              </div>
+
+              <h4 class="font-black text-black text-sm uppercase tracking-wide mb-1 text-center">
+                {{ producto.nombre }}
+              </h4>
+              <p class="text-xs text-gray-600 font-semibold mb-2 text-center">
+                {{ producto.categoria_padre.nombre|default:"—" }} / {{ producto.categoria.nombre|default:"—" }}
+              </p>
+              <div class="flex items-center justify-center gap-2 mb-2">
+                <span class="text-xs font-black uppercase text-gray-600">Piezas:</span>
+                <span class="font-black text-2xl text-black">{{ inv.cantidad_actual }}</span>
+              </div>
+              <div class="border-t-2 border-dashed border-black/30 pt-2 text-xs text-gray-800 space-y-0.5 mb-3 text-center">
+                <p>Menudeo: <span class="font-black">${{ producto.precio_menudeo }}</span></p>
+                <p>Mayoreo: <span class="font-black">${{ producto.precio_mayoreo }}</span></p>
+                {% if producto.precio_docena %}
+                  <p>Docena: <span class="font-black">${{ producto.precio_docena }}</span></p>
+                {% endif %}
+              </div>
+
+              {% if producto.codigo_barras %}
               <button onclick="mostrarEtiquetaInterna(this)"
                       data-url="{% url 'inventario:codigo_base64' producto.id %}"
-                      data-id="{{ producto.id }}"
+                      data-id="d-{{ producto.id }}"
                       data-ubicacion="{{ inv.ubicacion.id }}"
-                      class="text-blue-600 hover:underline text-sm">
-                <i class="fa-solid fa-barcode mr-1"></i> Ver etiqueta
+                      class="btn-90s w-full bg-gray-900 border-4 border-black shadow-[4px_4px_0_0_black]
+                             text-white py-2 text-xs font-black uppercase tracking-widest
+                             flex items-center justify-center gap-1 mb-2">
+                <i class="fas fa-barcode"></i> Ver etiqueta
               </button>
 
-              <div id="etiqueta-{{ producto.id }}-{{ inv.ubicacion.id }}"
-                   class="etiqueta-container bg-gray-50 border border-gray-200 rounded
-                          max-h-0 opacity-0 overflow-hidden transition-all duration-300 p-0 mt-2
-                          text-center text-sm shadow-sm">
-
-                <img id="img-{{ producto.id }}-{{ inv.ubicacion.id }}" class="h-20 mx-auto mb-2" />
-
-                <div class="text-gray-700 font-mono tracking-widest">{{ producto.codigo_barras }}</div>
-                <div class="text-xs text-gray-500 italic mt-1">Tipo: {{ producto.tipo_codigo|upper }}</div>
-
-                <div class="flex justify-center gap-2 mt-3">
-                  <button onclick="imprimirEtiqueta('{{ producto.id }}','{{ inv.ubicacion.id }}')"
-                          class="text-xs text-white bg-blue-600 px-2 py-1 rounded">🖨️ Imprimir</button>
-
-                  <button onclick="descargarEtiqueta('{{ producto.id }}','{{ inv.ubicacion.id }}')"
-                          class="text-xs text-white bg-green-600 px-2 py-1 rounded">⬇️ Descargar</button>
+              <div id="etiqueta-d-{{ producto.id }}-{{ inv.ubicacion.id }}"
+                   class="etiqueta-box bg-white border-4 border-black text-center mb-2">
+                <img id="img-d-{{ producto.id }}-{{ inv.ubicacion.id }}" src="" class="mx-auto w-3/4 object-contain"/>
+                <p class="text-base font-black font-mono text-gray-800 py-2 border-t-2 border-black tracking-widest">{{ producto.codigo_barras }}</p>
+                <div class="flex gap-2 p-2 border-t-2 border-black">
+                  <button onclick="imprimirEtiqueta('d-{{ producto.id }}', {{ inv.ubicacion.id }})"
+                          class="btn-90s flex-1 bg-[#3A86FF] border-4 border-black shadow-[3px_3px_0_0_black]
+                                 text-white py-1 text-xs font-black uppercase flex items-center justify-center">
+                    🖨️ Imprimir
+                  </button>
+                  <button onclick="descargarEtiqueta('d-{{ producto.id }}', {{ inv.ubicacion.id }})"
+                          class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black shadow-[3px_3px_0_0_black]
+                                 text-black py-1 text-xs font-black uppercase flex items-center justify-center">
+                    ⬇️ Descargar
+                  </button>
+                </div>
+                <div id="codigo-d-{{ producto.id }}-{{ inv.ubicacion.id }}"
+                     class="codigo text-[9px] bg-gray-100 border-t-2 border-black p-1 font-mono text-center select-all break-all cursor-pointer">
+                  {{ producto.codigo_barras }}
                 </div>
               </div>
-            {% else %}
-              <span class="text-gray-400 italic text-sm">Sin código</span>
+              {% endif %}
+
+              <a href="{% url 'inventario:detalle_producto' producto.id %}"
+                 class="btn-90s w-full bg-[#8338EC] border-4 border-black shadow-[4px_4px_0_0_black]
+                        text-white py-2 text-xs font-black uppercase tracking-widest
+                        flex items-center justify-center gap-1 mb-2">
+                🔍 Ver detalle
+              </a>
+              <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}"
+                 class="btn-90s w-full bg-[#FFBE0B] border-4 border-black shadow-[4px_4px_0_0_black]
+                        text-black py-2 text-xs font-black uppercase tracking-widest
+                        flex items-center justify-center gap-1">
+                📍 Ver en ubicación
+              </a>
+
+            </div>
             {% endif %}
-          </div>
-
-          <h4 class="text-lg font-bold text-gray-800">{{ producto.nombre }}</h4>
-          <p class="text-sm text-gray-600">{{ producto.descripcion }}</p>
-
-          <ul class="mt-3 text-sm text-gray-700 space-y-1">
-            <li>• Menudeo: ${{ producto.precio_menudeo }}</li>
-            <li>• Mayoreo: ${{ producto.precio_mayoreo }}</li>
-            <li>• Docena: ${{ producto.precio_docena }}</li>
-            <li class="cantidad-label">• Cantidad: {{ inv.cantidad_actual }}</li>
-
-            <li>• Temporada:
-              {% for temp in producto.temporada.all %}
-                {{ temp.nombre }}
-              {% empty %}
-                Sin temporada
-              {% endfor %}
-            </li>
-          </ul>
-
-          <div class="flex gap-2 mt-3">
-            <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}"
-              class="inline-block bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 whitespace-nowrap">
-              📍 Ver en ubicación
-            </a>
-          </div>
-
-        </div>
-
-        {% endif %}
-      {% endfor %}
+          {% endfor %}
+        {% empty %}
+          <p class="text-gray-400 text-xs font-semibold italic py-6 text-center">Sin productos aquí, padrino. 😬</p>
+        {% endfor %}
+      </div>
+    </div>
     {% empty %}
-      <p class="text-gray-500 italic">No hay productos en {{ u.nombre }}.</p>
+    <p class="text-gray-500 italic font-semibold">No hay ubicaciones registradas todavía.</p>
     {% endfor %}
-
   </div>
-</div>
-{% endfor %}
 
 </div>
-
 
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/inventario_ubicacion/etiquetas.js' %}"></script>
+<script src="{% static 'js/mostrarEtiqueta.js' %}"></script>
 <script src="{% static 'js/lista_productos.js' %}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const colores = [
+    "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
+    "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
+  ];
+  document.querySelectorAll(".cards-grid").forEach(grid => {
+    const cards = grid.querySelectorAll(".card-producto");
+    cards.forEach((card, i) => {
+      card.style.backgroundColor = colores[i % colores.length];
+    });
+  });
+});
+</script>
 {% endblock %}

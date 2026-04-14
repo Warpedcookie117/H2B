@@ -1,5 +1,5 @@
 /* ============================================================
-   ELIMINAR INVENTARIO / PRODUCTO — MODAL PROFESIONAL
+   ELIMINAR INVENTARIO / DESACTIVAR PRODUCTO — MODAL PROFESIONAL
    ============================================================ */
 
 async function eliminarInventarioHandler(productoId, ubicacionId) {
@@ -20,16 +20,14 @@ async function eliminarInventarioHandler(productoId, ubicacionId) {
     let tipo = "";
 
     if (otrasUbicaciones.length > 0) {
-        // ⭐ SOLO eliminar inventario de esta ubicación
-        titulo = "Eliminar inventario";
-        mensaje = `Este producto aún existe en otras ubicaciones.\n\n
-                   ¿Deseas eliminar SOLO el inventario de esta ubicación?`;
+        // Solo eliminar inventario de esta ubicación
+        titulo = "Eliminar inventario de esta ubicación";
+        mensaje = `Este producto aún existe en otras ubicaciones.\n\n¿Deseas eliminar SOLO el inventario de esta ubicación?`;
         tipo = "inventario";
     } else {
-        // ⭐ Eliminar producto COMPLETO
-        titulo = "Eliminar producto";
-        mensaje = `Este producto YA NO existe en ninguna ubicación.\n\n
-                   ¿Deseas eliminarlo COMPLETAMENTE de la base de datos?`;
+        // Desactivar producto completo
+        titulo = "Desactivar producto";
+        mensaje = `Este producto ya no tiene stock en ninguna ubicación.\n\nAl desactivarlo dejará de aparecer en el inventario y en el POS.\n\nPuedes reactivarlo cuando lo necesites.`;
         tipo = "producto";
     }
 
@@ -38,18 +36,51 @@ async function eliminarInventarioHandler(productoId, ubicacionId) {
 
 
 /* ============================================================
-   CONFIRMAR ELIMINACIÓN
+   ABRIR MODAL — muestra u oculta el campo de motivo según tipo
+   ============================================================ */
+
+function abrirModalEliminar(titulo, mensaje, productoId, ubicacionId, tipo) {
+    document.getElementById("modalEliminarTitulo").textContent = titulo;
+    document.getElementById("modalEliminarMensaje").textContent = mensaje;
+    document.getElementById("eliminar_producto_id").value = productoId;
+    document.getElementById("eliminar_ubicacion_id").value = ubicacionId;
+    document.getElementById("eliminar_tipo").value = tipo;
+
+    // Mostrar campo motivo solo si es desactivación
+    const campMotivo = document.getElementById("campo_motivo");
+    const inputMotivo = document.getElementById("motivo_desactivacion");
+
+    if (tipo === "producto") {
+        campMotivo.classList.remove("hidden");
+        inputMotivo.value = "";
+        // Cambiar texto del botón
+        document.getElementById("btn_confirmar_eliminar").textContent = "Desactivar";
+        document.getElementById("btn_confirmar_eliminar").className =
+            "px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded text-sm transition";
+    } else {
+        campMotivo.classList.add("hidden");
+        document.getElementById("btn_confirmar_eliminar").textContent = "Eliminar";
+        document.getElementById("btn_confirmar_eliminar").className =
+            "px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition";
+    }
+
+    abrirModal("modalEliminar");
+}
+
+
+/* ============================================================
+   CONFIRMAR
    ============================================================ */
 
 async function confirmarEliminar() {
-    const productoId = document.getElementById("eliminar_producto_id").value;
+    const productoId  = document.getElementById("eliminar_producto_id").value;
     const ubicacionId = document.getElementById("eliminar_ubicacion_id").value;
-    const tipo = document.getElementById("eliminar_tipo").value;
+    const tipo        = document.getElementById("eliminar_tipo").value;
 
-    cerrarModal("modalEliminar");
-
+    // ── Eliminar inventario de esta ubicación ────────────────
     if (tipo === "inventario") {
-        // ⭐ Eliminar inventario SOLO de esta ubicación
+        cerrarModal("modalEliminar");
+
         const resp = await fetch(`/inventario/api/inventario-ubicacion/${productoId}/${ubicacionId}/`, {
             method: "DELETE",
             headers: { "X-CSRFToken": getCSRFToken() }
@@ -62,71 +93,42 @@ async function confirmarEliminar() {
             return;
         }
 
-        actualizarCard(productoId, ubicacionId, 0);
+        eliminarCardUI(productoId, ubicacionId);
+        mostrarMensaje("Inventario eliminado correctamente.");
         return;
     }
 
+    // ── Desactivar producto completo ─────────────────────────
     if (tipo === "producto") {
-        // ⭐ Eliminar producto COMPLETO
-        const resp = await fetch(`/inventario/api/producto/${productoId}/`, {
-            method: "DELETE",
-            headers: { "X-CSRFToken": getCSRFToken() }
+        const motivo = document.getElementById("motivo_desactivacion").value.trim();
+
+        if (!motivo) {
+            document.getElementById("motivo_desactivacion").focus();
+            document.getElementById("motivo_desactivacion").classList.add("border-red-500");
+            return;
+        }
+
+        cerrarModal("modalEliminar");
+
+        const resp = await fetch(`/inventario/api/producto/${productoId}/desactivar/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCSRFToken(),
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ motivo })
         });
 
         const result = await resp.json();
 
         if (!result.success) {
-            mostrarError(result.errors || "Error al eliminar producto.");
+            mostrarError(result.errors || "Error al desactivar producto.");
             return;
         }
 
-        // Eliminar TODAS las cards del producto
-        document.querySelectorAll(`[id^="card_${productoId}_"]`).forEach(c => c.remove());
+        // Animar y remover todas las cards del producto
+        eliminarTodasLasCardsDelProducto(productoId);
     }
-}
-
-
-/* ============================================================
-   ELIMINAR INVENTARIO
-   ============================================================ */
-
-function eliminarInventarioUbicacion(productoId, ubicacionId) {
-
-    fetch(`/inventario/api/inventario-ubicacion/${productoId}/${ubicacionId}/`, {
-        method: "DELETE",
-        headers: { "X-CSRFToken": getCSRFToken() }
-    })
-        .then(r => {
-            if (!r.ok) throw new Error("Error al eliminar inventario.");
-            return r.json();
-        })
-        .then(() => eliminarCardUI(productoId, ubicacionId))
-        .catch(err => {
-            console.error(err);
-            mostrarError("No se pudo eliminar el inventario.");
-        });
-}
-
-
-/* ============================================================
-   ELIMINAR PRODUCTO COMPLETO
-   ============================================================ */
-
-function eliminarProductoCompleto(productoId) {
-
-    fetch(`/inventario/api/producto/${productoId}/`, {
-        method: "DELETE",
-        headers: { "X-CSRFToken": getCSRFToken() }
-    })
-        .then(r => {
-            if (!r.ok) throw new Error("Error al eliminar producto.");
-            return r.json();
-        })
-        .then(() => eliminarTodasLasCardsDelProducto(productoId))
-        .catch(err => {
-            console.error(err);
-            mostrarError("No se pudo eliminar el producto.");
-        });
 }
 
 

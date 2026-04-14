@@ -3,248 +3,269 @@
 
 {% block content %}
 
-<style>
-  .temporada-checkbox-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: .5rem;
-  }
+<link rel="stylesheet" href="{% static 'css/nuevo_producto.css' %}">
 
-  .temporada-checkbox-group > * {
-    display: flex !important;
-    align-items: center;
-    gap: .5rem;
-    padding: .4rem .6rem;
-    border: 1px solid #fca5a5;
-    border-radius: .5rem;
-    background: #fff;
-    cursor: pointer;
-    transition: border-color .2s ease, background .2s ease;
-  }
+<div class="max-w-3xl mx-auto px-4 py-10 space-y-8">
 
-  .temporada-checkbox-group > *:hover {
-    border-color: #ef4444;
-    background: #fff5f5;
-  }
+  <!-- ENCABEZADO -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#FF006E] p-8 text-center relative overflow-hidden">
+    <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+    <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-[#8338EC] rounded-full opacity-40"></div>
+    <h1 class="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight relative z-10 drop-shadow-[3px_3px_0_rgba(0,0,0,0.4)]">
+      ➕ Nuevo producto
+    </h1>
+    <p class="text-white/80 font-bold text-base mt-2 relative z-10">
+      Llena todo con calma, padrino. Aquí no hay prisa. 🧘
+    </p>
+  </div>
 
-  .temporada-checkbox-group input[type="checkbox"] {
-    width: 1rem;
-    height: 1rem;
-    accent-color: #dc2626;
-  }
-
-  .fuzzy-dropdown {
-    position: absolute;
-    background: white;
-    border: 1px solid #ccc;
-    width: 100%;
-    z-index: 999;
-    max-height: 150px;
-    overflow-y: auto;
-    border-radius: 4px;
-  }
-
-  .fuzzy-option {
-    padding: 6px;
-    cursor: pointer;
-  }
-
-  .fuzzy-option:hover {
-    background: #eee;
-  }
-</style>
-
-
-<h2 class="text-3xl font-bold mb-8 text-center text-red-600">Registrar nuevo producto</h2>
-
-{% if messages %}
-  {% for message in messages %}
-    <div class="bg-red-100 text-red-700 p-3 rounded mb-6">
+  <!-- MENSAJES DJANGO -->
+  {% if messages %}
+    {% for message in messages %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-6 py-3 uppercase tracking-widest text-sm
+                {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
       {{ message }}
     </div>
-  {% endfor %}
-{% endif %}
-
-{% if form.errors %}
-<div class="bg-red-100 text-red-700 p-3 rounded mb-6">
-  <strong>Errores en el formulario:</strong>
-  <ul class="mt-1">
-    {% for field, errors in form.errors.items %}
-      <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
     {% endfor %}
-  </ul>
-</div>
-{% endif %}
+  {% endif %}
 
-<form id="form-producto" method="post" enctype="multipart/form-data"
-      class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-md space-y-6">
-  {% csrf_token %}
+  {% if form.errors %}
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E] text-white font-black px-6 py-4">
+    <p class="uppercase tracking-widest text-sm mb-2">⚠️ Errores en el formulario:</p>
+    <ul class="space-y-1 text-sm font-semibold">
+      {% for field, errors in form.errors.items %}
+      <li>{{ field }}: {{ errors|join:", " }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.nombre.label }}</label>
-    {{ form.nombre }}
+  <!-- MENSAJE VALIDACIÓN JS -->
+  <div id="msg-validacion"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B]
+              text-black font-black px-6 py-3 uppercase tracking-widest text-sm">
   </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.descripcion.label }}</label>
-    {{ form.descripcion }}
-  </div>
-
-  <div>
-    <label class="block font-semibold mb-1">{{ form.codigo_barras.label }}</label>
-    {{ form.codigo_barras }}
-  </div>
-
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div>
-      <label class="block font-semibold mb-1">{{ form.precio_menudeo.label }}</label>
-      {{ form.precio_menudeo }}
-    </div>
-
-    <div>
-      <label class="block font-semibold mb-1">{{ form.precio_mayoreo.label }}</label>
-      {{ form.precio_mayoreo }}
-    </div>
-
-    <div>
-      <label class="block font-semibold mb-1">{{ form.precio_docena.label }}</label>
-      {{ form.precio_docena }}
-      <small class="text-gray-600 block mt-1">Opcional</small>
+  <!-- BARRA DE PROGRESO -->
+  <div id="barra-progreso-container"
+       class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-4 space-y-3">
+    <p id="barra-mensaje" class="font-black text-black text-sm uppercase tracking-widest">
+      Iniciando...
+    </p>
+    <div class="border-4 border-black h-6 bg-gray-100 relative overflow-hidden">
+      <div id="barra-fill" style="width: 0%"></div>
     </div>
   </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.foto_url.label }}</label>
-    {{ form.foto_url }}
-    <div id="preview-foto" class="mt-3"></div>
-  </div>
+  <!-- FORMULARIO -->
+  <form id="form-producto" method="post" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.temporada.label }}</label>
-    <div class="temporada-checkbox-group">
-      {{ form.temporada }}
+    <!-- FOTO -->
+    <div class="flex flex-col items-center gap-3">
+      <span class="label-90s">📷 Foto del producto</span>
+      <div onclick="document.getElementById('id_foto_url').click()" class="cursor-pointer">
+        <img id="foto-circle" src="" alt="Preview">
+        <div id="foto-placeholder">
+          <span class="text-4xl">📷</span>
+          <span class="text-[10px] font-black uppercase tracking-widest text-gray-600 mt-2 text-center px-2">
+            Pícale aquí para subir la foto
+          </span>
+        </div>
+      </div>
+      <input type="file" id="id_foto_url" name="foto_url" accept="image/*"
+             class="hidden" onchange="previewFoto(this)">
+      <p class="text-xs text-gray-400 font-semibold">Pícale al círculo para cambiarla después</p>
     </div>
-  </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.ubicacion.label }}</label>
-    {{ form.ubicacion }}
-  </div>
+    <!-- CÓDIGO DE BARRAS -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.codigo_barras.label }}</label>
+      <div class="input-wrapper wrapper-codigo">{{ form.codigo_barras }}</div>
+    </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.dueño.label }}</label>
-    {{ form.dueño }}
-  </div>
+    <!-- NOMBRE -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.nombre.label }}</label>
+      <div class="input-wrapper wrapper-nombre">{{ form.nombre }}</div>
+    </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.categoria_padre.label }}</label>
-    {{ form.categoria_padre }}
-  </div>
+    <!-- DESCRIPCIÓN -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.descripcion.label }}</label>
+      <div class="input-wrapper wrapper-descripcion">{{ form.descripcion }}</div>
+    </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.subcategoria.label }}</label>
-    {{ form.subcategoria }}
-  </div>
+    <!-- PRECIOS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="space-y-1">
+        <label class="label-90s">{{ form.precio_menudeo.label }}</label>
+        <div class="input-wrapper wrapper-menudeo">{{ form.precio_menudeo }}</div>
+      </div>
+      <div class="space-y-1">
+        <label class="label-90s">{{ form.precio_mayoreo.label }}</label>
+        <div class="input-wrapper wrapper-mayoreo">{{ form.precio_mayoreo }}</div>
+      </div>
+      <div class="space-y-1">
+        <label class="label-90s">
+          {{ form.precio_docena.label }}
+          <span class="normal-case font-semibold text-gray-400">(opcional)</span>
+        </label>
+        <div class="input-wrapper wrapper-docena">{{ form.precio_docena }}</div>
+      </div>
+    </div>
 
-  <div>
-    <label class="block font-semibold mb-1">{{ form.cantidad_inicial.label }}</label>
-    {{ form.cantidad_inicial }}
-  </div>
+    <!-- DUEÑO -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.dueño.label }}</label>
+      <div class="input-wrapper wrapper-dueno">{{ form.dueño }}</div>
+    </div>
 
-  {{ form.tipo_codigo }}
+    <!-- CATEGORÍA PADRE -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.categoria_padre.label }}</label>
+      <div class="input-wrapper wrapper-categoria">{{ form.categoria_padre }}</div>
+    </div>
 
-  <!-- Hidden para tamaño de etiqueta -->
-  <input type="hidden" id="id_tamano_etiqueta" name="tamano_etiqueta">
+    <!-- SUBCATEGORÍA -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.subcategoria.label }}</label>
+      <div class="input-wrapper wrapper-subcategoria">{{ form.subcategoria }}</div>
+    </div>
 
-  <!-- Atributos dinámicos -->
-  <div id="atributos-container"></div>
+    <!-- BANNER DE ATRIBUTOS -->
+    <div id="atributos-banner"
+         class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#CCFF00] p-5 relative overflow-hidden">
+      <div class="absolute -top-3 -right-3 w-10 h-10 bg-[#00F5D4] rotate-45 opacity-60"></div>
+      <p class="font-black text-black text-base uppercase tracking-widest">
+        🏷️ Describe el producto con sus atributos
+      </p>
+      <p class="text-black/70 font-semibold text-sm mt-1">
+        Llena cada campo — color, mililitros, tono, marca, lo que sea.
+        Si algo no aplica, déjalo vacío o escribe
+        <span class="font-black text-black">N/A</span> y ya.
+        Tú puedes, padrino. 💪
+      </p>
+    </div>
 
-  <!-- Datos de atributos -->
-  <div id="atributos-data" style="display: none;">
-    {% for atributo in atributos %}
+    <!-- ATRIBUTOS DINÁMICOS -->
+    <div id="atributos-container" class="space-y-4"></div>
+
+    <!-- TEMPORADAS -->
+    <div class="space-y-2">
+      <label class="label-90s">{{ form.temporada.label }}</label>
+      <div class="border-4 border-black p-4 bg-white">
+        <div class="temporada-checkbox-group">
+          {{ form.temporada }}
+        </div>
+      </div>
+    </div>
+
+    <!-- UBICACIÓN -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.ubicacion.label }}</label>
+      <div class="input-wrapper wrapper-ubicacion">{{ form.ubicacion }}</div>
+    </div>
+
+    <!-- CANTIDAD INICIAL -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.cantidad_inicial.label }}</label>
+      <div class="input-wrapper wrapper-cantidad">{{ form.cantidad_inicial }}</div>
+      {% if form.cantidad_inicial.help_text %}
+      <p class="text-xs text-gray-400 font-semibold mt-1">{{ form.cantidad_inicial.help_text }}</p>
+      {% endif %}
+    </div>
+
+    {{ form.tipo_codigo }}
+    <input type="hidden" id="id_tamano_etiqueta" name="tamano_etiqueta">
+
+    <!-- DATOS OCULTOS PARA JS -->
+    <div id="atributos-data" style="display:none;">
+      {% for atributo in atributos %}
       <div data-categoria="{{ atributo.categoria.id }}"
            data-id="{{ atributo.id }}"
            data-nombre="{{ atributo.nombre }}"
            data-tipo="{{ atributo.tipo }}"
            data-valores="{{ atributo.valores_unicos|join:'||' }}">
       </div>
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
 
-  <!-- Datos de subcategorías -->
-  <div id="subcategorias-data" style="display: none;">
-    {% for sub in subcategorias %}
+    <div id="subcategorias-data" style="display:none;">
+      {% for sub in subcategorias %}
       <div data-id="{{ sub.id }}"
            data-nombre="{{ sub.nombre }}"
            data-padre="{{ sub.padre.id }}"></div>
-    {% endfor %}
-  </div>
-
-  <button id="submit-btn" type="submit"
-          class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
-    Continuar para seleccionar etiqueta
-  </button>
-
-</form>
-
-<!-- MODAL DE SELECCIÓN DE ETIQUETA -->
-<dialog id="modal-etiqueta" class="rounded-xl p-6 shadow-xl w-[420px]">
-
-    <h3 class="text-2xl font-bold text-red-600 mb-4 text-center">
-        Selecciona el tamaño de etiqueta
-    </h3>
-
-    <p class="text-gray-600 text-center mb-6">
-        Elige el tamaño adecuado según el empaque del producto.
-    </p>
-
-    <div class="space-y-4">
-
-        <!-- ETIQUETA CHICA -->
-        <button class="w-full border rounded-lg p-4 hover:bg-red-50 transition btn-etiqueta"
-                data-tipo="chica">
-            <div class="flex justify-between items-center">
-                <div>
-                    <div class="font-bold text-lg">Pequeña</div>
-                    <div class="text-sm text-gray-600">50×20 mm</div>
-                </div>
-                <div class="font-mono text-xl tracking-widest bg-gray-100 px-3 py-1 rounded">
-                    123456
-                </div>
-            </div>
-        </button>
-
-        <!-- ETIQUETA MEDIANA -->
-        <button class="w-full border rounded-lg p-4 hover:bg-red-50 transition btn-etiqueta"
-                data-tipo="mediana">
-            <div class="flex justify-between items-center">
-                <div>
-                    <div class="font-bold text-lg">Mediana</div>
-                    <div class="text-sm text-gray-600">100×30 mm</div>
-                </div>
-                <div class="font-mono text-xl tracking-widest bg-gray-100 px-3 py-1 rounded">
-                    12345678
-                </div>
-            </div>
-        </button>
-
-        <!-- ETIQUETA GRANDE -->
-        <button class="w-full border rounded-lg p-4 hover:bg-red-50 transition btn-etiqueta"
-                data-tipo="grande">
-            <div class="flex justify-between items-center">
-                <div>
-                    <div class="font-bold text-lg">Grande</div>
-                    <div class="text-sm text-gray-600">135×32 mm</div>
-                </div>
-                <div class="font-mono text-xl tracking-widest bg-gray-100 px-3 py-1 rounded">
-                    123456789012
-                </div>
-            </div>
-        </button>
-
+      {% endfor %}
     </div>
 
+    <!-- BOTÓN SUBMIT -->
+    <button id="submit-btn" type="submit"
+            class="btn-90s w-full bg-[#3A86FF] border-4 border-black shadow-[6px_6px_0_0_black]
+                   text-white font-black text-base uppercase tracking-widest py-4">
+      Continuar para seleccionar etiqueta
+    </button>
+
+  </form>
+</div>
+
+<!-- MODAL DE ETIQUETA -->
+<dialog id="modal-etiqueta"
+        class="border-4 border-black shadow-[8px_8px_0_0_black] p-0 w-[440px] max-w-[95vw]">
+
+  <div class="bg-[#8338EC] border-b-4 border-black px-6 py-4">
+    <h3 class="text-xl font-black text-white uppercase tracking-widest">📏 Tamaño de etiqueta</h3>
+    <p class="text-white/70 text-xs font-semibold mt-1">
+      Elige según el tamaño del empaque del producto.
+    </p>
+  </div>
+
+  <div class="bg-white p-6 space-y-4">
+    <button class="btn-90s btn-etiqueta w-full border-4 border-black shadow-[4px_4px_0_0_black]
+                   p-4 bg-[#F0FFF4] flex items-center justify-between" data-tipo="chica">
+      <div class="text-left">
+        <p class="font-black text-black uppercase tracking-wide">Pequeña</p>
+        <p class="text-gray-500 text-sm font-semibold">50×20 mm</p>
+      </div>
+      <span class="font-mono font-black text-lg bg-black text-white px-3 py-1">123456</span>
+    </button>
+    <button class="btn-90s btn-etiqueta w-full border-4 border-black shadow-[4px_4px_0_0_black]
+                   p-4 bg-[#F0FFF4] flex items-center justify-between" data-tipo="mediana">
+      <div class="text-left">
+        <p class="font-black text-black uppercase tracking-wide">Mediana</p>
+        <p class="text-gray-500 text-sm font-semibold">100×30 mm</p>
+      </div>
+      <span class="font-mono font-black text-lg bg-black text-white px-3 py-1">12345678</span>
+    </button>
+    <button class="btn-90s btn-etiqueta w-full border-4 border-black shadow-[4px_4px_0_0_black]
+                   p-4 bg-[#F0FFF4] flex items-center justify-between" data-tipo="grande">
+      <div class="text-left">
+        <p class="font-black text-black uppercase tracking-wide">Grande</p>
+        <p class="text-gray-500 text-sm font-semibold">135×32 mm</p>
+      </div>
+      <span class="font-mono font-black text-lg bg-black text-white px-3 py-1">123456789012</span>
+    </button>
+  </div>
 </dialog>
+
+<script>
+function previewFoto(input) {
+  const circle = document.getElementById("foto-circle");
+  const placeholder = document.getElementById("foto-placeholder");
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      circle.src = e.target.result;
+      circle.style.display = "block";
+      placeholder.style.display = "none";
+    };
+    reader.readAsDataURL(input.files[0]);
+  } else {
+    circle.style.display = "none";
+    placeholder.style.display = "flex";
+  }
+}
+</script>
 
 {% block scripts %}
 <script type="module" src="{% static 'js/nuevo_producto/nuevo_producto.js' %}"></script>

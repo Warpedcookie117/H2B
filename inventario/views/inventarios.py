@@ -12,6 +12,7 @@ from django.utils.timezone import now
 import json
 from inventario.services.correo import enviar_correo
 from django.urls import reverse
+from inventario.utils import color_from_name
 from main import settings
 
 
@@ -19,25 +20,39 @@ from main import settings
 
 
 
+
 def dashboard_inventario(request):
-
-    # KPIs principales
-    productos_total = Producto.objects.count()
-
-    stock_total = (
-        Inventario.objects.aggregate(total=Sum("cantidad_actual"))["total"] or 0
-    )
-
-    ubicaciones = Ubicacion.objects.all()
-
-    # Productos críticos (<= 5)
+ 
+    # KPI 1 — Total productos activos
+    productos_total = Producto.objects.filter(activo=True).count()
+ 
+    # KPI 2 — Productos distintos por ubicación
+    kpis_ubicaciones = []
+    ubicaciones = Ubicacion.objects.filter(activa=True).select_related("sucursal").order_by("nombre")
+ 
+    for u in ubicaciones:
+        u.color = color_from_name(u.nombre)  # igual que el context processor
+        count = (
+            Inventario.objects
+            .filter(ubicacion=u, cantidad_actual__gt=0)
+            .values("producto")
+            .distinct()
+            .count()
+        )
+        kpis_ubicaciones.append({
+            "ubicacion": u,
+            "productos_count": count,
+        })
+ 
+    # Productos críticos (<= 5 piezas)
     bajos = (
         Inventario.objects
-        .select_related("producto", "ubicacion")
-        .filter(cantidad_actual__lte=5)
+        .select_related("producto", "ubicacion", "ubicacion__sucursal")
+        .filter(cantidad_actual__lte=5, cantidad_actual__gt=0)
+        .order_by("cantidad_actual")
     )
-
-    # Productos más vendidos (aunque sean 0)
+ 
+    # Más vendidos
     mas_vendidos = (
         MovimientoInventario.objects
         .filter(tipo="salida", motivo="venta")
@@ -45,18 +60,16 @@ def dashboard_inventario(request):
         .annotate(total=Sum("cantidad"))
         .order_by("-total")[:10]
     )
-
+ 
     context = {
-        "productos_total": productos_total,
-        "stock_total": stock_total,
-        "ubicaciones": ubicaciones,
-        "bajos": bajos,
-        "mas_vendidos": mas_vendidos,
-        "ahora": now(),
+        "productos_total":  Producto.objects.filter(activo=True).count(),
+        "kpis_ubicaciones": kpis_ubicaciones,
+        "bajos":            bajos,
+        "mas_vendidos":     mas_vendidos,
+        "ahora":            now(),
     }
-
+ 
     return render(request, "inventario/dashboard_inventario.html", context)
-
 
 
 #-----VISTAS PARA MANEJAR EL INVENTARIO--------#
@@ -79,7 +92,12 @@ def agregar_inventario(request, producto_id, ubicacion_id):
     )
 
     # VALIDAR FORM
-    form = AgregarInventarioForm(request.POST)
+    # El template envía el campo como "cantidad_inicial", se pasa al form como "cantidad"
+    post_data = request.POST.copy()
+    if "cantidad_inicial" in post_data and "cantidad" not in post_data:
+        post_data["cantidad"] = post_data["cantidad_inicial"]
+
+    form = AgregarInventarioForm(post_data)
 
     if not form.is_valid():
         return JsonResponse({
@@ -91,7 +109,7 @@ def agregar_inventario(request, producto_id, ubicacion_id):
     empleado = getattr(request.user, "empleado", None)
 
     try:
-        inv = InventarioService.entrada(
+        InventarioService.entrada(
             producto=producto,
             cantidad=cantidad,
             destino=ubicacion,
@@ -99,18 +117,16 @@ def agregar_inventario(request, producto_id, ubicacion_id):
             motivo="reabastecimiento"
         )
 
+        inventario.refresh_from_db()
         return JsonResponse({
             "success": True,
-            "mensaje": f"{cantidad} piezas agregadas a {producto.nombre} en {ubicacion.nombre}.",
-            "producto_id": producto.id,
-            "ubicacion_id": ubicacion.id,
-            "cantidad_actual": inv.cantidad_actual
+            "cantidad_actual": inventario.cantidad_actual,
         })
 
     except ValidationError as e:
         return JsonResponse({
             "success": False,
-            "errors": e.messages
+            "errors": e.messages,
         })
 
 

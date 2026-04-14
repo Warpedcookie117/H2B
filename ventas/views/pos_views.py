@@ -80,12 +80,20 @@ def pos_view(request):
         .filter(stock_piso__gt=0)
         .order_by("nombre")
     )
+    from sucursales.models import Caja
+    caja_nombre = "Caja"
+    try:
+        caja_nombre = Caja.objects.get(id=caja_id).nombre
+    except Caja.DoesNotExist:
+        pass
+
     return render(
         request,
         "ventas/pos.html",
         {
             "productos": productos,
             "ubicacion_pos": ubicacion_pos,
+            "caja_nombre": caja_nombre,
         },
     )
 
@@ -164,7 +172,7 @@ def procesar_venta(request):
             cantidad = int(item.get("cantidad"))
             precio_aplicado = float(item.get("precio_aplicado"))
 
-            print("→ OK producto_id:", producto_id,
+            print("[OK] producto_id:", producto_id,
                   "cantidad:", cantidad,
                   "precio:", precio_aplicado)
 
@@ -202,8 +210,17 @@ def procesar_venta(request):
         return JsonResponse({
             "status": "ok",
             "venta_id": venta.id,
-            "total": float(venta.total),
+
+            # 🔥 Datos que el modal necesita
+            "total_venta": float(venta.total),
+            "pagado_efectivo": float(pagado_efectivo),
+            "pagado_tarjeta": float(pagado_tarjeta),
             "cambio": float(venta.cambio),
+
+            # 🔥 Si tienes impresión automática, cámbialo a True
+            "impresion_ok": False,
+
+            # Opcional: si quieres seguir mandando esto
             "descuento": float(venta.descuento),
 
             # URLs para ver ticket
@@ -221,3 +238,48 @@ def procesar_venta(request):
             "status": "error",
             "message": str(e)
         }, status=400)
+
+
+@login_required
+def stock_productos(request):
+    """
+    Devuelve el stock actualizado de todos los productos en la sucursal activa.
+    Usado por el POS para refrescar las tarjetas sin recargar la página.
+    """
+    sucursal_id = request.session.get("sucursal_actual")
+    if not sucursal_id:
+        return JsonResponse({"error": "Sin sucursal"}, status=400)
+
+    productos = Producto.objects.annotate(
+        stock_piso=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventarios__ubicacion__sucursal_id=sucursal_id,
+                        inventarios__ubicacion__tipo="piso",
+                        then="inventarios__cantidad_actual",
+                    ),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ),
+            0,
+        ),
+        stock_bodega=Coalesce(
+            Sum(
+                Case(
+                    When(
+                        inventarios__ubicacion__sucursal_id=sucursal_id,
+                        inventarios__ubicacion__tipo="bodega",
+                        then="inventarios__cantidad_actual",
+                    ),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            ),
+            0,
+        ),
+    ).values("id", "stock_piso", "stock_bodega")
+
+    data = {p["id"]: {"piso": p["stock_piso"], "bodega": p["stock_bodega"]} for p in productos}
+    return JsonResponse(data)

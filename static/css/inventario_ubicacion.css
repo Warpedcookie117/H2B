@@ -1,17 +1,174 @@
+/* ============================================================
+   INVENTARIO UBICACION — Estilos propios
+   ============================================================ */
+
+/* ============================
+   HIGHLIGHT — producto nuevo o consultado
+   ============================ */
 .highlight-yellow {
-    animation: flashYellow 1.5s ease-out 1 forwards;
+  animation: flashYellow 1.5s ease-out 1 forwards;
 }
 @keyframes flashYellow {
-    0%   { background-color: #fef08a; }
-    50%  { background-color: #fde047; }
-    100% { background-color: white; }
+  0%   { background-color: #fef08a; }
+  50%  { background-color: #fde047; }
+  100% { background-color: white; }
 }
 
 .highlight-green {
-    animation: flashGreen 1.5s ease-out 1 forwards;
+  animation: flashGreen 1.5s ease-out 1 forwards;
 }
 @keyframes flashGreen {
-    0%   { background-color: #bbf7d0; }
-    50%  { background-color: #86efac; }
-    100% { background-color: white; }
+  0%   { background-color: #bbf7d0; }
+  50%  { background-color: #86efac; }
+  100% { background-color: white; }
+}
+
+/* ============================
+   CARDS
+   ============================ */
+.card-producto {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-producto:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 8px 8px 0 0 black;
+}
+
+/* ============================
+   BOTONES 90s
+   ============================ */
+.btn-90s {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn-90s:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 black;
+}
+.btn-90s:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 black;
+}
+
+/* ============================
+   SHAPES ANIMADAS
+   ============================ */
+@keyframes floatShape {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50%       { transform: translateY(-12px) rotate(var(--r, 0deg)); }
+}
+.shape { animation: floatShape 4s ease-in-out infinite; }
+.shape:nth-child(2) { animation-delay: 0.8s; animation-duration: 5s; }
+.shape:nth-child(3) { animation-delay: 1.6s; animation-duration: 3.5s; }
+.shape:nth-child(4) { animation-delay: 0.4s; animation-duration: 4.5s; }
+.shape:nth-child(5) { animation-delay: 1.2s; animation-duration: 6s; }
+
+/* ============================
+   ETIQUETA DESPLEGABLE
+   ============================ */
+.etiqueta-box {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+}
+
+/* ============================
+   MODAL 90s — sin colisión con modales.css global
+   ============================ */
+.modal-90s {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+.modal-90s.hidden {
+  display: none !important;
+}
+.modal-box {
+  border: 4px solid black;
+  box-shadow: 8px 8px 0 0 black;
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  position: relative;
+}
+.modal-box-wide {
+  max-width: 56rem;
+}
+.modal-btn {
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 1.25rem;
+  border: 4px solid black;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.modal-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 0 black;
+}
+.modal-btn-primary {
+  background: black;
+  color: white;
+}
+.modal-btn-cancel {
+  background: white;
+  color: black;
+}
+.modal-input {
+  width: 100%;
+  border: 4px solid black;
+  padding: 0.6rem 0.75rem;
+  font-weight: 700;
+  font-size: 1rem;
+  outline: none;
+  background: white;
+}
+.modal-input:focus {
+  box-shadow: 4px 4px 0 0 black;
+}
+.modal-select {
+  width: 100%;
+  border: 4px solid black;
+  padding: 0.6rem 0.75rem;
+  font-weight: 700;
+  font-size: 1rem;
+  outline: none;
+  background: white;
+  cursor: pointer;
+}
+.modal-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: black;
+  margin-bottom: 0.35rem;
+}
+.modal-info-box {
+  border: 4px solid black;
+  background: white;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.modal-error {
+  border: 4px solid black;
+  background: #FF006E;
+  color: white;
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
 }

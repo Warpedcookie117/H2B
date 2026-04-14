@@ -42,7 +42,7 @@ class TemporadaAdmin(admin.ModelAdmin):
 
     def rango_temporada(self, obj):
         if obj.inicio_mes and obj.inicio_dia and obj.fin_mes and obj.fin_dia:
-            return f"{obj.inicio_dia}/{obj.inicio_mes} → {obj.fin_dia}/{obj.fin_mes}"
+            return f"{obj.inicio_dia}/{obj.inicio_mes} a {obj.fin_dia}/{obj.fin_mes}"
         return "Sin rango"
     
     rango_temporada.short_description = "Rango"

@@ -1,176 +1,184 @@
-/* === BASE === */
-body {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
 
-/* Contenido principal (NO se mueve nunca) */
-#main-content {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding-right: 1rem;
-  transition: padding-left 0.3s ease;
-}
-
-/* === SIDEBAR DESKTOP === */
+/* BASE — top y height se calculan en JS dinámicamente */
 #sidebar {
   position: fixed;
-  top: 4rem;
   left: 0;
-  width: 4rem;
+  top: 4rem;
   height: calc(100vh - 4rem);
-  background-color: #fff;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  width: 4rem;
+  background: #fff;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.08);
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width 0.3s ease-in-out;
-  z-index: 30;
+  transition: width 0.25s ease;
+  z-index: 40;
 }
 
-/* Sidebar anclado */
-#sidebar.pinned {
+/* PINNED o HOVER → expandido */
+#sidebar.pinned,
+#sidebar:hover {
   width: 16rem;
 }
 
-/* Hover expand */
-@media (min-width: 768px) {
-  #sidebar:not(.pinned):hover {
-    width: 16rem;
-  }
-}
-
-/* === TEXTO DEL SIDEBAR === */
+/* TEXTO — solo visible cuando expandido */
 #sidebar:not(.pinned):not(:hover) .sidebar-text {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  display: inline-block;
+  transition: opacity 0.15s ease;
 }
-
 #sidebar.pinned .sidebar-text,
 #sidebar:hover .sidebar-text {
+  opacity: 1;
+  width: auto;
   display: inline-block;
+  transition: opacity 0.2s ease 0.05s;
 }
 
-/* === LINKS (CON COLOR DINÁMICO) === */
+/* FLECHAS DE SUBMENÚ — ocultas cuando sidebar cerrado */
+#sidebar:not(.pinned):not(:hover) #flecha-inventario,
+#sidebar:not(.pinned):not(:hover) #flecha-sucursales,
+#sidebar:not(.pinned):not(:hover) .sucursal-flecha {
+  opacity: 0;
+  pointer-events: none;
+}
+#sidebar.pinned #flecha-inventario,
+#sidebar:hover  #flecha-inventario,
+#sidebar.pinned #flecha-sucursales,
+#sidebar:hover  #flecha-sucursales,
+#sidebar.pinned .sucursal-flecha,
+#sidebar:hover  .sucursal-flecha {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.2s ease;
+}
+
+/* LINKS */
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: 8px;
-
-  /* COLOR DINÁMICO */
   color: var(--color-base, #dc2626);
-
   font-weight: 600;
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.15s ease;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
 }
-
-/* HOVER DINÁMICO */
 .sidebar-link:hover {
   background-color: var(--color-hover, #fee2e2);
-  color: var(--color-base, #b91c1c);
+}
+.sidebar-link i {
+  flex-shrink: 0;
+  width: 1.2rem;
+  text-align: center;
 }
 
-/* === PESTAÑA DE ANCLAJE === */
-#sidebar-tab {
-  position: absolute;
-  top: 0.75rem;
-  right: -0.9rem;
-  width: 1.8rem;
-  height: 2.5rem;
-  background-color: #dc2626;
-  color: white;
-  border-radius: 0 8px 8px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
-  z-index: 101;
-  transition: background 0.2s ease;
-}
-
-#sidebar-tab:hover {
-  background-color: #b91c1c;
-}
-
-#sidebar.pinned #tab-icon {
-  transform: rotate(180deg);
-  transition: transform 0.3s ease;
-}
-
-#tab-icon {
-  transition: transform 0.3s ease;
-}
-
-/* Ocultar pestaña en móvil */
-@media (max-width: 767px) {
-  #sidebar-tab {
-    display: none;
-  }
-}
-
-/* === SIDEBAR MÓVIL === */
-@media (max-width: 767px) {
-  #sidebar {
-    top: 4rem;
-    width: 16rem;
-    height: calc(100vh - 4rem);
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-  }
-
-  #sidebar.open {
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .sidebar-text {
-    display: inline-block !important;
-  }
-}
-
-/* === BOTÓN HAMBURGUESA === */
-#sidebar-toggle {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 1rem;
-  z-index: 60 !important;
-  background-color: #dc2626;
-  color: white;
-  padding: 0.75rem;
-  border-radius: 50%;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
-}
-
-.rotate-180 {
-  transform: rotate(180deg);
-}
-
-/* Transición suave del submenú */
+/* SUBMENÚ */
 .submenu-transition {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.25s ease;
 }
-
 .submenu-open {
-  max-height: 500px;
+  max-height: 600px;
 }
 
-/* Flecha oculta cuando sidebar está cerrado */
-#sidebar:not(.pinned):not(:hover) #flecha-inventario {
-  opacity: 0;
-  pointer-events: none;
+/* PESTAÑA DE ANCLAJE — position fixed, JS mueve el left */
+#sidebar-tab {
+  position: fixed;
+  top: 4.75rem;
+  left: 4rem;
+  width: 1rem;
+  height: 2.5rem;
+  background: #dc2626;
+  color: white;
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  transition: background 0.2s ease, width 0.2s ease, left 0.25s ease;
+}
+#sidebar-tab:hover {
+  background: #b91c1c;
+  width: 1.4rem;
+}
+#sidebar.pinned ~ * #sidebar-tab,
+#sidebar.pinned #sidebar-tab {
+  left: 16rem;
+}
+#tab-icon {
+  transition: transform 0.3s ease;
+  font-size: 0.65rem;
+}
+#sidebar.pinned #tab-icon {
+  transform: rotate(180deg);
 }
 
-#sidebar.pinned #flecha-inventario,
-#sidebar:hover #flecha-inventario {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity 0.2s ease;
+/* ROTATE HELPER */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* ============================================================
+   MÓVIL
+   ============================================================ */
+@media (max-width: 767px) {
+  #sidebar {
+    width: 16rem;
+    top: 4rem;
+    height: calc(100vh - 4rem);
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+  #sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #sidebar .sidebar-text {
+    opacity: 1 !important;
+    width: auto !important;
+    display: inline-block !important;
+  }
+  #sidebar #flecha-inventario,
+  #sidebar #flecha-sucursales,
+  #sidebar .sucursal-flecha {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  #sidebar-tab {
+    display: none !important;
+  }
+}
+
+/* ============================================================
+   BOTÓN HAMBURGUESA
+   ============================================================ */
+#sidebar-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1rem;
+  z-index: 60;
+  background: #dc2626;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border: none;
+  cursor: pointer;
 }

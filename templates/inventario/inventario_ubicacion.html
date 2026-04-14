@@ -1,209 +1,255 @@
-{% extends "partials/base.html" %}
+{% extends 'partials/base.html' %}
 {% load static %}
 
-{% block title %}Inventario en {{ ubicacion.nombre }}{% endblock %}
+{% block title %}Inventario — {{ ubicacion.nombre }}{% endblock %}
 
 {% block content %}
 
-<div class="max-w-7xl mx-auto p-4">
+<link rel="stylesheet" href="{% static 'css/inventario_ubicacion.css' %}">
 
-    <!-- ENCABEZADO -->
-    <div class="p-4 rounded-lg text-white mb-6 shadow"
-         style="background: {{ color_header }};">
-        <h2 class="text-2xl font-bold">Inventario en {{ ubicacion.nombre }}</h2>
+<div class="max-w-full px-4 py-6 space-y-8 overflow-x-hidden">
+
+  <!-- ENCABEZADO CON COLOR DE LA UBICACIÓN -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] p-8 text-center"
+       style="background-color: {{ color_header }};">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-white rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-12 h-12 bg-black rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-14 h-14 bg-white rounded-full"></div>
+      <div class="shape absolute bottom-2 right-1/4 w-20 h-3 bg-black" style="--r:-10deg"></div>
+      <div class="shape absolute top-1/2 left-1/4 w-10 h-10 bg-white rotate-[30deg]" style="--r:30deg"></div>
     </div>
+    <div class="relative z-10">
+      <h1 class="text-3xl sm:text-5xl font-black text-black uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(255,255,255,0.4)]">
+        📦 {{ ubicacion.nombre }}
+      </h1>
+      <p class="text-black font-black text-sm sm:text-lg mt-3">
+        {% if ubicacion.tipo == 'piso' %}
+          Aquí está el piso de venta, compa. Lo que ves aquí es lo que hay para vender ahorita mismo. 🏪<br>
+          <span>Si algo se agotó, tranquilo — revisa bodega o pide una transferencia. No te desesperes. 🙏</span>
+        {% elif ubicacion.tipo == 'bodega' %}
+          Esta es la bodega interna, padrino. Aquí está el stock de respaldo que no se vende directo. 📦<br>
+          <span>Cuando el piso se quede sin nada, aquí es donde vas a surtirte. No la desordenes. 😤</span>
+        {% else %}
+          Este es el almacén central, camarada. El gran depósito madre de toda la operación. 🏭<br>
+          <span>De aquí sale todo hacia las sucursales. Cuídalo bien o caemos todos. 💀</span>
+        {% endif %}
+      </p>
+      {% if ubicacion.sucursal %}
+      <p class="text-black/60 font-bold text-xs mt-2 uppercase tracking-widest">
+        Sucursal: {{ ubicacion.sucursal.nombre }}
+      </p>
+      {% endif %}
+    </div>
+  </div>
 
-    {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-                <div class="px-4 py-3 rounded-lg shadow 
-                            {% if message.tags == 'success' %} bg-green-100 border border-green-300 text-green-800 
-                            {% elif message.tags == 'error' %} bg-red-100 border border-red-300 text-red-800 
-                            {% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
+  <!-- MENSAJES DJANGO -->
+  {% if messages %}
+  <div class="space-y-2">
+    {% for message in messages %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-5 py-3 uppercase tracking-widest text-sm
+                {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
-    <!-- MENSAJE GLOBAL -->
-    <div id="mensajeGlobal" class="mb-4"></div>
+  <!-- MENSAJE GLOBAL JS -->
+  <div id="mensajeGlobal"></div>
 
-    <!-- BOTONES -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+  <!-- BUSCADOR + BOTONES -->
+  <div class="flex flex-col sm:flex-row gap-3 w-full">
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex-1">
+      <input type="text" id="buscadorProductos"
+             placeholder="Busca por nombre, categoría o código..."
+             class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+    </div>
+    <button onclick="abrirModalTransferirMultiple({{ ubicacion.id }})"
+            class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black]
+                   font-black text-xs uppercase tracking-widest px-4 py-3
+                   flex items-center gap-1 whitespace-nowrap"
+            style="background-color: {{ color_header }}; color: black;">
+      ⇄ Transferencia múltiple
+    </button>
+    <a href="{% url 'inventario:nuevo_producto' %}"
+       class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_black]
+              text-white font-black text-xs uppercase tracking-widest px-4 py-3
+              flex items-center gap-1 whitespace-nowrap">
+      + Nuevo producto
+    </a>
+  </div>
 
-        <button onclick="abrirModalTransferirMultiple({{ ubicacion.id }})"
-                class="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md flex items-center justify-center gap-2 transition transform hover:scale-105">
-            <i class="fas fa-layer-group text-lg"></i>
-            Transferencia múltiple
+  <!-- ANUNCIO SIN RESULTADOS (oculto por defecto, JS lo muestra/oculta) -->
+  <div id="sinResultados" class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 text-center">
+    <p class="font-black text-black uppercase tracking-widest text-base">
+      😬 No encontré nada aquí con ese nombre o código, checa otras ubicaciones padrino.
+    </p>
+  </div>
+
+  <!-- GRID DE PRODUCTOS -->
+  <div id="gridProductos"
+       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+
+    {% for inv in productos %}
+    <div id="card_{{ inv.producto.id }}_{{ ubicacion.id }}"
+         class="cardProducto producto-card card-producto border-4 border-black shadow-[6px_6px_0_0_black] p-3 flex flex-col
+                {% if inv.cantidad_actual == 0 %}opacity-60{% endif %}
+                {% if request.GET.highlight == inv.producto.id|stringformat:'s' %}
+                  {% if request.GET.new %}highlight-green{% else %}highlight-yellow{% endif %}
+                {% endif %}"
+         data-producto="{{ inv.producto.id }}"
+         data-ubicacion="{{ ubicacion.id }}"
+         data-nombre="{{ inv.producto.nombre|lower }}"
+         data-descripcion="{{ inv.producto.descripcion|lower }}"
+         data-categoria="{{ inv.producto.categoria_padre.nombre|default:''|lower }}"
+         data-subcategoria="{{ inv.producto.categoria.nombre|default:''|lower }}"
+         data-codigo="{{ inv.producto.codigo_barras|default:'' }}"
+         data-cantidad="{{ inv.cantidad_actual }}"
+         style="background-color: white;">
+
+      <!-- IMAGEN -->
+      <div class="w-full h-32 bg-white border-4 border-black flex items-center justify-center overflow-hidden mb-3">
+        {% if inv.producto.foto_url %}
+          <img src="{{ inv.producto.foto_url.url }}" class="object-contain h-full w-full">
+        {% else %}
+          <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+        {% endif %}
+      </div>
+
+      <!-- NOMBRE -->
+      <h3 class="nombre font-black text-black text-xs uppercase tracking-wide text-center mb-1 leading-tight">
+        {{ inv.producto.nombre }}
+      </h3>
+
+      <!-- CATEGORÍA -->
+      <p class="categoria text-[10px] text-gray-500 font-semibold text-center mb-0.5">
+        {{ inv.producto.categoria_padre.nombre|default:"—" }}
+      </p>
+      <p class="subcategoria text-[10px] text-gray-500 font-semibold text-center mb-2">
+        {{ inv.producto.categoria.nombre|default:"—" }}
+      </p>
+
+      <!-- CANTIDAD -->
+      <div class="flex items-center justify-center gap-2 border-4 border-black p-2 mb-2"
+           style="background-color: {{ color_header }}40;">
+        <span class="text-[10px] font-black uppercase text-black">Piezas:</span>
+        <span class="cantidad-ubicacion font-black text-2xl text-black leading-none">{{ inv.cantidad_actual }}</span>
+      </div>
+
+      <!-- PRECIOS -->
+      <div class="text-[10px] font-semibold text-gray-700 text-center mb-3 space-y-0.5">
+        <p>Men: <span class="font-black text-black">${{ inv.producto.precio_menudeo }}</span></p>
+        <p>May: <span class="font-black text-black">${{ inv.producto.precio_mayoreo }}</span></p>
+        {% if inv.producto.precio_docena %}
+        <p>Doc: <span class="font-black text-black">${{ inv.producto.precio_docena }}</span></p>
+        {% endif %}
+      </div>
+
+      <!-- ACCIONES PRINCIPALES -->
+      <div class="space-y-1.5 mb-1.5">
+        <button onclick="abrirModalAgregarDesdeCard({{ inv.producto.id }}, {{ ubicacion.id }})"
+                class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                       bg-[#06D6A0] text-black font-black text-[10px] uppercase tracking-widest
+                       py-1.5 flex items-center justify-center gap-1">
+          + Agregar
         </button>
+        <button onclick="abrirModalAjustarDesdeCard({{ inv.producto.id }}, {{ ubicacion.id }})"
+                class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                       bg-[#FFBE0B] text-black font-black text-[10px] uppercase tracking-widest
+                       py-1.5 flex items-center justify-center gap-1">
+          ✏ Ajustar
+        </button>
+        <button onclick="abrirModalTransferir({{ inv.producto.id }}, {{ ubicacion.id }})"
+                class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                       bg-[#8338EC] text-white font-black text-[10px] uppercase tracking-widest
+                       py-1.5 flex items-center justify-center gap-1">
+          ⇄ Transferir
+        </button>
+      </div>
 
-        <a href="{% url 'inventario:nuevo_producto' %}"
-           class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg text-lg tracking-wide flex items-center justify-center gap-2 transition transform hover:scale-105">
-            <i class="fas fa-plus-circle text-xl"></i>
-            Registrar nuevo producto
-        </a>
+      <!-- BOTÓN ELIMINAR (cantidad = 0) -->
+      {% if inv.cantidad_actual == 0 %}
+      <button onclick="eliminarInventarioHandler({{ inv.producto.id }}, {{ ubicacion.id }})"
+              class="btn-eliminar-inv btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                     bg-[#FF006E] text-white font-black text-[10px] uppercase tracking-widest
+                     py-1.5 flex items-center justify-center gap-1 mb-1.5">
+        {% with tiene_otras=inv.producto.inventarios.all %}
+          {% if tiene_otras|length > 1 %}🗑 Eliminar de aquí{% else %}🚫 Desactivar{% endif %}
+        {% endwith %}
+      </button>
+      {% endif %}
 
-    </div>
+      <!-- ETIQUETA -->
+      {% if inv.producto.codigo_barras %}
+      <button onclick="mostrarEtiquetaInterna(this)"
+              data-url="{% url 'inventario:codigo_base64' inv.producto.id %}"
+              data-id="{{ inv.producto.id }}"
+              data-ubicacion="{{ ubicacion.id }}"
+              class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                     bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest
+                     py-1.5 flex items-center justify-center gap-1 mb-1.5">
+        ▮▮ Etiqueta
+      </button>
 
-    <!-- BUSCADOR -->
-    <div class="mb-6">
-        <input 
-            id="buscadorProductos"
-            type="text"
-            placeholder="Buscar producto por nombre, categoría, subcategoría o código..."
-            class="w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        >
-    </div>
-
-    <!-- GRID RESPONSIVE -->
-    <div id="gridProductos" class="
-        grid 
-        grid-cols-1 
-        sm:grid-cols-2 
-        md:grid-cols-3 
-        lg:grid-cols-4 
-        xl:grid-cols-5 
-        gap-4">
-
-        {% for inv in productos %}
-        <div id="card_{{ inv.producto.id }}_{{ ubicacion.id }}"
-            class="cardProducto producto-card rounded-lg shadow p-3 flex flex-col border hover:shadow-lg transition opacity-100 scale-100
-                   {% if inv.cantidad_actual == 0 %}
-                        bg-gray-100 border-gray-400
-                   {% else %}
-                        bg-white
-                   {% endif %}
-                   {% if request.GET.highlight == inv.producto.id|stringformat:"s" %}
-                        {% if request.GET.new %}
-                            highlight-green
-                        {% else %}
-                            highlight-yellow
-                        {% endif %}
-                    {% endif %}"
-
-            data-producto="{{ inv.producto.id }}"
-            data-ubicacion="{{ ubicacion.id }}"
-            data-nombre="{{ inv.producto.nombre }}"
-            data-cantidad="{{ inv.cantidad_actual }}">
-
-            <!-- IMAGEN -->
-            <div class="w-full h-28 sm:h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden mb-2">
-                {% if inv.producto.foto_url %}
-                    <img src="{{ inv.producto.foto_url.url }}" class="object-contain h-full w-full">
-                {% else %}
-                    <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
-                {% endif %}
-            </div>
-
-            <!-- NOMBRE -->
-            <h3 class="nombre text-red-700 font-bold text-sm sm:text-base mb-1">{{ inv.producto.nombre }}</h3>
-
-            <!-- CATEGORÍAS -->
-            <p class="categoria text-xs sm:text-sm text-gray-600">
-                <span class="font-semibold">Categoría:</span> {{ inv.producto.categoria_padre.nombre }}
-            </p>
-
-            <p class="subcategoria text-xs sm:text-sm text-gray-600 mb-1">
-                <span class="font-semibold">Subcategoría:</span> {{ inv.producto.categoria.nombre }}
-            </p>
-
-            <!-- CANTIDAD -->
-            <p class="text-sm font-semibold mt-2">
-                Cantidad: <span class="cantidad-ubicacion text-red-700 font-bold">{{ inv.cantidad_actual }}</span>
-            </p>
-
-            <!-- BOTÓN ELIMINAR SI CANTIDAD = 0 -->
-            {% if inv.cantidad_actual == 0 %}
-            <button 
-                onclick="eliminarInventarioHandler({{ inv.producto.id }}, {{ ubicacion.id }})"
-                class="btn-eliminar-inv mt-2 text-red-600 text-xs sm:text-sm flex items-center gap-1 hover:text-red-800 font-semibold">
-                🗑️ Eliminar inventario
-            </button>
-            {% endif %}
-
-            <!-- ACCIONES PRINCIPALES -->
-            <div class="mt-3 space-y-1">
-
-                <button onclick="abrirModalAgregarDesdeCard({{ inv.producto.id }}, {{ ubicacion.id }})"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white py-1.5 rounded text-xs sm:text-sm font-semibold flex items-center justify-center gap-1">
-                    <i class="fas fa-plus-circle"></i> Agregar
-                </button>
-
-                <button onclick="abrirModalAjustarDesdeCard({{ inv.producto.id }}, {{ ubicacion.id }})"
-                        class="w-full bg-orange-500 hover:bg-orange-600 text-white py-1.5 rounded text-xs sm:text-sm font-semibold flex items-center justify-center gap-1">
-                    <i class="fas fa-edit"></i> Ajustar
-                </button>
-
-                <button onclick="abrirModalTransferir({{ inv.producto.id }}, {{ ubicacion.id }})"
-                        class="w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 py-1.5 rounded text-xs sm:text-sm font-semibold flex items-center justify-center gap-1">
-                    <i class="fas fa-exchange-alt"></i> Transferir
-                </button>
-
-            </div>
-
-            <!-- ACCIONES SECUNDARIAS -->
-            <div class="mt-3 space-y-1">
-                <button onclick="mostrarEtiquetaInterna(this)"
-                        data-url="{% url 'inventario:codigo_base64' inv.producto.id %}"
-                        data-id="{{ inv.producto.id }}"
-                        data-ubicacion="{{ ubicacion.id }}"
-                        class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1.5 rounded text-xs sm:text-sm font-semibold flex items-center justify-center gap-1">
-                    <i class="fas fa-barcode"></i> Ver etiqueta
-                </button>
-
-                <a href="{% url 'inventario:detalle_producto' inv.producto.id %}"
-                   class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded text-xs sm:text-sm font-semibold flex items-center justify-center gap-1">
-                    <i class="fas fa-info-circle"></i> Ver detalle
-                </a>
-            </div>
-
-            <!-- ETIQUETA INTERNA -->
-            <div id="etiqueta-{{ inv.producto.id }}-{{ ubicacion.id }}"
-                 class="max-h-0 overflow-hidden transition-all duration-300 mt-3 p-0 bg-gray-50 border rounded opacity-0">
-
-                <img id="img-{{ inv.producto.id }}-{{ ubicacion.id }}" src="" class="w-full mb-2" />
-
-                <div class="flex gap-2 justify-center mb-2">
-                    <button onclick="imprimirEtiqueta({{ inv.producto.id }}, {{ ubicacion.id }})"
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
-                        Imprimir
-                    </button>
-
-                    <button onclick="descargarEtiqueta({{ inv.producto.id }}, {{ ubicacion.id }})"
-                            class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
-                        Descargar
-                    </button>
-                </div>
-
-                <div id="codigo-{{ inv.producto.id }}-{{ ubicacion.id }}"
-                     class="codigo text-[10px] bg-gray-200 p-2 rounded font-mono text-center select-all break-all cursor-pointer">
-                    {{ inv.producto.codigo_barras }}
-                </div>
-
-            </div>
-
+      <div id="etiqueta-{{ inv.producto.id }}-{{ ubicacion.id }}"
+           class="etiqueta-box bg-white border-4 border-black text-center mb-1.5">
+        <img id="img-{{ inv.producto.id }}-{{ ubicacion.id }}" src="" class="mx-auto w-3/4 object-contain"/>
+        <p class="text-sm font-black font-mono text-gray-800 py-2 border-t-4 border-black tracking-widest">
+          {{ inv.producto.codigo_barras }}
+        </p>
+        <div class="flex gap-2 p-2 border-t-4 border-black">
+          <button onclick="imprimirEtiqueta({{ inv.producto.id }}, {{ ubicacion.id }})"
+                  class="btn-90s flex-1 bg-[#3A86FF] border-4 border-black text-white py-1 text-[10px] font-black uppercase flex items-center justify-center">
+            🖨 Imprimir
+          </button>
+          <button onclick="descargarEtiqueta({{ inv.producto.id }}, {{ ubicacion.id }})"
+                  class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black text-black py-1 text-[10px] font-black uppercase flex items-center justify-center">
+            ⬇ Descargar
+          </button>
         </div>
+        <div id="codigo-{{ inv.producto.id }}-{{ ubicacion.id }}"
+             class="codigo text-[9px] border-t-4 border-black p-1 font-mono text-center select-all break-all cursor-pointer"
+             style="background-color: {{ color_header }}33;">
+          {{ inv.producto.codigo_barras }}
+        </div>
+      </div>
+      {% endif %}
 
-        {% include "inventario/modales/modal_agregar.html" with inv=inv ubicacion=ubicacion %}
-        {% include "inventario/modales/modal_ajustar.html" with inv=inv ubicacion=ubicacion %}
-
-        {% empty %}
-            <p class="text-gray-600 text-sm">No hay productos registrados en esta ubicación.</p>
-        {% endfor %}
+      <!-- VER DETALLE -->
+      <a href="{% url 'inventario:detalle_producto' inv.producto.id %}"
+         class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                bg-[#3A86FF] text-white font-black text-[10px] uppercase tracking-widest
+                py-1.5 flex items-center justify-center gap-1">
+        🔍 Ver detalle
+      </a>
 
     </div>
 
-    <!-- MODALES UNIVERSALES -->
-    {% include "inventario/modales/modal_transferir.html" %}
-    {% include "inventario/modales/modal_transferir_multiple.html" %}
-    {% include "inventario/modales/modal_eliminar.html" %}
+    {% include "inventario/modales/modal_agregar.html" with inv=inv ubicacion=ubicacion %}
+    {% include "inventario/modales/modal_ajustar.html" with inv=inv ubicacion=ubicacion %}
+
+    {% empty %}
+    <div class="col-span-full border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-12 text-center">
+      <p class="font-black text-gray-300 uppercase tracking-widest text-2xl">VACÍO</p>
+      <p class="text-gray-400 font-semibold text-sm mt-2">
+        No hay productos registrados en esta ubicación todavía.
+      </p>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <!-- MODALES UNIVERSALES -->
+  {% include "inventario/modales/modal_transferir.html" %}
+  {% include "inventario/modales/modal_transferir_multiple.html" %}
+  {% include "inventario/modales/modal_eliminar.html" %}
 
 </div>
 
 {{ inventario_todas_json|json_script:"inventarioTodas" }}
 <script>
-    window.inventarioTodas = JSON.parse(document.getElementById("inventarioTodas").textContent);
+  window.inventarioTodas = JSON.parse(document.getElementById("inventarioTodas").textContent);
 </script>
 
 {% endblock %}
@@ -217,14 +263,38 @@
 <script src="{% static 'js/inventario_ubicacion/transferir.js' %}"></script>
 <script src="{% static 'js/inventario_ubicacion/transferir_multiple.js' %}"></script>
 <script src="{% static 'js/inventario_ubicacion/eliminar.js' %}"></script>
+<script src="{% static 'js/inventario_ubicacion/buscador_ubicacion.js' %}"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
-    if (highlighted) {
-        highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
+  // Scroll al highlight
+  const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
+  if (highlighted) {
+    highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Quitar la clase al terminar la animación para que el color Austin Powers vuelva
+    highlighted.addEventListener("animationend", () => {
+      highlighted.classList.remove("highlight-yellow", "highlight-green");
+    }, { once: true });
+  }
+
+  // Ordenar cards — cantidad 0 al final
+  const cards = document.querySelectorAll("#gridProductos .cardProducto");
+  cards.forEach(card => {
+    card.style.order = parseInt(card.dataset.cantidad) === 0 ? 9999 : 0;
+  });
+
+  // Colores Austin Powers por card
+  const colores = [
+    "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
+    "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
+  ];
+  cards.forEach((card, i) => {
+    if (parseInt(card.dataset.cantidad) > 0) {
+      const color = colores[i % colores.length];
+      card.style.backgroundColor = color;
+      card.dataset.color = color;
     }
+  });
 });
 </script>
-
 {% endblock %}

@@ -1,87 +1,247 @@
 {% extends "partials/base.html" %}
 {% load static %}
 
-{% block title %}Ticket de Venta {{ venta.id }}{% endblock %}
+{% block title %}Ticket #{{ venta.id }}{% endblock %}
 
 {% block content %}
+<style>
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50%       { transform: translateY(-14px) rotate(var(--r, 0deg)); }
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes slideLeft {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes popIn {
+    0%   { transform: scale(0.7); opacity: 0; }
+    70%  { transform: scale(1.05); }
+    100% { transform: scale(1);   opacity: 1; }
+  }
+  @keyframes pulseShadow {
+    0%, 100% { box-shadow: 8px 8px 0 0 black; }
+    50%       { box-shadow: 12px 12px 0 0 black; }
+  }
+  @keyframes bounceDot {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-6px); }
+  }
 
-<div class="p-8 space-y-10">
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay: .7s; animation-duration: 5s; }
+  .shape:nth-child(3) { animation-delay: 1.4s; animation-duration: 3.5s; }
+  .shape:nth-child(4) { animation-delay: .3s; animation-duration: 4.5s; }
 
-    <!-- TÍTULO -->
-    <h1 class="text-4xl font-black text-purple-700">
-        Ticket de venta
-    </h1>
+  .anim-down  { animation: slideDown .5s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-up    { animation: slideUp   .5s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-left  { animation: slideLeft .4s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-pop   { animation: popIn     .5s cubic-bezier(.22,.68,0,1.2) both; }
+  .anim-pulse { animation: pulseShadow 2s ease-in-out infinite; }
 
-    <!-- INFO PRINCIPAL -->
-    <div class="p-6 border-4 border-black bg-white"
-         style="background:#FFEE88; box-shadow: 6px 6px 0 0 black;">
+  .d1 { animation-delay: .05s; }
+  .d2 { animation-delay: .12s; }
+  .d3 { animation-delay: .19s; }
+  .d4 { animation-delay: .26s; }
+  .d5 { animation-delay: .33s; }
+  .d6 { animation-delay: .40s; }
 
-        <p class="font-bold text-xl">Venta #{{ venta.id }}</p>
-        <p class="text-sm mt-1">Fecha: {{ venta.fecha }}</p>
-        <p class="text-sm">Caja: {{ venta.caja.nombre }}</p>
-        <p class="text-sm">Sucursal: {{ venta.caja.sucursal.nombre }}</p>
+  .btn-90s {
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  .btn-90s:hover  { transform: translate(-3px,-3px); box-shadow: 8px 8px 0 0 black; }
+  .btn-90s:active { transform: translate(1px,1px);   box-shadow: 2px 2px 0 0 black; }
 
-        <p class="text-sm">
-            Empleado:
-            {{ venta.empleado.user.get_full_name|default:venta.empleado.user.username }}
-        </p>
+  .card-item {
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .card-item:hover { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 0 black; }
 
+  .dot { animation: bounceDot 1s ease-in-out infinite; }
+  .dot:nth-child(2) { animation-delay: .15s; }
+  .dot:nth-child(3) { animation-delay: .30s; }
+
+  @media print {
+    #navbar, #sidebar, #layout > *:not(#main-content) { display: none !important; }
+    #layout { padding: 0 !important; }
+    #main-content { margin: 0 !important; padding: 0 !important; }
+    body { background: white !important; }
+    .max-w-2xl { max-width: 80mm; margin: 0 auto; }
+    /* Ocultar botones de acción */
+    .anim-up.d6 { display: none !important; }
+    /* Sin sombras ni animaciones al imprimir */
+    * { animation: none !important; box-shadow: none !important; }
+    /* Conservar colores de fondo */
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="max-w-2xl mx-auto px-4 py-8 space-y-5">
+
+  <!-- ── ENCABEZADO ── -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] p-8 text-center anim-down"
+       style="background-color: #FF006E;">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-white rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-12 h-12 bg-black rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-14 h-14 bg-white rounded-full"></div>
+      <div class="shape absolute bottom-3 right-1/4 w-10 h-10 bg-black" style="--r:-15deg"></div>
+    </div>
+    <div class="relative z-10">
+      <p class="text-white font-black text-xs uppercase tracking-[.4em] opacity-80 mb-1">
+        COMERCIALIZADORA MODELO
+      </p>
+      <h1 class="text-5xl sm:text-7xl font-black text-white uppercase drop-shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
+        TICKET
+      </h1>
+      <p class="text-black font-black text-4xl mt-1 drop-shadow-[3px_3px_0_rgba(255,255,255,0.3)]">
+        #{{ venta.id }}
+      </p>
+      <p class="text-white font-black text-sm mt-3 opacity-80 uppercase tracking-widest">
+        {{ venta.fecha|date:"d/m/Y H:i" }}
+      </p>
+    </div>
+  </div>
+
+  <!-- ── INFO ── -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+    <div class="card-item border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FFBE0B] p-4 anim-up d1">
+      <p class="font-black text-[10px] uppercase tracking-widest text-black/60 mb-1">📍 Sucursal</p>
+      <p class="font-black text-sm uppercase text-black">{{ venta.caja.sucursal.nombre }}</p>
     </div>
 
-    <!-- FORMATO TÉRMICO REAL -->
-    <div class="p-6 border-4 border-black bg-black text-green-400 rounded-lg text-sm whitespace-pre-wrap"
-         style="box-shadow: 6px 6px 0 0 black;">
-
-{{ ticket_texto }}
-
+    <div class="card-item border-4 border-black shadow-[6px_6px_0_0_black] bg-[#3A86FF] p-4 anim-up d2">
+      <p class="font-black text-[10px] uppercase tracking-widest text-white/70 mb-1">💳 Caja</p>
+      <p class="font-black text-sm uppercase text-white">
+        {% if venta.caja_nombre %}{{ venta.caja_nombre }}
+        {% elif venta.caja %}{{ venta.caja.nombre }}
+        {% else %}Caja eliminada{% endif %}
+      </p>
     </div>
 
-    <!-- TOTAL (CUADRO AMARILLO GRANDE) -->
-    <div class="p-6 border-4 border-black bg-white text-right"
-         style="background:#FFCC00; box-shadow: 6px 6px 0 0 black;">
-        <p class="text-3xl font-black">Total: ${{ venta.total }}</p>
+    <div class="card-item border-4 border-black shadow-[6px_6px_0_0_black] bg-[#06D6A0] p-4 anim-up d3">
+      <p class="font-black text-[10px] uppercase tracking-widest text-black/60 mb-1">👤 Cajero</p>
+      <p class="font-black text-sm uppercase text-black">
+        {{ venta.empleado.user.get_full_name|default:venta.empleado.user.username }}
+      </p>
     </div>
 
-    <!-- ACCIONES -->
-    <div class="flex flex-wrap gap-4">
+  </div>
 
-        <!-- PDF -->
-        <a href="{% url 'ventas:ticket_venta_pdf' venta.id %}"
-           class="px-6 py-3 border-4 border-black font-black text-white text-lg"
-           style="background:#0099FF; box-shadow: 4px 4px 0 0 black;">
-            Descargar PDF
-        </a>
+  <!-- ── PRODUCTOS ── -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden anim-up d3">
 
-        <!-- REIMPRIMIR -->
-        <button id="reimprimir-ticket"
-           class="px-6 py-3 border-4 border-black font-black text-white text-lg"
-           style="background:#FF0066; box-shadow: 4px 4px 0 0 black;">
-            Imprimir de nuevo
-        </button>
-
-        <!-- HISTORIAL -->
-        <a href="{% url 'ventas:tickets_ventas' venta.caja.sucursal.id %}"
-           class="px-6 py-3 border-4 border-black font-black text-lg"
-           style="background:#FFCC00; box-shadow: 4px 4px 0 0 black;">
-            Ver todos los tickets de esta sucursal
-        </a>
-
+    <div class="bg-[#8338EC] border-b-4 border-black px-5 py-3">
+      <p class="font-black text-white text-xs uppercase tracking-[.4em]">🛍 PRODUCTOS</p>
     </div>
+
+    <div class="bg-white divide-y-4 divide-black">
+      {% for item in detalles %}
+      <div class="card-item px-5 py-3 flex items-start justify-between gap-3"
+           style="animation: slideLeft .4s cubic-bezier(.22,.68,0,1.2) {{ forloop.counter0 }}00ms both;">
+        <div class="flex-1">
+          <p class="font-black text-sm uppercase text-black">
+            {{ item.nombre_snapshot|default:item.producto.nombre }}
+          </p>
+          {% if item.atributos_snapshot %}
+          {% for k, v in item.atributos_snapshot.items %}
+          <p class="text-[#8338EC] text-[10px] font-bold">{{ k }}: {{ v }}</p>
+          {% endfor %}
+          {% endif %}
+          <p class="text-gray-500 text-xs font-bold mt-0.5">x{{ item.cantidad }} × ${{ item.precio_unitario }}</p>
+        </div>
+        <p class="font-black text-lg text-black shrink-0">${{ item.subtotal }}</p>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <!-- ── DESGLOSE + PAGO ── -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 anim-up d4">
+
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+      <div class="bg-[#FB5607] border-b-4 border-black px-4 py-2">
+        <p class="font-black text-white text-[10px] uppercase tracking-widest">DESGLOSE</p>
+      </div>
+      <div class="p-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="font-semibold text-gray-600">Subtotal</span>
+          <span class="font-black">${{ subtotal }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-semibold text-[#FF006E]">Descuento</span>
+          <span class="font-black text-[#FF006E]">-${{ descuento }}</span>
+        </div>
+        <div class="flex justify-between text-sm border-t-2 border-black pt-2">
+          <span class="font-black uppercase text-sm">Total</span>
+          <span class="font-black text-lg">${{ total }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+      <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-2">
+        <p class="font-black text-white text-[10px] uppercase tracking-widest">MÉTODO DE PAGO</p>
+      </div>
+      <div class="p-4 space-y-2">
+        <div class="flex justify-between text-sm">
+          <span class="font-semibold text-gray-600">💵 Efectivo</span>
+          <span class="font-black">${{ pagado_efectivo }}</span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="font-semibold text-gray-600">💳 Tarjeta</span>
+          <span class="font-black">${{ pagado_tarjeta }}</span>
+        </div>
+        <div class="flex justify-between text-sm border-t-2 border-black pt-2">
+          <span class="font-black text-[#3A86FF] uppercase text-sm">Cambio</span>
+          <span class="font-black text-[#3A86FF] text-lg">${{ cambio }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── TOTAL GRANDE ── -->
+  <div class="border-4 border-black bg-[#FFEE88] text-center py-8 anim-pulse anim-pop d5 relative overflow-hidden">
+    <div class="absolute -top-3 -left-3 w-12 h-12 bg-[#FF006E] border-4 border-black rotate-12"></div>
+    <div class="absolute -bottom-3 -right-3 w-12 h-12 bg-[#3A86FF] border-4 border-black rotate-45"></div>
+    <p class="font-black text-xs uppercase tracking-[.4em] text-black/50 mb-2">TOTAL DE LA VENTA</p>
+    <p class="font-black text-black drop-shadow-[4px_4px_0_rgba(0,0,0,0.15)]"
+       style="font-size: clamp(3.5rem, 12vw, 6rem); line-height:1;">
+      ${{ total }}
+    </p>
+    <p class="font-black text-xs uppercase tracking-widest text-black/50 mt-2 capitalize">
+      {{ metodo_pago }}
+    </p>
+  </div>
+
+  <!-- ── ACCIONES ── -->
+  <div class="flex flex-wrap gap-3 anim-up d6">
+
+    <a href="{% url 'ventas:ticket_venta_termico' venta.id %}"
+       class="btn-90s flex-1 border-4 border-black shadow-[4px_4px_0_0_black]
+              bg-black text-white font-black text-xs uppercase tracking-widest py-3
+              flex items-center justify-center gap-2">
+      🖨 Reimprimir térmica
+    </a>
+
+    <a href="{% url 'ventas:tickets_ventas' venta.caja.sucursal.id %}"
+       class="btn-90s flex-1 border-4 border-black shadow-[4px_4px_0_0_black]
+              bg-white text-black font-black text-xs uppercase tracking-widest py-3
+              flex items-center justify-center gap-2">
+      ← Todos los tickets
+    </a>
+
+  </div>
 
 </div>
-
-<!-- SCRIPT PARA REIMPRIMIR -->
-<script>
-document.getElementById("reimprimir-ticket").onclick = () => {
-    document.dispatchEvent(new CustomEvent("imprimir-ticket", {
-        detail: {
-            total: {{ venta.total }},
-            cambio: {{ venta.cambio }},
-            venta_id: {{ venta.id }},
-            ticket_texto: `{{ ticket_texto|escapejs }}`
-        }
-    }));
-};
-</script>
-
 {% endblock %}

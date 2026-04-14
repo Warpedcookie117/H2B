@@ -33,11 +33,7 @@ import { actualizarTotales } from "./totales.js";
 // ============================================================
 
 export function initUI() {
-
-    console.log("🔥 initUI ejecutado");
-
     setOnCarritoActualizado(() => {
-        console.log("🛒 Carrito actualizado → render + totales");
         renderCarritoUI();
         actualizarTotales();
     });
@@ -48,7 +44,6 @@ export function initUI() {
     initModalPago();
     initModalResultado();
 }
-
 
 
 // ============================================================
@@ -63,38 +58,32 @@ function renderCarritoUI() {
 
     carrito.forEach((item, index) => {
         const div = document.createElement("div");
-        div.className = "carrito-item bg-gray-100 p-3 rounded-lg shadow flex flex-col gap-2";
+        div.className = "pos-carrito-item";
 
         div.innerHTML = `
-            <div class="flex justify-between items-center">
-                <span class="font-semibold">${item.nombre}</span>
-                <button class="btn-eliminar bg-red-600 text-white px-2 py-1 rounded text-xs font-bold"
-                        data-idx="${index}">
-                    X
-                </button>
+            <div class="pos-carrito-item-header">
+                <span class="pos-carrito-item-nombre">${item.nombre}</span>
+                <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
             </div>
 
-            <div class="flex items-center gap-3">
-                <button class="btn-menos px-3 py-1 bg-red-500 text-white rounded" data-idx="${index}">-</button>
-
-                <input 
-                    type="number"
-                    min="1"
-                    class="cantidad-input w-16 border rounded p-1 text-center"
+            <div class="pos-cantidad-controles">
+                <button class="pos-cantidad-btn pos-cantidad-btn--menos" data-idx="${index}">−</button>
+                <input
+                    type="number" min="1"
+                    class="pos-cantidad-input"
                     value="${item.cantidad}"
                     data-idx="${index}"
                 >
-
-                <button class="btn-mas px-3 py-1 bg-green-500 text-white rounded" data-idx="${index}">+</button>
+                <button class="pos-cantidad-btn pos-cantidad-btn--mas" data-idx="${index}">+</button>
             </div>
 
             <div>${resolverBadge(item)}</div>
 
-            <div class="flex gap-2">
+            <div class="pos-modo-botones">
                 ${renderBotonesPrecio(item, index)}
             </div>
 
-            <div class="text-right font-bold text-lg text-red-600">
+            <div class="pos-precio-aplicado">
                 $<span>${item.precio_aplicado.toFixed(2)}</span>
             </div>
         `;
@@ -106,55 +95,51 @@ function renderCarritoUI() {
 }
 
 
-
 // ============================================================
 // 3. Badges de stock
 // ============================================================
 
 function resolverBadge(item) {
     if (item.cantidad <= item.stock_piso) {
-        return `<span class="inline-block bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">Se descontará de Piso</span>`;
+        return `<span class="pos-stock-badge pos-stock-badge--piso">Se descontará de Piso</span>`;
     }
     if (item.cantidad <= item.stock_bodega) {
-        return `<span class="inline-block bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">Se descontará de Bodega Interna</span>`;
+        return `<span class="pos-stock-badge pos-stock-badge--bodega">Se descontará de Bodega</span>`;
     }
-    return `<span class="inline-block bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">No hay stock suficiente</span>`;
+    return `<span class="pos-stock-badge pos-stock-badge--sin-stock">No hay stock suficiente</span>`;
 }
 
 
-
 // ============================================================
-// 4. Botones MEN/MAY/DOC/AUTO
+// 4. Botones MEN / MAY / DOC / AUTO
 // ============================================================
 
 function renderBotonesPrecio(item, index) {
-    const colores = {
-        AUTO: "bg-blue-600 text-white",
-        MEN: "bg-pink-300 text-black",
-        MAY: "bg-green-500 text-white",
-        DOC: "bg-purple-500 text-white"
+    const clasesModo = {
+        MEN:  "pos-modo-btn pos-modo-btn--men",
+        MAY:  "pos-modo-btn pos-modo-btn--may",
+        DOC:  "pos-modo-btn pos-modo-btn--doc",
+        AUTO: "pos-modo-btn pos-modo-btn--auto"
     };
 
     return ["MEN", "MAY", "DOC", "AUTO"].map(m => {
         if (m === "DOC" && (!item.precios.doc || item.precios.doc <= 0)) {
-            return `<button class="px-2 py-1 rounded text-xs font-bold bg-gray-400 opacity-50 cursor-not-allowed" disabled>DOC</button>`;
+            return `<button class="pos-modo-btn pos-modo-btn--disabled" disabled>DOC</button>`;
         }
 
-        const activo = item.modo_precio === m;
+        const activo   = item.modo_precio === m;
         const resuelto = item.modo_resuelto === m;
 
-        let clases = "px-2 py-1 rounded text-xs font-bold ";
+        let clases = clasesModo[m];
 
-        if (activo) clases += colores[m];
-        else if (item.modo_precio === "AUTO" && resuelto) clases += colores[m];
-        else clases += "bg-gray-300";
+        if (activo) clases += " pos-modo-btn--activo";
+        else if (item.modo_precio === "AUTO" && resuelto) clases += " pos-modo-btn--activo";
 
-        if (resuelto) clases += " border-4 border-black";
+        if (resuelto) clases += " pos-modo-btn--resuelto";
 
         return `<button class="${clases}" data-modo="${m}" data-idx="${index}">${m}</button>`;
     }).join("");
 }
-
 
 
 // ============================================================
@@ -162,19 +147,19 @@ function renderBotonesPrecio(item, index) {
 // ============================================================
 
 function bindCarritoListeners() {
-    document.querySelectorAll(".btn-eliminar").forEach(btn => {
+    document.querySelectorAll(".pos-carrito-item-btn-eliminar").forEach(btn => {
         btn.onclick = () => eliminarProducto(parseInt(btn.dataset.idx));
     });
 
-    document.querySelectorAll(".btn-mas").forEach(btn => {
+    document.querySelectorAll(".pos-cantidad-btn--mas").forEach(btn => {
         btn.onclick = () => cambiarCantidad(parseInt(btn.dataset.idx), carrito[btn.dataset.idx].cantidad + 1);
     });
 
-    document.querySelectorAll(".btn-menos").forEach(btn => {
+    document.querySelectorAll(".pos-cantidad-btn--menos").forEach(btn => {
         btn.onclick = () => cambiarCantidad(parseInt(btn.dataset.idx), carrito[btn.dataset.idx].cantidad - 1);
     });
 
-    document.querySelectorAll(".cantidad-input").forEach(input => {
+    document.querySelectorAll(".pos-cantidad-input").forEach(input => {
         input.oninput = () => {
             const idx = parseInt(input.dataset.idx);
             const val = parseInt(input.value) || 1;
@@ -188,7 +173,6 @@ function bindCarritoListeners() {
 }
 
 
-
 // ============================================================
 // 6. Botón COBRAR
 // ============================================================
@@ -198,18 +182,13 @@ function initBotonCobrar() {
     if (!btn) return;
 
     btn.onclick = () => {
-        console.log("🟦 Click en COBRAR");
-
         const error = validarStock();
-        console.log("🟦 validarStock() →", error);
-
         if (error) return mostrarAlertaUI(error, "error");
 
-        console.log("🟦 Abriendo modal-pago");
-        document.getElementById("modal-pago").classList.remove("hidden");
+        // Abre el modal ya inicializado con el total correcto
+        abrirModalPago();
     };
 }
-
 
 
 // ============================================================
@@ -220,21 +199,16 @@ function initDescuentoUI() {
     const btn = document.getElementById("btn-descuento");
     if (!btn) return;
 
-    btn.classList.add("bg-red-600", "text-white");
-    btn.textContent = "10% OFF";
-
     btn.onclick = () => {
-        console.log("🟧 Toggle descuento 10%");
-
         if (!descuentoActivo) {
             aplicarDescuento10();
             setDescuentoActivo(true);
-            btn.classList.replace("bg-red-600", "bg-green-600");
+            btn.classList.add("pos-btn-descuento--activo");
             btn.textContent = "10% ON";
         } else {
             quitarDescuento10();
             setDescuentoActivo(false);
-            btn.classList.replace("bg-green-600", "bg-red-600");
+            btn.classList.remove("pos-btn-descuento--activo");
             btn.textContent = "10% OFF";
         }
 
@@ -244,153 +218,138 @@ function initDescuentoUI() {
 }
 
 
+// ============================================================
+// 8. Modal de pago — con cálculo en vivo
+// ============================================================
 
-// ============================================================
-// 8. Modal de pago — DEBUG EXTREMO
-// ============================================================
+// Se declara aquí para que initBotonCobrar pueda llamarla
+// después de que initModalPago la defina
+let abrirModalPago = () => {};
 
 function initModalPago() {
-    const modal = document.getElementById("modal-pago");
-    const btnCerrar = document.getElementById("cerrar-modal");
+    const modal        = document.getElementById("modal-pago");
+    const btnCerrar    = document.getElementById("cerrar-modal");
     const btnConfirmar = document.getElementById("confirmar-pago");
-
     const inputEfectivo = document.getElementById("pago-efectivo");
-    const inputTarjeta = document.getElementById("pago-tarjeta");
+    const inputTarjeta  = document.getElementById("pago-tarjeta");
+    const infoBox       = document.getElementById("pago-info");
+    const totalDisplay  = document.getElementById("pago-total-display");
 
-    btnCerrar.onclick = () => {
-        console.log("❌ Cerrar modal-pago manual");
-        modal.classList.add("hidden");
+    // Calcula en vivo cuánto falta o cuánto es el cambio
+    function actualizarInfoPago() {
+        const efectivo   = parseFloat(inputEfectivo.value || 0);
+        const tarjeta    = parseFloat(inputTarjeta.value  || 0);
+        const total      = totalConDescuento();
+        const diferencia = (efectivo + tarjeta) - total;
+
+        if (efectivo + tarjeta === 0) {
+            infoBox.textContent = "";
+            infoBox.className   = "pos-pago-info";
+            return;
+        }
+
+        if (diferencia < 0) {
+            infoBox.textContent = `Faltan $${Math.abs(diferencia).toFixed(2)} por pagar`;
+            infoBox.className   = "pos-pago-info pos-pago-info--falta";
+        } else {
+            infoBox.textContent = `Cambio: $${diferencia.toFixed(2)}`;
+            infoBox.className   = "pos-pago-info pos-pago-info--cambio";
+        }
+    }
+
+    inputEfectivo.addEventListener("input", actualizarInfoPago);
+    inputTarjeta.addEventListener("input",  actualizarInfoPago);
+
+    // Inicializa el modal con valores limpios cada vez que se abre
+    abrirModalPago = () => {
+        const total = totalConDescuento();
+        totalDisplay.textContent = total.toFixed(2);
+        inputEfectivo.value = "";
+        inputTarjeta.value  = "";
+        infoBox.textContent = "";
+        infoBox.className   = "pos-pago-info";
+        modal.classList.remove("pos-modal--hidden");
+        inputEfectivo.focus();
+        actualizarInfoPago();
     };
 
+    // Cerrar sin procesar
+    btnCerrar.onclick = () => modal.classList.add("pos-modal--hidden");
+
+    // Confirmar y procesar la venta
     btnConfirmar.onclick = async () => {
-        console.log("🔥 Click en CONFIRMAR PAGO");
-
         const efectivo = parseFloat(inputEfectivo.value || 0);
-        const tarjeta = parseFloat(inputTarjeta.value || 0);
-
-        console.log("💵 efectivo:", efectivo);
-        console.log("💳 tarjeta:", tarjeta);
+        const tarjeta  = parseFloat(inputTarjeta.value  || 0);
 
         const error = validarPago(efectivo, tarjeta);
-        console.log("🟥 validarPago() →", error);
-
         if (error) return mostrarAlertaUI(error, "error");
 
-        console.log("📡 Enviando a procesarPago...");
         const data = await procesarPago(efectivo, tarjeta);
 
-        console.log("📦 DATA RECIBIDA:", data);
-        console.log("📦 STATUS:", data?.status);
-
         if (String(data?.status).toLowerCase() === "ok") {
-            console.log("🟩 STATUS OK → procesando UI");
-
-            const total = data.total;
-            const cambio = data.cambio;
-
-
-            console.log("🟩 total:", total);
-            console.log("🟩 cambio:", cambio);
-
-            console.log("🟩 Disparando evento pago-exito");
+            // Pasa todos los datos al modal de resultado
             document.dispatchEvent(new CustomEvent("pago-exito", {
                 detail: {
-                    total,
-                    cambio,
-                    ticket_texto: data.ticket_texto,
-                    venta_id: data.venta_id
+                    total:            data.total_venta,
+                    cambio:           data.cambio,
+                    pagado_efectivo:  data.pagado_efectivo,
+                    pagado_tarjeta:   data.pagado_tarjeta,
+                    ticket_texto:     data.ticket_texto,
+                    venta_id:         data.venta_id
                 }
             }));
 
-            console.log("🟩 Cerrando modal-pago");
-            modal.classList.add("hidden");
-
+            modal.classList.add("pos-modal--hidden");
         } else {
-            console.log("🟥 STATUS NO ES OK → NO se cierra modal, NO se abre resultado");
+            mostrarAlertaUI(data?.message || "Error al procesar la venta", "error");
         }
     };
 }
 
 
-
 // ============================================================
-// 9. Modal de resultado — DEBUG EXTREMO
+// 9. Modal de resultado
 // ============================================================
 
 function initModalResultado() {
-    const modal = document.getElementById("modal-resultado");
-    const btnCerrar = document.getElementById("cerrar-resultado");
+    const modal       = document.getElementById("modal-resultado");
+    const btnCerrar   = document.getElementById("cerrar-resultado");
     const boxImpresion = document.getElementById("resultado-impresion");
 
-    // ============================================================
-    // Evento principal: pago exitoso
-    // ============================================================
+    // Venta procesada correctamente → llenar y mostrar modal
     document.addEventListener("pago-exito", (e) => {
-        console.log("🔥 EVENTO pago-exito RECIBIDO");
-        console.log("📨 detail:", e.detail);
+        const { total, cambio, pagado_efectivo, pagado_tarjeta } = e.detail;
 
-        const total = e.detail.total;
-        const cambio = e.detail.cambio;
+        document.getElementById("resultado-total-venta").textContent = total.toFixed(2);
+        document.getElementById("resultado-recibido").textContent    = (pagado_efectivo + pagado_tarjeta).toFixed(2);
+        document.getElementById("resultado-cambio").textContent      = cambio.toFixed(2);
 
-        console.log("🟩 total recibido:", total);
-        console.log("🟩 cambio recibido:", cambio);
-
-        // Mostrar totales en el modal
-        document.getElementById("resultado-total").textContent = total.toFixed(2);
-        document.getElementById("resultado-cambio").textContent = cambio.toFixed(2);
-
-        // Limpiar mensaje previo de impresión
         boxImpresion.textContent = "";
-        boxImpresion.className = "text-center mt-4 text-sm";
+        boxImpresion.className   = "pos-resultado-impresion";
 
-        // Abrir modal
-        console.log("🟩 Abriendo modal-resultado");
-        modal.classList.remove("hidden");
+        modal.classList.remove("pos-modal--hidden");
 
-        // Disparar impresión
-        console.log("🖨️ Disparando imprimir-ticket");
-        document.dispatchEvent(new CustomEvent("imprimir-ticket", {
-            detail: {
-                total,
-                cambio,
-                venta_id: e.detail.venta_id,
-                ticket_texto: e.detail.ticket_texto
-            }
+        // La impresión se hace en el servidor (imprimir_silencioso)
+        // Notificamos éxito directo para actualizar el mensaje en pantalla
+        document.dispatchEvent(new CustomEvent("impresion-exito", {
+            detail: { venta_id: e.detail.venta_id }
         }));
     });
 
-    // ============================================================
-    // Evento: impresión exitosa
-    // ============================================================
-    document.addEventListener("impresion-exito", (e) => {
-        console.log("🟩 Impresión exitosa");
-
-        boxImpresion.textContent = "Ticket enviado a imprimir correctamente.";
-        boxImpresion.className = "text-green-600 font-semibold text-center mt-4";
+    // Impresión exitosa
+    document.addEventListener("impresion-exito", () => {
+        boxImpresion.textContent = "✓ Ticket enviado correctamente.";
+        boxImpresion.className   = "pos-resultado-impresion pos-resultado-impresion--ok";
     });
 
-    // ============================================================
-    // Evento: impresión fallida
-    // ============================================================
+    // Impresión fallida — el ticket sigue disponible en el Dashboard
     document.addEventListener("impresion-fallo", (e) => {
-        console.log("🟥 Impresión fallida:", e.detail);
-
-        boxImpresion.textContent =
-            `No se pudo imprimir el ticket. Puedes imprimirlo desde el Dashboard de Sucursal.
-             ID de venta: ${e.detail.venta_id}`;
-
-        boxImpresion.className = "text-yellow-600 font-semibold text-center mt-4";
+        boxImpresion.textContent = `No se pudo imprimir. Puedes imprimirlo desde el Dashboard. Venta: ${e.detail.venta_id}`;
+        boxImpresion.className   = "pos-resultado-impresion pos-resultado-impresion--error";
     });
 
-    // ============================================================
-    // Botón cerrar modal
-    // ============================================================
-    btnCerrar.onclick = () => {
-        console.log("❌ Cerrar modal-resultado");
-        modal.classList.add("hidden");
-    };
+    btnCerrar.onclick = () => modal.classList.add("pos-modal--hidden");
 }
-
 
 
 // ============================================================
@@ -401,17 +360,11 @@ export function mostrarAlertaUI(msg, tipo = "ok") {
     const box = document.getElementById("pos-alerta");
     if (!box) return;
 
-    console.log("⚠️ ALERTA:", msg);
-
     box.textContent = msg;
+    box.className = "pos-alerta " + (tipo === "ok"
+        ? "pos-alerta--ok"
+        : "pos-alerta--error");
 
-    if (tipo === "ok") {
-        box.className = "p-3 rounded-lg font-bold text-center mb-3 bg-green-600 text-white";
-    } else {
-        box.className = "p-3 rounded-lg font-bold text-center mb-3 bg-red-600 text-white";
-    }
-
-    box.classList.remove("hidden");
-
-    setTimeout(() => box.classList.add("hidden"), 3000);
+    box.classList.remove("pos-alerta--hidden");
+    setTimeout(() => box.classList.add("pos-alerta--hidden"), 3000);
 }

@@ -2,10 +2,11 @@ from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from ventas.models import Venta
-from django.http import HttpResponse
-from ventas.services.ticket_service import generar_texto_ticket
+from django.http import HttpResponse, JsonResponse
+from ventas.services.ticket_service import generar_texto_ticket, imprimir_silencioso
 from reportlab.pdfgen import canvas
 from sucursales.models import Sucursal
+from django.db.models import Sum, F
 
 @login_required
 def ticket_venta(request, venta_id):
@@ -83,10 +84,6 @@ def ticket_venta_pdf(request, venta_id):
     
     
 def ticket_venta_termico(request, venta_id):
-    venta = Venta.objects.get(id=venta_id)
-    texto = generar_texto_ticket(venta)
-
-    response = HttpResponse(texto, content_type="text/plain; charset=utf-8")
-    response["Content-Disposition"] = f'attachment; filename="venta_{venta_id}.txt"'
-
-    return response
+    venta = get_object_or_404(Venta, id=venta_id)
+    imprimir_silencioso(generar_texto_ticket(venta))
+    return redirect("ventas:ticket_venta", venta_id)

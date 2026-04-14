@@ -35,24 +35,16 @@
 {% include 'partials/sidebar.html' %}
 
 {% if messages %}
-<div id="messages-container" class="max-w-4xl mx-auto mt-4 px-4 space-y-2">
-    {% for message in messages %}
-        <div class="
-            message-item
-            px-4 py-3 rounded text-white shadow transition-opacity duration-700
-            {% if message.tags == 'success' %} bg-green-600
-            {% elif message.tags == 'error' %} bg-red-600
-            {% else %} bg-blue-600 {% endif %}
-        ">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
+  {% for message in messages %}
+    <!-- Consumir mensajes sin mostrarlos -->
+    <span class="hidden">{{ message }}</span>
+  {% endfor %}
 {% endif %}
+
 
 <!-- Layout principal con espacio para navbar fijo -->
 <div class="pt-16 flex flex-col md:flex-row flex-1 transition-all duration-300" id="layout">
-  <main id="main-content" class="w-full p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] transition-all duration-300">
+  <main id="main-content" class="w-full p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] transition-all duration-300 md:ml-16">
       {% block content %}{% endblock %}
   </main>
 </div>
@@ -77,6 +69,8 @@
   AOS.init({ once: true, duration: 800 });
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const messages = document.querySelectorAll(".message-item");
@@ -93,10 +87,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+<!-- Modal Entrar Caja — global para el sidebar (el dashboard tiene el suyo propio) -->
+{% if request.user.is_authenticated and not request.resolver_match.url_name == 'dashboard_sucursal' %}
 <div id="modalEntrarCaja"
-     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div id="modalEntrarCajaContent"></div>
+     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div id="modalEntrarCajaContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
+  </div>
 </div>
+{% endif %}
 
 {% block scripts %}{% endblock %}
 </body>

@@ -3,106 +3,121 @@
 
 {% block content %}
 
+<!-- 🔥 Incluir CSS del POS -->
+<link rel="stylesheet" href="{% static 'css/pos.css' %}">
+
 <script>
     const sucursal_id = {{ ubicacion_pos.id }};
 </script>
 
+<!-- WRAPPER POS -->
+<div class="pos-wrapper">
+
 <!-- ========================================================= -->
-<!-- HEADER GLOBAL CENTRADO -->
+<!-- ENCABEZADO PRINCIPAL 90s -->
 <!-- ========================================================= -->
-<div class="w-full text-center mb-6">
-    <h1 class="text-3xl font-bold">
-        Punto de Venta — {{ ubicacion_pos.nombre }}
-    </h1>
+<div class="pos-header">
+    <div class="pos-decoraciones">
+        <div class="pos-shape" style="top:10%;left:8%;width:3rem;height:3rem;background:var(--pos-amarillo);transform:rotate(12deg);--r:12deg"></div>
+        <div class="pos-shape" style="top:15%;right:12%;width:2rem;height:2rem;background:var(--pos-rosa);transform:rotate(45deg);--r:45deg"></div>
+        <div class="pos-shape" style="bottom:5%;left:30%;width:2.5rem;height:2.5rem;background:white;border-radius:50%"></div>
+        <div class="pos-shape" style="top:50%;right:20%;width:2rem;height:2rem;background:var(--pos-verde);--r:30deg"></div>
+        <div class="pos-shape" style="bottom:10%;right:8%;width:1.5rem;height:1.5rem;background:var(--pos-azul);--r:60deg"></div>
+    </div>
+    <div class="pos-header-info">
+        <h1>🛒 Punto de Venta</h1>
+        <p class="pos-header-desc">Donde el dinero cambia de manos y los nervios también 💸</p>
+        <div class="pos-header-meta">
+            <span class="pos-header-badge pos-header-badge--sucursal">
+                🏬 {{ ubicacion_pos.sucursal.nombre }}
+            </span>
+            <span class="pos-header-badge pos-header-badge--caja">
+                💳 {{ caja_nombre }}
+            </span>
+        </div>
+    </div>
 </div>
 
-<div class="flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-[calc(100vh-80px)]">
+<!-- ========================================================= -->
+<!-- LAYOUT PRINCIPAL -->
+<!-- ========================================================= -->
+<div class="pos-layout">
 
     <!-- ========================================================= -->
     <!-- IZQUIERDA: CARRITO -->
     <!-- ========================================================= -->
-    <div class="flex flex-col flex-1 bg-white rounded-xl shadow p-4 lg:p-6 min-h-[400px]">
+    <div class="pos-panel pos-panel--carrito">
 
-        <h3 class="text-xl font-bold mb-3">Carrito</h3>
+        <h3 class="pos-titulo">🛒 Carrito</h3>
 
         <!-- ALERTA -->
-        <div id="pos-alerta" class="hidden p-3 rounded-lg font-bold text-center mb-3"></div>
+        <div id="pos-alerta" class="pos-alerta pos-alerta--hidden"></div>
 
         <!-- ESCANEO -->
-        <input 
+        <input
             id="scan-input"
             type="text"
             placeholder="Escanea código o escribe nombre..."
-            class="w-full p-3 border border-gray-300 rounded-lg text-lg mb-4 focus:ring focus:ring-red-300"
+            class="pos-scan-input"
             autofocus
         >
 
         <!-- CARRITO -->
         <div id="carrito-lista"
-             class="flex-1 overflow-y-auto pr-2 space-y-3 border-2 border-dashed border-gray-300 rounded-lg min-h-[200px]"
+             class="pos-carrito-lista"
              ondragover="event.preventDefault()">
         </div>
 
         <!-- TOTAL -->
-        <div class="mt-4 border-t pt-4">
-            <h3 class="text-3xl font-bold mb-4">
+        <div class="pos-total">
+            <h3 class="pos-total-titulo">
                 Total: $<span id="total-general">0.00</span>
             </h3>
 
-            <div id="error-stock" class="hidden text-red-600 font-bold text-sm mb-2"></div>
-
-            <button id="btn-cobrar"
-                class="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xl font-bold transition">
-                COBRAR
+            <button id="btn-cobrar" class="pos-btn-cobrar">
+                💰 COBRAR
             </button>
         </div>
 
     </div>
 
-
-
     <!-- ========================================================= -->
     <!-- DERECHA: PRODUCTOS -->
     <!-- ========================================================= -->
-    <div class="w-full lg:w-[520px] bg-white rounded-xl shadow p-4 lg:p-6 flex flex-col">
+    <div class="pos-panel pos-panel--productos">
 
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-xl font-bold">Productos en PISO</h3>
-
-            <div class="flex gap-2">
+        <div class="pos-header-producto">
+            <h3 class="pos-titulo-productos">PRODUCTOS EN PISO</h3>
+            <div class="pos-header-botones">
                 <a href="{% url 'sucursales:salir_caja' %}"
-                   class="px-3 py-1 bg-pink-500 hover:bg-pink-600 text-white rounded-md text-xs font-bold">
-                    Salir de Caja
+                   class="pos-btn-header pos-btn-header--salir">
+                    Salir de caja
                 </a>
-
                 <a href="{% url 'ventas:corte_caja' %}"
-                   class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-bold">
-                    Corte Caja
+                   class="pos-btn-header pos-btn-header--corte">
+                    Corte de caja
                 </a>
-
-                <button id="btn-descuento"
-                    class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-md transition 
-                        shrink-0 w-20 text-center whitespace-nowrap select-none">
+                <button id="btn-descuento" class="pos-btn-descuento">
                     10% OFF
                 </button>
             </div>
         </div>
 
-        <!-- BUSCADOR -->
-        <input 
+        <!-- BUSCADOR / ESCANEO DE PRODUCTOS -->
+        <input
             id="buscar-producto"
             type="text"
-            placeholder="Buscar producto..."
-            class="p-3 border border-gray-300 rounded-lg mb-4 focus:ring focus:ring-red-300"
+            placeholder="Escanea o busca por nombre / código..."
+            class="pos-buscador"
+            autocomplete="off"
         >
 
         <!-- GRID DE PRODUCTOS -->
-        <div id="lista-productos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-4 overflow-y-auto pr-2">
+        <div id="lista-productos" class="pos-productos-grid">
 
             {% for p in productos %}
-            <div 
-                class="producto-item bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer shadow-sm transition 
-                       flex flex-col p-3 gap-2"
+            <div
+                class="producto-item pos-producto-card"
                 data-id="{{ p.id }}"
                 data-nombre="{{ p.nombre }}"
                 data-codigo="{{ p.codigo_barras }}"
@@ -114,23 +129,23 @@
                 data-stock-bodega="{{ p.stock_bodega }}"
                 draggable="true"
             >
-                <div class="w-full h-32 bg-gray-200 rounded-md overflow-hidden flex items-center justify-center">
+                <div class="pos-producto-img">
                     {% if p.foto_url %}
-                        <img src="{{ p.foto_url.url }}" class="w-full h-full object-cover">
+                        <img src="{{ p.foto_url.url }}">
                     {% else %}
-                        <img src="{% static 'img/no-image.png' %}" class="w-full h-full object-contain">
+                        <img src="{% static 'img/no-image.png' %}" class="object-contain">
                     {% endif %}
                 </div>
 
-                <div class="flex flex-col">
-                    <p class="font-semibold text-base leading-normal truncate">{{ p.nombre }}</p>
+                <div>
+                    <p class="pos-producto-nombre">{{ p.nombre }}</p>
 
-                    <p class="text-red-600 font-bold text-lg">
-                        ${{ p.precio_menudeo }} <span class="text-xs text-gray-600">(MEN)</span>
+                    <p class="pos-producto-precio">
+                        ${{ p.precio_menudeo }} <span class="pos-producto-sub">(MEN)</span>
                     </p>
 
-                    <p class="text-green-600 font-bold text-sm">
-                        ${{ p.precio_mayoreo }} <span class="text-xs text-gray-600">(MAY)</span>
+                    <p class="pos-producto-precio-may">
+                        ${{ p.precio_mayoreo }} <span class="pos-producto-sub">(MAY)</span>
                     </p>
                 </div>
             </div>
@@ -142,36 +157,44 @@
 
 </div>
 
-
+</div><!-- /wrapper flex -->
 
 <!-- ========================================================= -->
 <!-- MODAL DE PAGO -->
 <!-- ========================================================= -->
-<div id="modal-pago" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-[350px] animate-scaleIn">
+<div id="modal-pago" class="pos-modal pos-modal--hidden">
+    <div class="pos-modal-content pos-animate-scale">
 
-        <h2 class="text-xl font-bold mb-4 text-center">Pago</h2>
+        <h2 class="pos-modal-titulo">💳 Pago</h2>
 
-        <div class="mb-4 flex justify-between">
-            <label class="font-semibold">Efectivo:</label>
+        <!-- Total visible -->
+        <p class="pos-pago-total">
+            Total a cobrar: <span>$<span id="pago-total-display">0.00</span></span>
+        </p>
+
+        <div class="pos-pago-field">
+            <label class="pos-pago-label">Efectivo:</label>
             <input id="pago-efectivo" type="number" step="0.01" min="0"
-                class="border p-2 rounded w-32">
+                class="pos-pago-input">
         </div>
 
-        <div class="mb-6 flex justify-between">
-            <label class="font-semibold">Tarjeta:</label>
+        <div class="pos-pago-field">
+            <label class="pos-pago-label">Tarjeta:</label>
             <input id="pago-tarjeta" type="number" step="0.01" min="0"
-                class="border p-2 rounded w-32">
+                class="pos-pago-input">
         </div>
 
-        <div class="flex justify-between">
+        <!-- Mensaje dinámico en vivo -->
+        <div id="pago-info" class="pos-pago-info"></div>
+
+        <div class="pos-modal-botones">
             <button id="confirmar-pago"
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold">
+                class="pos-modal-btn pos-modal-btn--confirmar">
                 Confirmar
             </button>
 
             <button id="cerrar-modal"
-                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold">
+                class="pos-modal-btn pos-modal-btn--cancelar">
                 Cancelar
             </button>
         </div>
@@ -183,26 +206,30 @@
 <!-- ========================================================= -->
 <!-- MODAL DE RESULTADO -->
 <!-- ========================================================= -->
-<div id="modal-resultado" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-[350px] animate-scaleIn">
+<div id="modal-resultado" class="pos-modal pos-modal--hidden">
+    <div class="pos-modal-content pos-animate-scale">
 
-        <h2 class="text-xl font-bold mb-4 text-center">Venta realizada</h2>
+        <h2 class="pos-modal-titulo">✅ Venta realizada</h2>
 
-        <div class="mb-4 text-center">
-            <p class="text-lg font-semibold">Total pagado:</p>
-            <p class="text-3xl font-bold text-green-600">$<span id="resultado-total">0.00</span></p>
+        <div class="pos-resultado-field">
+            <p class="pos-resultado-label">Total de la venta:</p>
+            <p class="pos-resultado-valor pos-resultado-valor--total">$<span id="resultado-total-venta">0.00</span></p>
         </div>
 
-        <div class="mb-6 text-center">
-            <p class="text-lg font-semibold">Cambio:</p>
-            <p class="text-3xl font-bold text-blue-600">$<span id="resultado-cambio">0.00</span></p>
+        <div class="pos-resultado-field">
+            <p class="pos-resultado-label">Monto recibido:</p>
+            <p class="pos-resultado-valor pos-resultado-valor--recibido">$<span id="resultado-recibido">0.00</span></p>
         </div>
 
-        <!-- 🔥 MENSAJE DE IMPRESIÓN (éxito o fallo) -->
-        <div id="resultado-impresion" class="text-center mt-4 text-sm"></div>
+        <div class="pos-resultado-field">
+            <p class="pos-resultado-label">Cambio:</p>
+            <p class="pos-resultado-valor pos-resultado-valor--cambio">$<span id="resultado-cambio">0.00</span></p>
+        </div>
+
+        <div id="resultado-impresion" class="pos-resultado-impresion"></div>
 
         <button id="cerrar-resultado"
-            class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold mt-4">
+            class="pos-modal-btn pos-modal-btn--cerrar pos-btn-block">
             Aceptar
         </button>
 
@@ -211,22 +238,76 @@
 
 
 <!-- ========================================================= -->
-<!-- CLASES PARA QUE TAILWIND NO PURGUE LOS COLORES -->
+<!-- MODAL DE CONSULTA DE PRECIOS -->
 <!-- ========================================================= -->
-<div class="hidden">
-    <span class="bg-pink-300"></span>
-    <span class="bg-green-500"></span>
-    <span class="bg-purple-500"></span>
-    <span class="bg-blue-600"></span>
-    <span class="bg-gray-300"></span>
+<div id="modal-consulta-precios" class="pos-modal pos-modal--hidden">
+    <div class="pos-modal-content pos-modal-content--wide pos-animate-scale">
 
-    <span class="text-black"></span>
-    <span class="text-white"></span>
+        <h2 class="pos-modal-titulo">🔍 Consulta de Precios</h2>
 
-    <span class="border-4"></span>
-    <span class="border-black"></span>
+        <input
+            id="consulta-scan-input"
+            type="text"
+            placeholder="Escanea o escribe el código del producto..."
+            class="pos-consulta-input"
+            autofocus
+        >
+
+        <div id="consulta-resultado" class="pos-consulta-resultado pos-consulta-resultado--hidden">
+            <p class="pos-consulta-nombre" id="consulta-nombre"></p>
+            <p class="pos-consulta-codigo">Código: <span id="consulta-codigo"></span></p>
+            <div class="pos-consulta-precios">
+                <div class="pos-consulta-precio pos-consulta-precio--men">
+                    <p class="pos-consulta-precio-label">MEN</p>
+                    <p id="consulta-men"></p>
+                </div>
+                <div class="pos-consulta-precio pos-consulta-precio--may">
+                    <p class="pos-consulta-precio-label">MAY</p>
+                    <p id="consulta-may"></p>
+                </div>
+                <div class="pos-consulta-precio pos-consulta-precio--doc">
+                    <p class="pos-consulta-precio-label">DOC</p>
+                    <p id="consulta-doc"></p>
+                </div>
+            </div>
+            <p class="pos-consulta-stock">Stock Piso: <span id="consulta-stock-piso"></span></p>
+            <p class="pos-consulta-stock">Stock Bodega: <span id="consulta-stock-bodega"></span></p>
+        </div>
+
+        <div id="consulta-no-encontrado" class="pos-consulta-no-encontrado pos-consulta-no-encontrado--hidden">
+            Producto no encontrado
+        </div>
+
+        <div class="pos-footer-modal">
+            <button id="cerrar-consulta-precios"
+                class="pos-modal-btn pos-modal-btn--cancelar">
+                Cerrar (Esc)
+            </button>
+        </div>
+
+    </div>
 </div>
+
 
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
 
+{% endblock %}
+{% block extra_head %}
+<style>
+/* Tailwind helpers para compatibilidad con JS dinámico */
+.text-red-600 { color: #dc2626; }
+
+/* POS — mobile: layout normal, el usuario hace scroll de página */
+#main-content {
+  padding: 0 !important;
+}
+
+/* POS — desktop: contenido fijo sin scroll de página */
+@media (min-width: 1024px) {
+  #main-content {
+    overflow: hidden;
+    height: calc(100vh - 4rem);
+  }
+}
+</style>
 {% endblock %}

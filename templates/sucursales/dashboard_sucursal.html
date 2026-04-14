@@ -5,153 +5,286 @@
 
 {% block content %}
 
-<div class="p-8 space-y-12">
+<style>
+  .card-90s {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-90s:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 12px 12px 0 0 black;
+  }
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 black;
+  }
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r,0deg)); }
+    50%       { transform: translateY(-12px) rotate(var(--r,0deg)); }
+  }
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay:.8s; animation-duration:5s; }
+  .shape:nth-child(3) { animation-delay:1.6s; animation-duration:3.5s; }
+  .shape:nth-child(4) { animation-delay:.4s; animation-duration:4.5s; }
+</style>
 
-    <!-- TÍTULO -->
-    <h1 class="text-4xl font-black flex items-center gap-3 text-purple-700">
-        {{ sucursal.nombre }}
-    </h1>
+<div class="max-w-7xl mx-auto px-4 py-8 space-y-10">
 
-    <!-- TARJETAS PRINCIPALES -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <!-- ENCABEZADO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] bg-[#8338EC] p-8 text-center">
+    <div class="absolute inset-0 pointer-events-none opacity-20">
+      <div class="shape absolute top-4 left-8 w-16 h-16 bg-[#FFBE0B] rotate-12" style="--r:12deg"></div>
+      <div class="shape absolute top-6 right-12 w-12 h-12 bg-[#FF006E] rotate-45" style="--r:45deg"></div>
+      <div class="shape absolute bottom-4 left-1/3 w-14 h-14 bg-white rounded-full"></div>
+      <div class="shape absolute top-1/2 right-1/4 w-10 h-10 bg-[#06D6A0] rotate-[30deg]" style="--r:30deg"></div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,1)]">
+        🏬 {{ sucursal.nombre }}
+      </h1>
+      <p class="text-white/80 font-black text-sm sm:text-base mt-2">
+        Panel de sucursal — lo que pasa aquí, aquí se ve.
+      </p>
+    </div>
+  </div>
 
-        <!-- STOCK TOTAL -->
-        <div class="p-6 border-4 border-black text-white"
-             style="background: #FF0066; box-shadow: 6px 6px 0 0 black;">
-            <p class="text-sm font-bold uppercase opacity-90">Stock total</p>
-            <p class="text-5xl font-black mt-2">{{ stock_total }}</p>
+    <!-- KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+    <div class="card-90s bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black] p-8 relative overflow-hidden">
+        <div class="absolute -top-4 -right-4 w-14 h-14 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+        <p class="text-sm font-black text-white uppercase tracking-widest">🛍️ Productos en piso</p>
+        <p class="text-7xl font-black text-white mt-3">{{ productos_piso }}</p>
+        <p class="text-xs text-white/70 font-semibold mt-1">productos diferentes en piso de venta</p>
+    </div>
+
+    <div class="card-90s bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black] p-8 relative overflow-hidden">
+        <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-[#8338EC] rounded-full opacity-40"></div>
+        <p class="text-sm font-black text-white uppercase tracking-widest">📦 Productos en bodega</p>
+        <p class="text-7xl font-black text-white mt-3">{{ productos_bodega }}</p>
+        <p class="text-xs text-white/70 font-semibold mt-1">productos diferentes en bodega interna</p>
+    </div>
+
+    </div>
+
+  <!-- CAJAS -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+    <div class="bg-[#FFBE0B] border-b-4 border-black px-6 py-4 flex items-center justify-between">
+      <h2 class="text-xl font-black text-black uppercase tracking-widest">💳 Cajas</h2>
+      {% if es_dueno %}
+      <button onclick="abrirModalCrearCaja()"
+              class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_#FFBE0B] px-4 py-2
+                     text-white font-black text-xs uppercase tracking-widest">
+        + Crear caja
+      </button>
+      {% endif %}
+    </div>
+
+    <div id="listaCajas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 bg-white">
+
+      {% for caja in cajas %}
+      <div id="caja-card-{{ caja.id }}"
+           class="border-r-4 border-b-4 border-black p-6 relative overflow-hidden hover:bg-yellow-50 transition-colors">
+
+        <div class="absolute top-0 right-0 w-8 h-8 bg-[#FFBE0B] border-l-4 border-b-4 border-black"></div>
+
+        <p class="font-black text-lg text-gray-900 uppercase tracking-wide mb-4">{{ caja.nombre }}</p>
+
+        <div class="flex gap-3">
+          <button class="btn-90s btn-entrar-caja flex-1 bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
+                         text-black font-black text-xs uppercase tracking-widest py-2
+                         flex items-center justify-center"
+                  data-caja-id="{{ caja.id }}"
+                  data-caja-nombre="{{ caja.nombre }}">
+            Entrar
+          </button>
+
+          {% if es_dueno %}
+          <button onclick="confirmarEliminarCaja({{ caja.id }}, '{{ caja.nombre }}')"
+                  class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black]
+                         text-white font-black text-xs uppercase tracking-widest px-3 py-2
+                         flex items-center justify-center">
+            🗑️
+          </button>
+          {% endif %}
         </div>
 
-        <!-- TOTAL VENDIDO -->
-        <div class="p-6 border-4 border-black text-white"
-             style="background: #0099FF; box-shadow: 6px 6px 0 0 black;">
-            <p class="text-sm font-bold uppercase opacity-90">Total vendido</p>
-            <p class="text-5xl font-black mt-2">${{ total_vendido }}</p>
+      </div>
+      {% empty %}
+      <div id="noCajas" class="col-span-full p-8 text-center">
+        <p class="text-gray-400 font-black uppercase tracking-widest text-sm">No hay cajas registradas.</p>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- TABLAS -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+    <!-- ÚLTIMAS VENTAS -->
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+      <div class="bg-[#3A86FF] border-b-4 border-black px-6 py-4">
+        <h2 class="text-lg font-black text-white uppercase tracking-widest">🧾 Últimas ventas</h2>
+      </div>
+
+      {% if puede_ver_historial %}
+      <a href="{% url 'ventas:tickets_ventas' sucursal.id %}"
+         class="btn-90s w-full bg-[#3A86FF] border-b-4 border-black
+                text-white font-black text-xs uppercase tracking-widest py-3
+                flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
+        Ver todos los tickets →
+      </a>
+      {% endif %}
+
+      <div class="bg-white divide-y-4 divide-black">
+        {% for v in ultimas_ventas %}
+        <div class="px-5 py-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
+          <div>
+            <p class="font-black text-sm text-gray-900">#{{ v.id }}</p>
+            <p class="text-xs text-gray-500 font-semibold">
+              {{ v.fecha|date:"d/m/Y H:i" }} —
+              {% if v.caja_nombre %}{{ v.caja_nombre }}{% elif v.caja %}{{ v.caja.nombre }}{% else %}Caja eliminada{% endif %}
+            </p>
+            <p class="text-xs text-gray-500 font-semibold capitalize">{{ v.metodo_pago }}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-black text-xl text-[#3A86FF]">${{ v.total }}</p>
+            <a href="{% url 'ventas:ticket_venta' v.id %}"
+               class="btn-90s inline-block bg-[#FFBE0B] border-2 border-black shadow-[2px_2px_0_0_black]
+                      text-black font-black text-[10px] uppercase px-2 py-1 mt-1">
+              Ver
+            </a>
+          </div>
         </div>
+        {% empty %}
+        <div class="p-8 text-center">
+          <p class="text-gray-400 font-black uppercase text-sm">Sin ventas recientes.</p>
+        </div>
+        {% endfor %}
+      </div>
 
-        <!-- CAJAS -->
-        <div class="p-6 border-4 border-black text-white"
-             style="background: #FFCC00; box-shadow: 6px 6px 0 0 black;">
-            <p class="text-sm font-bold uppercase opacity-90">Cajas</p>
+    </div>
 
-            <ul id="listaCajas" class="mt-4 space-y-3">
-                {% for caja in cajas %}
-                <li id="caja-{{ caja.id }}"
-                    class="flex items-center justify-between p-3 border-2 border-black bg-white text-black"
-                    style="box-shadow: 3px 3px 0 0 black;">
+    <!-- ÚLTIMOS CORTES -->
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
 
-                    <span class="font-bold">{{ caja.nombre }}</span>
+      <div class="bg-[#FFBE0B] border-b-4 border-black px-6 py-4">
+        <h2 class="text-lg font-black text-black uppercase tracking-widest">✂️ Últimos cortes</h2>
+      </div>
 
-                    <button class="btn-entrar-caja px-4 py-1 font-black border-2 border-black text-white"
-                            style="background: #FF0066; box-shadow: 3px 3px 0 0 black;"
-                            data-caja-id="{{ caja.id }}"
-                            data-caja-nombre="{{ caja.nombre }}">
-                        Entrar
-                    </button>
-                </li>
-                {% empty %}
-                <li id="noCajas" class="text-white opacity-90">No hay cajas registradas.</li>
-                {% endfor %}
-            </ul>
+      {% if puede_ver_historial %}
+      <a href="{% url 'ventas:tickets_cortes_caja' sucursal.id %}"
+         class="btn-90s w-full bg-[#FFBE0B] border-b-4 border-black
+                text-black font-black text-xs uppercase tracking-widest py-3
+                flex items-center justify-center gap-2 hover:bg-yellow-400 transition-colors">
+        Ver todos los cortes →
+      </a>
+      {% endif %}
 
-            {% if request.user.empleado.rol == "dueño" %}
-            <button id="btnAbrirModalCrearCaja"
-                    data-url-modal="{% url 'sucursales:modal_crear_caja' sucursal.id %}"
-                    data-url-crear="{% url 'sucursales:crear_caja' sucursal.id %}"
-                    class="mt-4 w-full py-3 font-black border-4 border-black text-white text-xl tracking-wide"
-                    style="background: #000000; box-shadow: 4px 4px 0 0 white;">
-                + CREAR CAJA
-            </button>
+      <div class="bg-white divide-y-4 divide-black">
+        {% for c in ultimos_cortes %}
+        <div class="px-5 py-4 flex items-center justify-between hover:bg-yellow-50 transition-colors">
+          <div>
+            <p class="font-black text-sm text-gray-900">
+              {% if c.caja_nombre %}{{ c.caja_nombre }}{% elif c.caja %}{{ c.caja.nombre }}{% else %}Caja eliminada{% endif %}
+            </p>
+            <p class="text-xs text-gray-500 font-semibold">{{ c.fecha|date:"d/m/Y H:i" }}</p>
+            {% if c.empleado %}
+            <p class="text-xs text-gray-500 font-semibold">{{ c.empleado.user.get_full_name }}</p>
             {% endif %}
+          </div>
+          <p class="font-black text-xl text-[#FB5607]">${{ c.total_general }}</p>
         </div>
+        {% empty %}
+        <div class="p-8 text-center">
+          <p class="text-gray-400 font-black uppercase text-sm">Sin cortes recientes.</p>
+        </div>
+        {% endfor %}
+      </div>
 
     </div>
 
-    <!-- PRODUCTOS MÁS VENDIDOS (CHART) -->
-    <div class="mt-12">
-        <h2 class="text-3xl font-black mb-4 text-purple-700">Productos más vendidos</h2>
-
-        <div class="p-6 border-4 border-black bg-white"
-             style="box-shadow: 6px 6px 0 0 black; background:#FFEE88;">
-            <canvas id="chartMasVendidos" height="120"></canvas>
-        </div>
-    </div>
-
-    <!-- INVENTARIO BAJO (CHART) -->
-    <div class="mt-12">
-        <h2 class="text-3xl font-black mb-4 text-purple-700">Inventario bajo</h2>
-
-        <div class="p-6 border-4 border-black bg-white"
-             style="box-shadow: 6px 6px 0 0 black; background:#FFEE88;">
-            <canvas id="chartInventarioBajo" height="120"></canvas>
-        </div>
-    </div>
-
-    <!-- VENTAS RECIENTES -->
-    <div class="mt-12">
-        <h2 class="text-3xl font-black mb-4 text-purple-700">Ventas recientes</h2>
-
-        <div class="space-y-3">
-            {% for v in ventas %}
-            <div class="p-4 border-4 border-black text-black"
-                 style="background: #FFEE88; box-shadow: 4px 4px 0 0 black;">
-                <p class="font-bold">{{ v.fecha }}</p>
-                <p class="font-black text-xl">${{ v.total }}</p>
-                <p class="text-sm">Ubicación: {{ v.ubicacion.nombre }}</p>
-            </div>
-            {% empty %}
-            <p class="text-gray-700">No hay ventas recientes.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- NUEVA SECCIÓN: ACCESOS A HISTORIALES -->
-    <div class="mt-16 space-y-6">
-
-        <h2 class="text-3xl font-black text-purple-700">Historial</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            <a href="{% url 'ventas:tickets_cortes_caja' sucursal.id %}"
-            class="block text-center p-6 border-4 border-black bg-white font-black text-xl"
-            style="background:#FFCC00; box-shadow: 6px 6px 0 0 black;">
-                Ver cortes de caja
-            </a>
-
-
-            <!-- BOTÓN: TICKETS DE VENTA -->
-            <a href="{% url 'ventas:tickets_ventas' sucursal.id %}"
-               class="block text-center p-6 border-4 border-black bg-white font-black text-xl"
-               style="background:#0099FF; box-shadow: 6px 6px 0 0 black;">
-                Ver tickets de venta
-            </a>
-
-        </div>
-
-    </div>
+  </div>
 
 </div>
 
-<!-- MODAL VACÍO (se llena por AJAX) -->
+<!-- MODAL CREAR CAJA -->
 <div id="modalCrearCaja"
-     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-
-    <div id="modalCrearCajaContent"
-         class="bg-white p-6 border-4 border-black shadow-[8px_8px_0_0_black] w-80">
-        <!-- Aquí se carga el form -->
-    </div>
-
+     data-url-modal="{% url 'sucursales:modal_crear_caja' sucursal.id %}"
+     data-url-crear="{% url 'sucursales:crear_caja' sucursal.id %}"
+     class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div id="modalCrearCajaContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
+  </div>
 </div>
 
-<!-- PASAR DATOS A JS -->
+<!-- MODAL ENTRAR CAJA -->
+<div id="modalEntrarCaja"
+     class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div id="modalEntrarCajaContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ELIMINAR CAJA -->
+<div id="modalEliminarCaja"
+     class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
+
+    <h2 class="text-lg font-black text-[#FF006E] uppercase tracking-widest mb-2">
+      ⚠️ Eliminar caja
+    </h2>
+    <p class="text-sm text-gray-700 font-semibold mb-1">
+      ¿Seguro que quieres eliminar <span id="nombreCajaEliminar" class="font-black text-black"></span>?
+    </p>
+    <p class="text-xs text-gray-500 mb-6">
+      Las ventas e historial quedan guardados. Solo se elimina la caja.
+    </p>
+
+    <div class="flex gap-3 justify-end">
+      <button onclick="cerrarModalEliminarCaja()"
+              class="btn-90s bg-gray-200 border-4 border-black shadow-[4px_4px_0_0_black]
+                     font-black text-xs uppercase tracking-widest px-4 py-2">
+        Cancelar
+      </button>
+      <button id="btnConfirmarEliminarCaja"
+              class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black]
+                     text-white font-black text-xs uppercase tracking-widest px-4 py-2">
+        Sí, eliminar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- MENSAJES FLOTANTES -->
+<div id="msgSuccess"
+     class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+            border-4 border-black shadow-[4px_4px_0_0_black] bg-[#06D6A0]
+            text-black font-black px-6 py-3 uppercase tracking-widest text-sm">
+</div>
+<div id="msgError"
+     class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+            border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+            text-white font-black px-6 py-3 uppercase tracking-widest text-sm">
+</div>
+
+<!-- Variable de rol para el JS -->
 <script>
-    window.productosMasVendidos = {{ productos_mas_vendidos|safe }};
-    window.productosBajos = {{ productos_bajos|safe }};
+  const ES_DUENO = {{ es_dueno|yesno:"true,false" }};
 </script>
 
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{% static 'js/sucursales/dashboard_sucursal.js' %}" defer></script>
+<script src="{% static 'js/sucursales/dashboard_sucursal.js' %}"></script>
 {% endblock %}

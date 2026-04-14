@@ -3,93 +3,174 @@
 {% load static %}
 
 {% block content %}
-<section class="min-h-screen px-6 py-16 text-gray-800">
-  <div class="max-w-6xl mx-auto space-y-20">
 
-    <!-- Nuestra Historia -->
-    <div class="animate__animated animate__fadeInDown" data-aos="fade-down">
-      <h1 class="text-5xl font-extrabold text-red-600 text-center mb-4">Nuestra Historia</h1>
-      <p class="text-lg max-w-3xl mx-auto text-center">Desde nuestros inicios, Comercializadora Modelo ha sido sinónimo de calidad, compromiso y evolución constante. No vendemos productos: entregamos confianza.</p>
-      <div class="grid md:grid-cols-2 gap-12 mt-12">
-        <div class="text-left">
-          <h2 class="text-2xl font-bold text-red-500 mb-2">🚀 Misión</h2>
-          <p>Brindar soluciones comerciales eficientes y confiables, conectando a nuestros clientes con productos de alta calidad y atención personalizada.</p>
-        </div>
-        <div class="text-right">
-          <h2 class="text-2xl font-bold text-red-500 mb-2">🎯 Visión</h2>
-          <p>Ser líderes en distribución y comercialización, reconocidos por nuestra innovación, ética y cercanía con el cliente.</p>
-        </div>
-      </div>
-    </div>
+<div class="max-w-7xl mx-auto p-6 space-y-16 relative overflow-hidden">
 
-    <!-- Nuestros Valores -->
-    <div class="text-center animate__animated animate__fadeInUp" data-aos="fade-up">
-      <h2 class="text-4xl font-bold text-red-600 mb-6">Nuestros Valores</h2>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold mb-2">🤝 Integridad</h3>
-          <p>Actuamos con transparencia y respeto en cada relación comercial.</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold mb-2">📈 Excelencia</h3>
-          <p>Buscamos superar expectativas en cada entrega y servicio.</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold mb-2">💡 Innovación</h3>
-          <p>Nos adaptamos y evolucionamos para ofrecer lo mejor del mercado.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Conoce al dueño (Mascota) -->
-    <div class="text-center animate__animated animate__fadeInUp" data-aos="fade-up">
-      <h2 class="text-4xl font-bold text-red-600 mb-6">Conoce al dueño 🐾</h2>
-      <img src="{% static 'img/mascota.jpeg' %}" alt="Mascota de la tienda" class="rounded-xl shadow-lg mx-auto w-full max-w-md">
-      <p class="mt-4 text-gray-700 max-w-2xl mx-auto">Nuestra mascota es más que una imagen: es parte de la familia. Representa la energía, cercanía y alegría que queremos transmitir a cada cliente que entra por nuestras puertas.</p>
-    </div>
-
-    <!-- Conoce al staff -->
-    <div class="animate__animated animate__fadeInUp" data-aos="fade-up">
-      <h2 class="text-4xl font-bold text-red-600 mb-6 text-center">Conoce al staff 👥</h2>
-    <div class="mb-20 mt-8">
-      <video 
-        src="{% static 'videos/aboutus.mp4' %}" 
-        autoplay muted loop playsinline 
-        class="mx-auto rounded-xl shadow-lg w-full max-w-4xl transition duration-300 ease-in-out hover:shadow-green-500 hover:ring-4 hover:ring-green-500 hover:scale-105">
-      </video>
-    </div>
-
-      <div class="grid md:grid-cols-5 gap-8 text-center">
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold">Fabiola Gloria</h3>
-          <p class="text-sm text-gray-500">Directora General (CEO)</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold">Anais Torres</h3>
-          <p class="text-sm text-gray-500">Gerente de ventas</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold">Kimberly Torres</h3>
-          <p class="text-sm text-gray-500">Gerente de ventas</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold">Ivan Rodriguez</h3>
-          <p class="text-sm text-gray-500">Sr. Dev</p>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1">
-          <h3 class="text-xl font-semibold">Jaime Monroy</h3>
-          <p class="text-sm text-gray-500">Director Operativo</p>
-        </div>
-      </div>
-    </div>
-
+  <!-- PATRONES 90s -->
+  <div class="absolute inset-0 pointer-events-none opacity-20">
+    <div class="absolute top-10 left-10 w-24 h-24 bg-[#FF006E] rotate-12"></div>
+    <div class="absolute top-40 right-20 w-16 h-16 bg-[#8338EC] rotate-45"></div>
+    <div class="absolute bottom-20 left-1/3 w-20 h-20 bg-[#FFBE0B] rounded-full"></div>
+    <div class="absolute bottom-10 right-1/4 w-24 h-4 bg-[#3A86FF] rotate-12"></div>
+    <div class="absolute top-1/2 left-1/4 w-20 h-4 bg-[#FB5607] rotate-[-20deg]"></div>
+    <div class="absolute top-1/3 right-1/3 w-12 h-12 bg-[#06D6A0] rotate-[30deg]"></div>
   </div>
-</section>
 
-<!-- AOS y Animate.css -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<script>
-  AOS.init();
-</script>
+  <!-- TÍTULO -->
+  <div class="relative text-center">
+    <h1 class="text-5xl font-extrabold text-gray-900 tracking-tight">
+      Sobre Nosotros
+    </h1>
+    <p class="text-lg font-bold text-gray-500 mt-1">
+      Conoce nuestra historia, valores y equipo
+    </p>
+  </div>
+
+  <!-- HISTORIA -->
+  <div class="relative bg-[#FFBE0B] border-4 border-black shadow-[8px_8px_0_0_black]
+              p-10 rounded-xl overflow-hidden transition-all duration-200
+              hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]">
+
+    <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#FF006E] rotate-45 opacity-40"></div>
+
+    <h2 class="text-4xl font-black text-black uppercase tracking-wide text-center mb-6">
+      Nuestra Historia
+    </h2>
+
+    <p class="text-lg text-black font-semibold max-w-3xl mx-auto text-center leading-relaxed break-words">
+      Desde nuestros inicios, Comercializadora Modelo ha sido sinónimo de calidad, compromiso y evolución constante.
+      No vendemos productos: entregamos confianza.
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-10 mt-10">
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-2xl font-black text-[#FF006E] mb-2">🚀 Misión</h3>
+        <p class="text-gray-800 font-semibold leading-relaxed break-words">
+          Brindar soluciones comerciales eficientes y confiables, conectando a nuestros clientes con productos de alta calidad.
+        </p>
+      </div>
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-2xl font-black text-[#8338EC] mb-2">🎯 Visión</h3>
+        <p class="text-gray-800 font-semibold leading-relaxed break-words">
+          Ser líderes en distribución y comercialización, reconocidos por nuestra innovación, ética y cercanía con el cliente.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VALORES -->
+  <div class="relative bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black]
+              p-10 rounded-xl overflow-hidden text-white transition-all duration-200
+              hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]">
+
+    <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#FFBE0B] rounded-full opacity-40"></div>
+
+    <h2 class="text-4xl font-black uppercase tracking-wide text-center mb-10">
+      Nuestros Valores
+    </h2>
+
+    <div class="grid md:grid-cols-3 gap-8">
+
+      <div class="bg-white text-black border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-xl font-black mb-2">🤝 Integridad</h3>
+        <p class="font-semibold text-gray-700 break-words">Actuamos con transparencia y respeto en cada relación comercial.</p>
+      </div>
+
+      <div class="bg-white text-black border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-xl font-black mb-2">📈 Excelencia</h3>
+        <p class="font-semibold text-gray-700 break-words">Buscamos superar expectativas en cada entrega y servicio.</p>
+      </div>
+
+      <div class="bg-white text-black border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-xl font-black mb-2">💡 Innovación</h3>
+        <p class="font-semibold text-gray-700 break-words">Nos adaptamos y evolucionamos para ofrecer lo mejor del mercado.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MASCOTA -->
+  <div class="relative bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black]
+              p-10 rounded-xl overflow-hidden text-white transition-all duration-200
+              hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]">
+
+    <div class="absolute -top-4 right-4 w-16 h-16 bg-[#06D6A0] rotate-45 opacity-40"></div>
+
+    <h2 class="text-4xl font-black uppercase tracking-wide text-center mb-6">
+      Conoce al dueño 🐾
+    </h2>
+
+    <div class="max-w-3xl mx-auto text-center">
+      <img src="{% static 'img/mascota.jpeg' %}"
+           class="rounded-xl shadow-[6px_6px_0_0_black] w-full max-w-md mx-auto
+                  transition-all duration-200 hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+      <p class="mt-4 font-semibold leading-relaxed break-words">
+        Nuestra mascota es parte de la familia. Representa la energía, cercanía y alegría que queremos transmitir.
+      </p>
+    </div>
+  </div>
+
+  <!-- STAFF -->
+  <div class="relative bg-[#06D6A0] border-4 border-black shadow-[8px_8px_0_0_black]
+              p-10 rounded-xl overflow-hidden transition-all duration-200
+              hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]">
+
+    <div class="absolute -top-4 left-4 w-16 h-16 bg-[#FF006E] rotate-45 opacity-40"></div>
+
+    <h2 class="text-4xl font-black uppercase tracking-wide text-center mb-6">
+      Conoce al staff 👥
+    </h2>
+
+    <video src="{% static 'videos/aboutus.mp4' %}" autoplay muted loop playsinline
+           class="mx-auto rounded-xl shadow-[6px_6px_0_0_black] w-full max-w-4xl mb-10
+                  transition-all duration-200 hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]"></video>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl text-center transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-lg font-black">Fabiola Gloria</h3>
+        <p class="text-sm text-gray-600">Directora General (CEO)</p>
+      </div>
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl text-center transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-lg font-black">Anais Torres</h3>
+        <p class="text-sm text-gray-600">Gerente de ventas</p>
+      </div>
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl text-center transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-lg font-black">Kimberly Torres</h3>
+        <p class="text-sm text-gray-600">Gerente de ventas</p>
+      </div>
+
+      <div class="bg-white border-4 border-black shadow-[6px_6px_0_0_black]
+                  p-6 rounded-xl text-center transition-all duration-200
+                  hover:-translate-y-1 hover:shadow-[10px_10px_0_0_black]">
+        <h3 class="text-lg font-black">Ivan Rodriguez</h3>
+        <p class="text-sm text-gray-600">Sr. Dev</p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
 {% endblock %}

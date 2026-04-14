@@ -3,74 +3,308 @@
 
 {% block content %}
 
-<div class="container mx-auto p-6">
+<style>
+  .card-ubicacion {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card-ubicacion:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 12px 12px 0 0 black;
+  }
+  .card-ubicacion:active {
+    transform: translate(0, 0);
+    box-shadow: 4px 4px 0 0 black;
+  }
 
-    <h1 class="text-2xl font-bold mb-6">Ubicaciones</h1>
+  .btn-90s {
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-90s:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 7px 7px 0 0 black;
+  }
+  .btn-90s:active {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 black;
+  }
 
-    <div id="msgSuccess" class="hidden bg-green-600 text-white px-4 py-2 rounded mb-4"></div>
-    <div id="msgError" class="hidden bg-red-600 text-white px-4 py-2 rounded mb-4"></div>
+  @keyframes floatShape {
+    0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+    50%       { transform: translateY(-14px) rotate(var(--r, 0deg)); }
+  }
+  .shape { animation: floatShape 4s ease-in-out infinite; }
+  .shape:nth-child(2) { animation-delay: 0.8s; animation-duration: 5s; }
+  .shape:nth-child(3) { animation-delay: 1.6s; animation-duration: 3.5s; }
+  .shape:nth-child(4) { animation-delay: 0.4s; animation-duration: 4.5s; }
+  .shape:nth-child(5) { animation-delay: 1.2s; animation-duration: 6s; }
+  .shape:nth-child(6) { animation-delay: 2s;   animation-duration: 3s; }
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  @keyframes badgePop {
+    0%   { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1);   opacity: 1; }
+  }
+  .badge-tipo { animation: badgePop 0.3s ease forwards; }
+</style>
 
-        {% for u in ubicaciones %}
-            <div id="card-{{ u.id }}" class="p-4 border rounded bg-white shadow-sm">
+<div class="max-w-7xl mx-auto p-6 space-y-10 relative overflow-hidden">
 
-                <h3 class="font-semibold text-lg">{{ u.nombre }}</h3>
-                <p class="text-gray-600 text-sm">{{ u.direccion }}</p>
+  <!-- PATRONES 90s FLOTANTES -->
+  <div class="absolute inset-0 pointer-events-none opacity-20">
+    <div class="shape absolute top-10 left-10 w-24 h-24 bg-[#FF006E] rotate-12" style="--r:12deg"></div>
+    <div class="shape absolute top-40 right-20 w-16 h-16 bg-[#8338EC] rotate-45" style="--r:45deg"></div>
+    <div class="shape absolute bottom-20 left-1/3 w-20 h-20 bg-[#FFBE0B] rounded-full"></div>
+    <div class="shape absolute bottom-10 right-1/4 w-24 h-4 bg-[#3A86FF] rotate-12" style="--r:12deg"></div>
+    <div class="shape absolute top-1/2 left-1/4 w-20 h-4 bg-[#FB5607]" style="--r:-20deg"></div>
+    <div class="shape absolute top-1/3 right-1/3 w-12 h-12 bg-[#06D6A0] rotate-[30deg]" style="--r:30deg"></div>
+  </div>
 
-                <div class="flex gap-2 mt-3">
-                    <button class="bg-blue-600 text-white px-3 py-1 rounded text-xs"
-                            onclick="abrirModalUbicacion({{ u.id }})">
-                        Editar
-                    </button>
+<!-- ============================================================
+       CARD EXPLICATIVA REGIA
+       ============================================================ -->
+<div class="relative overflow-hidden border-4 border-black shadow-[8px_8px_0_0_black] bg-[#FF6347] p-8 sm:p-10">
+  <div class="absolute inset-0 pointer-events-none opacity-10">
+    <div class="shape absolute top-4 right-8 w-20 h-20 bg-white rotate-12"></div>
+    <div class="shape absolute bottom-4 left-12 w-16 h-16 bg-white rounded-full"></div>
+    <div class="shape absolute top-1/2 right-1/4 w-10 h-10 bg-white rotate-45"></div>
+  </div>
+  <div class="relative z-10">
+    <p class="text-white/70 font-black text-xs uppercase tracking-widest mb-2">📍 Sección</p>
+    <h1 class="text-4xl sm:text-6xl font-black text-white uppercase tracking-tight drop-shadow-[4px_4px_0_rgba(0,0,0,0.3)] mb-4">
+      Ubicaciones
+    </h1>
+    <p class="text-white font-black text-base sm:text-xl leading-relaxed max-w-3xl">
+      Las ubicaciones son los lugares físicos donde se guardan los productos, así de fácil.
+      La <span class="text-[#FFBE0B]">Moderna</span> es el <strong>almacén central</strong>, el mero mero que reparte a todas las sucursales que ya existen y las que vaya a abrir la Comercializadora Modelo.
+      <br><br>
+      Y luego, cuando abres una <strong>sucursal</strong>, pues tienes tus dos ubicaciones básicas:
+      <ul class="list-disc pl-6 mt-2">
+        <li><strong>Piso de venta</strong>: lo que está exhibido pa’ que el cliente se lo lleve al momento.</li>
+        <li><strong>Bodega interna</strong>: el guardadito pa’ rellenar el piso cuando se va acabando.</li>
+      </ul>
+      Lo mismo que en la vida diaria, gordo: abres una tienda y tienes producto en piso pa’ vender, y en bodega pa’ rellenar. No dejan de ser <strong>ubicaciones</strong>, nomás que son de cada sucursal.
+    </p>
+    <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
+      <div class="border-4 border-black bg-white p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest mb-1">🏪 Piso de venta</p>
+        <p class="text-gray-600 text-xs font-semibold leading-snug">
+          Lo que está al tiro pa’ que el cliente se lo lleve ya mismo, sin rodeos.
+        </p>
+      </div>
+      <div class="border-4 border-black bg-white p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest mb-1">📦 Bodega interna</p>
+        <p class="text-gray-600 text-xs font-semibold leading-snug">
+          El guardadito de cada sucursal, pa’ reponer el piso cuando se vacía. Como la hielera extra en la carne asada.
+        </p>
+      </div>
+      <div class="border-4 border-black bg-white p-4 shadow-[4px_4px_0_0_black]">
+        <p class="font-black text-black text-sm uppercase tracking-widest mb-1">🏭 Almacén global</p>
+        <p class="text-gray-600 text-xs font-semibold leading-snug">
+          El mero depósito central, sin sucursal. De aquí se reparte pa’ todos lados, como la carnita que llega pa’ toda la colonia.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
-                    <button class="bg-red-600 text-white px-3 py-1 rounded text-xs"
-                            onclick="confirmarEliminarUbicacion({{ u.id }})">
-                        Eliminar
-                    </button>
-                </div>
 
-            </div>
-        {% endfor %}
 
+  <!-- MENSAJES -->
+  <div id="msgSuccess"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#06D6A0] text-black font-black px-6 py-3 uppercase tracking-widest">
+  </div>
+  <div id="msgError"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E] text-white font-black px-6 py-3 uppercase tracking-widest">
+  </div>
+
+  <!-- BOTÓN AGREGAR — solo dueño -->
+  {% if es_dueno %}
+  <div class="relative flex justify-end">
+    <button onclick="abrirModalUbicacion()"
+            class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[6px_6px_0_0_black] px-6 py-3
+                   font-black uppercase text-black text-sm tracking-widest">
+      + Agregar almacén global
+    </button>
+  </div>
+  {% endif %}
+
+  <!-- ========================================================= -->
+  <!-- ALMACENES GLOBALES -->
+  <!-- ========================================================= -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+    <div class="bg-[#FB5607] px-6 py-4 border-b-4 border-black">
+      <h2 class="text-xl font-black text-white uppercase tracking-widest">🏭 Almacenes Globales</h2>
+      <p class="text-xs text-white/70 font-semibold mt-1">No pertenecen a ninguna sucursal</p>
     </div>
 
-    <button class="bg-green-600 text-white px-4 py-2 rounded mt-6"
-            onclick="abrirModalUbicacion()">
-        + Agregar ubicación
-    </button>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-white" id="gridUbicaciones">
+
+      {% for u in almacenes_globales %}
+      <div id="card-{{ u.id }}"
+           class="card-ubicacion border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                  bg-white relative overflow-hidden">
+
+        <div class="absolute top-0 right-0 w-10 h-10 bg-[#FFBE0B] border-l-4 border-b-4 border-black"></div>
+        <div class="absolute -bottom-4 -left-4 w-14 h-14 bg-[#FB5607] rounded-full opacity-20"></div>
+
+        <span class="badge-tipo inline-block bg-[#FB5607] border-2 border-black text-white
+                     text-[10px] font-black uppercase tracking-widest px-2 py-1 mb-3">
+          🏭 Global
+        </span>
+
+        <h3 class="font-black text-xl text-gray-900 uppercase tracking-wide mb-1">{{ u.nombre }}</h3>
+        <p class="text-sm text-gray-500 font-semibold mb-4">{{ u.direccion|default:"Sin dirección" }}</p>
+
+        {% if es_dueno %}
+        <div class="flex gap-3 mt-2">
+          <button onclick="abrirModalUbicacion({{ u.id }})"
+                  class="btn-90s bg-[#3A86FF] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                         text-white font-black text-xs uppercase tracking-widest">
+            Editar
+          </button>
+          <button onclick="confirmarEliminarUbicacion({{ u.id }})"
+                  class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                         text-white font-black text-xs uppercase tracking-widest">
+            Eliminar
+          </button>
+        </div>
+        {% endif %}
+
+      </div>
+      {% empty %}
+      <div class="col-span-full py-10 text-center">
+        <p class="text-gray-400 font-black uppercase tracking-widest text-sm">
+          No hay almacenes globales registrados.
+        </p>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- POR SUCURSAL -->
+  <!-- ========================================================= -->
+  <div class="space-y-6">
+
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
+      🏬 Ubicaciones por sucursal
+    </h2>
+
+    {% for grupo in grupos_sucursal %}
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] overflow-hidden">
+
+      <div class="bg-[#3A86FF] px-6 py-4 border-b-4 border-black">
+        <h3 class="text-xl font-black text-white uppercase tracking-widest">
+          🏬 {{ grupo.sucursal.nombre }}
+        </h3>
+        {% if grupo.sucursal.direccion %}
+        <p class="text-xs text-white/70 font-semibold mt-1">{{ grupo.sucursal.direccion }}</p>
+        {% endif %}
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-white">
+
+        {% for u in grupo.ubicaciones %}
+        <div id="card-{{ u.id }}"
+             class="card-ubicacion border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                    bg-white relative overflow-hidden">
+
+          <div class="absolute top-0 right-0 w-10 h-10 bg-[#FFBE0B] border-l-4 border-b-4 border-black"></div>
+
+          {% if u.tipo == 'piso' %}
+          <div class="absolute -bottom-4 -left-4 w-14 h-14 bg-[#06D6A0] rounded-full opacity-20"></div>
+          <span class="badge-tipo inline-block bg-[#06D6A0] border-2 border-black text-black
+                       text-[10px] font-black uppercase tracking-widest px-2 py-1 mb-3">
+            🛍️ Piso de venta
+          </span>
+          {% elif u.tipo == 'bodega' %}
+          <div class="absolute -bottom-4 -left-4 w-14 h-14 bg-[#8338EC] rounded-full opacity-20"></div>
+          <span class="badge-tipo inline-block bg-[#8338EC] border-2 border-black text-white
+                       text-[10px] font-black uppercase tracking-widest px-2 py-1 mb-3">
+            📦 Bodega interna
+          </span>
+          {% else %}
+          <div class="absolute -bottom-4 -left-4 w-14 h-14 bg-[#FB5607] rounded-full opacity-20"></div>
+          <span class="badge-tipo inline-block bg-[#FB5607] border-2 border-black text-white
+                       text-[10px] font-black uppercase tracking-widest px-2 py-1 mb-3">
+            🏭 Global
+          </span>
+          {% endif %}
+
+          <h3 class="font-black text-xl text-gray-900 uppercase tracking-wide mb-1">{{ u.nombre }}</h3>
+          <p class="text-sm text-gray-500 font-semibold mb-4">{{ u.direccion|default:"Sin dirección" }}</p>
+
+          {% if es_dueno %}
+          <div class="flex gap-3 mt-2">
+            <button onclick="abrirModalUbicacion({{ u.id }})"
+                    class="btn-90s bg-[#3A86FF] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                           text-white font-black text-xs uppercase tracking-widest">
+              Editar
+            </button>
+            <button onclick="confirmarEliminarUbicacion({{ u.id }})"
+                    class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                           text-white font-black text-xs uppercase tracking-widest">
+              Eliminar
+            </button>
+          </div>
+          {% endif %}
+
+        </div>
+        {% empty %}
+        <div class="col-span-full py-10 text-center">
+          <p class="text-gray-400 font-black uppercase tracking-widest text-sm">
+            Sin ubicaciones en esta sucursal.
+          </p>
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+    {% empty %}
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] p-10 bg-white text-center">
+      <p class="text-gray-500 font-black uppercase tracking-widest">No hay sucursales registradas.</p>
+    </div>
+    {% endfor %}
+
+  </div>
 
 </div>
 
 <!-- MODAL FORM -->
 <div id="modalUbicacion"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div id="modalUbicacionContent"
-         class="bg-white rounded shadow-lg w-11/12 max-w-md p-6">
-    </div>
+     class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
+  <div id="modalUbicacionContent"
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-md p-6">
+  </div>
 </div>
 
-<!-- MODAL CONFIRMAR -->
+<!-- MODAL CONFIRMAR ELIMINACIÓN -->
 <div id="modalConfirmarUbicacion"
-     class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded shadow-lg w-11/12 max-w-sm p-6">
+     class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-sm p-6">
 
-        <h2 class="text-lg font-semibold mb-4">Confirmar eliminación</h2>
-        <p class="text-gray-700 mb-6">¿Seguro que deseas eliminar esta ubicación?</p>
+    <h2 class="text-lg font-black text-[#FF006E] uppercase tracking-widest mb-3">
+      ⚠️ Confirmar eliminación
+    </h2>
+    <p class="text-sm text-gray-700 font-semibold mb-6">
+      ¿Seguro que deseas eliminar esta ubicación? Esta acción no se puede deshacer.
+    </p>
 
-        <div class="flex justify-end gap-2">
-            <button class="bg-gray-400 text-white px-4 py-2 rounded"
-                    onclick="cerrarConfirmarUbicacion()">
-                Cancelar
-            </button>
-
-            <button id="btnConfirmarEliminarUbicacion"
-                    class="bg-red-600 text-white px-4 py-2 rounded">
-                Eliminar
-            </button>
-        </div>
-
+    <div class="flex justify-end gap-3">
+      <button onclick="cerrarConfirmarUbicacion()"
+              class="btn-90s bg-gray-300 border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                     font-black text-xs uppercase tracking-widest">
+        Cancelar
+      </button>
+      <button id="btnConfirmarEliminarUbicacion"
+              class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                     text-white font-black text-xs uppercase tracking-widest">
+        Sí, eliminar
+      </button>
     </div>
+
+  </div>
 </div>
 
 <script src="{% static 'js/ubicacion_form.js' %}"></script>

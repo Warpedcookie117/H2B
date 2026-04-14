@@ -52,7 +52,7 @@ class Temporada(models.Model):
 
     def rango(self):
         if self.inicio_mes and self.inicio_dia and self.fin_mes and self.fin_dia:
-            return f"{self.inicio_dia}/{self.inicio_mes} → {self.fin_dia}/{self.fin_mes}"
+            return f"{self.inicio_dia}/{self.inicio_mes} a {self.fin_dia}/{self.fin_mes}"
         return "Sin rango definido"
     
 
@@ -92,12 +92,12 @@ class Producto(models.Model):
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField()
     embedding = JSONField(null=True, blank=True)
-    precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=2)
-    precio_menudeo = models.DecimalField(max_digits=10, decimal_places=2)
 
+    precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=1)
+    precio_menudeo = models.DecimalField(max_digits=10, decimal_places=1)
     precio_docena = models.DecimalField(
         max_digits=10,
-        decimal_places=2,
+        decimal_places=1,
         blank=True,
         null=True,
         help_text="Opcional. Solo si el dueño decide manejar precio por docena."
@@ -112,7 +112,16 @@ class Producto(models.Model):
         unique=True,
         help_text="Código de barras escaneado o generado automáticamente"
     )
-
+    
+    costo = models.DecimalField(
+    max_digits=10,
+    decimal_places=1,
+    blank=True,
+    null=True,
+    help_text="Costo del producto — solo visible para el dueño"
+    )
+    
+    
     tipo_codigo = models.CharField(
         max_length=20,
         choices=[
@@ -187,14 +196,47 @@ class Producto(models.Model):
     )
 
     # ============================================================
+    # SOFT DELETE
+    # ============================================================
+
+    activo = models.BooleanField(
+        default=True,
+        help_text="False = producto desactivado, no aparece en inventario ni POS"
+    )
+
+    fecha_desactivacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha en que fue desactivado — se llena automáticamente"
+    )
+
+    desactivado_por = models.ForeignKey(
+        Empleado,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='productos_desactivados',
+        help_text="Empleado que desactivó el producto — se llena automáticamente"
+    )
+
+    motivo_desactivacion = models.CharField(
+        max_length=300,
+        blank=True,
+        null=True,
+        help_text="Razón por la que se desactivó — lo escribe el usuario en el modal"
+    )
+
+    # ============================================================
     # REPRESENTACIÓN
     # ============================================================
+
     def __str__(self):
         return self.nombre
 
     # ============================================================
     # PROPIEDADES DE INVENTARIO
     # ============================================================
+
     @property
     def cantidad_total(self):
         return self.inventarios.aggregate(
@@ -205,13 +247,32 @@ class Producto(models.Model):
         inv = self.inventarios.filter(ubicacion=ubicacion).first()
         return inv.cantidad_actual if inv else 0
 
+    # ============================================================
+    # MÉTODOS DE CICLO DE VIDA
+    # ============================================================
+
+    def desactivar(self, empleado, motivo=""):
+        from django.utils import timezone
+        self.activo = False
+        self.fecha_desactivacion = timezone.now()
+        self.desactivado_por = empleado
+        self.motivo_desactivacion = motivo
+        self.save()
+
+    def reactivar(self):
+        self.activo = True
+        self.fecha_desactivacion = None
+        self.desactivado_por = None
+        self.motivo_desactivacion = None
+        self.save()
+
+    # ============================================================
+    # VALIDACIONES
+    # ============================================================
+
     def clean(self):
-        # Llamamos al clean() del padre para mantener consistencia interna
         super().clean()
 
-        # ============================================================
-        # VALIDACIONES EXISTENTES
-        # ============================================================
         if not self.dueño:
             raise ValidationError({'dueño': 'Todo producto debe tener un dueño asignado.'})
 
@@ -224,45 +285,40 @@ class Producto(models.Model):
         if self.precio_docena is not None:
             if self.precio_docena < 0:
                 raise ValidationError({'precio_docena': 'El precio por docena no puede ser negativo.'})
-
             if self.precio_docena > self.precio_mayoreo:
                 raise ValidationError({'precio_docena': 'El precio por docena no puede ser mayor que el precio de mayoreo.'})
 
         if self.precio_mayoreo > self.precio_menudeo:
             raise ValidationError({'precio_mayoreo': 'El precio de mayoreo no puede ser mayor que el precio de menudeo.'})
 
-        # ============================================================
-        # 🔥 VALIDACIÓN CLIP — DETECCIÓN DE PRODUCTO DUPLICADO POR IMAGEN
-        # ============================================================
-        # Solo si hay imagen nueva o si el producto no tiene embedding aún
         if self.foto_url and not self.embedding:
             from .services.vision import generar_embedding
             from .services.similaridad import buscar_producto_similar
 
-            # Generar embedding temporal
             embedding_nuevo = generar_embedding(self.foto_url)
 
-            # Buscar coincidencias
             similares = buscar_producto_similar(embedding_nuevo)
 
             if similares:
                 producto, score = similares[0]
 
-                mensaje = (
-                    "Hey we, el sistema detectó que intentas registrar un producto que ya existe "
-                    "a partir de su imagen.\n\n"
-                    "Verifica el producto guardado:\n"
-                    f"- Coincidencia: {producto.id} – {producto.nombre}"
-                )
+                if not producto.activo:
+                    raise ValidationError(
+                        f"Este producto ya existe pero está desactivado: "
+                        f"{producto.nombre} (ID {producto.id}). "
+                        f"Pide al dueño que lo reactive desde productos inactivos."
+                    )
+                else:
+                    raise ValidationError(
+                        f"Este producto ya existe: {producto.nombre} (ID {producto.id})."
+                    )
 
-                raise ValidationError(mensaje)
-
-            # Si no hay coincidencias → asignar embedding
             self.embedding = embedding_nuevo
 
     # ============================================================
     # META
     # ============================================================
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -270,7 +326,8 @@ class Producto(models.Model):
                 name='unique_producto_por_firma'
             )
         ]
-
+        
+        
 
 
     # Define los atributos que existen para cada subcategoría.
@@ -378,7 +435,7 @@ class TransferenciaInventario(models.Model):
         verbose_name_plural = "Transferencias de Inventario"
 
     def __str__(self):
-        return f"Transferencia de {self.cantidad} {self.producto.nombre} ({self.origen} → {self.destino})"
+        return f"Transferencia de {self.cantidad} {self.producto.nombre} ({self.origen} a {self.destino})"
 
     def clean(self):
         # Validar que origen y destino no sean iguales

@@ -71,6 +71,12 @@ def redirigir_por_rol(user):
 
 
 def login_user(request):
+
+    # 🔥 Si ya está autenticado, NO puede ver login
+    if request.user.is_authenticated:
+        destino = redirigir_por_rol(request.user)
+        return redirect(destino)
+
     if request.method == 'POST':
         identificador = request.POST.get('username')
         password = request.POST.get('password')
@@ -81,25 +87,18 @@ def login_user(request):
             messages.error(request, "❌ Usuario, correo o número incorrecto")
             return redirect('tienda_temp:login')
 
-        # Validar contraseña directamente
         if not user.check_password(password):
             messages.error(request, "❌ Contraseña incorrecta")
             return redirect('tienda_temp:login')
 
-        # Iniciar sesión
         login(request, user)
-
-        # 🔥 Cargar empleado/cliente/rol
         request.user.refresh_from_db()
 
         destino = redirigir_por_rol(request.user)
-        if destino:
-            return redirect(destino)
-
-        messages.error(request, "⚠️ Tu cuenta no tiene un rol válido.")
-        return redirect('tienda_temp:login')
+        return redirect(destino)
 
     return render(request, 'tienda/login.html')
+
 
 
 

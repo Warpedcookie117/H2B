@@ -3,114 +3,276 @@
 
 {% block content %}
 
-<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10">
+<style>
+  @keyframes floatA {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%       { transform: translateY(-18px) rotate(8deg); }
+  }
+  @keyframes floatB {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%       { transform: translateY(-12px) rotate(-6deg); }
+  }
+  @keyframes floatC {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%       { transform: translateY(-20px) scale(1.05); }
+  }
+  .shape-a { animation: floatA 5s ease-in-out infinite; }
+  .shape-b { animation: floatB 4s ease-in-out infinite; animation-delay: 0.8s; }
+  .shape-c { animation: floatC 6s ease-in-out infinite; animation-delay: 1.5s; }
+  .shape-d { animation: floatA 4.5s ease-in-out infinite; animation-delay: 2s; }
 
-  <!-- Encabezado -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-    <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-2">
-      📊 Centro de Inventario
-    </h1>
-    <span class="text-xs sm:text-sm text-gray-500">
-      Última actualización: {{ ahora|date:"d/m/Y H:i" }}
-    </span>
+  .card-kpi {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-kpi:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 10px 10px 0 0 black;
+  }
+
+  .card-ubicacion {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-ubicacion:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 10px 10px 0 0 black;
+  }
+
+  .btn-ir {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-ir:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 0 black;
+  }
+  .btn-ir:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
+
+  .btn-accion {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-accion:hover {
+    transform: translate(-4px, -4px);
+    box-shadow: 8px 8px 0 0 black;
+  }
+  .btn-accion:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 black;
+  }
+  @keyframes shimmer {
+    0%   { transform: translateX(-100%) skewX(-15deg); }
+    100% { transform: translateX(200%) skewX(-15deg); }
+  }
+  .btn-accion::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%;
+    height: 100%;
+    background: rgba(255,255,255,0.15);
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  .btn-accion:hover::after {
+    animation: shimmer 0.6s ease;
+  }
+
+  /* Tabla críticos responsive */
+  .tabla-criticos td,
+  .tabla-criticos th {
+    white-space: nowrap;
+  }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-10 space-y-10">
+
+  <!-- ENCABEZADO -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#3A86FF] p-8 relative overflow-hidden">
+    <div class="shape-a absolute top-3 right-10 w-16 h-16 bg-white/10 rounded-full pointer-events-none"></div>
+    <div class="shape-b absolute top-6 right-28 w-10 h-10 bg-[#FFBE0B]/30 rotate-45 pointer-events-none"></div>
+    <div class="shape-c absolute bottom-2 right-4 w-20 h-20 bg-[#FF006E]/20 rounded-full pointer-events-none"></div>
+    <div class="shape-d absolute bottom-4 left-1/3 w-8 h-8 bg-white/10 rotate-12 pointer-events-none"></div>
+    <div class="shape-a absolute top-2 left-10 w-12 h-12 bg-[#06D6A0]/20 rounded-full pointer-events-none" style="animation-delay:1s"></div>
+    <div class="relative z-10">
+      <h1 class="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight drop-shadow-[3px_3px_0_rgba(0,0,0,0.3)]">
+        📊 Centro de Inventario
+      </h1>
+      <p class="text-white font-bold text-base mt-2">
+        Consulta el stock por ubicación, detecta productos críticos y accede rápido al inventario de cada almacén.
+      </p>
+      <p class="text-white/60 font-semibold text-xs mt-1 uppercase tracking-widest">
+        Última actualización: {{ ahora|date:"d/m/Y H:i" }}
+      </p>
+    </div>
   </div>
 
-  <!-- KPIs -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-
-    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl shadow p-5 text-center">
-      <p class="text-xs sm:text-sm opacity-80">Productos totales</p>
-      <p class="text-2xl sm:text-3xl font-bold">{{ productos_total }}</p>
-    </div>
-
-    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow p-5 text-center">
-      <p class="text-xs sm:text-sm opacity-80">Inventario total</p>
-      <p class="text-2xl sm:text-3xl font-bold">{{ stock_total }}</p>
-    </div>
-
-    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl shadow p-5 text-center">
-      <p class="text-xs sm:text-sm opacity-80">Ubicaciones</p>
-      <p class="text-2xl sm:text-3xl font-bold">{{ ubicaciones|length }}</p>
-    </div>
-
-    <div class="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow p-5 text-center">
-      <p class="text-xs sm:text-sm opacity-80">Críticos</p>
-      <p class="text-2xl sm:text-3xl font-bold">{{ bajos|length }}</p>
-    </div>
-
+  <!-- KPI GLOBAL -->
+  <div class="card-kpi border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FFBE0B] p-8 text-center">
+    <div class="shape-b absolute top-2 right-6 w-14 h-14 bg-black/5 rounded-full pointer-events-none"></div>
+    <div class="shape-c absolute bottom-2 left-8 w-10 h-10 bg-black/5 rotate-45 pointer-events-none"></div>
+    <p class="font-black text-black text-sm uppercase tracking-widest relative z-10">
+      Productos registrados en Comercializadora Modelo
+    </p>
+    <p class="text-8xl font-black text-black mt-2 relative z-10">{{ productos_total }}</p>
+    <p class="text-black/50 font-bold text-xs mt-2 uppercase tracking-widest relative z-10">catálogo total activo</p>
   </div>
 
-  <!-- Alertas -->
-  {% if bajos|length > 0 %}
-  <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg text-sm sm:text-base">
-    ⚠️ Atención: Hay {{ bajos|length }} productos con inventario crítico.
+  <!-- CARDS POR UBICACIÓN -->
+  <div class="space-y-3">
+    <p class="font-black text-black text-xs uppercase tracking-widest">Productos por ubicación</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {% for kpi in kpis_ubicaciones %}
+      <div class="card-ubicacion border-4 border-black shadow-[6px_6px_0_0_black] bg-white">
+
+        <div class="h-3 border-b-4 border-black" style="background-color: {{ kpi.ubicacion.color }};"></div>
+
+        <div class="p-6">
+          <p class="font-black text-black text-xl uppercase tracking-wide">
+            {% if kpi.ubicacion.tipo == 'piso' %}🏪 Piso de Venta
+            {% elif kpi.ubicacion.tipo == 'bodega' %}📦 Bodega Interna
+            {% else %}🏭 Almacén Central{% endif %}
+          </p>
+
+          <span class="inline-block border-4 border-black font-black text-xs uppercase tracking-widest px-3 py-1 mt-2"
+                style="background-color: {{ kpi.ubicacion.color }}40; color: #111;">
+            {% if kpi.ubicacion.sucursal %}Sucursal {{ kpi.ubicacion.sucursal.nombre }}
+            {% else %}Almacén Central{% endif %}
+          </span>
+
+          <p class="text-7xl font-black text-black mt-4">{{ kpi.productos_count }}</p>
+          <p class="text-gray-500 font-bold text-xs mt-1 uppercase tracking-widest">productos físicos</p>
+
+          <a href="{% url 'inventario:productos_por_ubicacion' kpi.ubicacion.id %}"
+             class="btn-ir mt-5 border-4 border-black shadow-[4px_4px_0_0_black] font-black text-xs uppercase tracking-widest px-4 py-2"
+             style="background-color: {{ kpi.ubicacion.color }}; color: #111;">
+            <span>Ver inventario</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+              <path stroke-linecap="square" stroke-linejoin="miter" d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </div>
+
+  <!-- ALERTA CRÍTICOS -->
+  {% if bajos %}
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 flex items-center gap-4">
+    <span class="text-2xl">⚠️</span>
+    <p class="font-black text-black uppercase tracking-widest text-sm">
+      {{ bajos|length }} producto{{ bajos|length|pluralize:"s" }} con inventario crítico — revísalos abajo.
+    </p>
   </div>
   {% endif %}
 
-  <!-- Gráficas -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+  <!-- GRÁFICAS -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-    <div class="bg-white shadow rounded-xl p-6">
-      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        📉 Productos con bajo inventario
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-6">
+      <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
+        📉 Críticos por ubicación
       </h2>
-      <div class="relative w-full h-[300px] sm:h-[380px]">
+      <div class="relative w-full h-72">
         <canvas id="chartBajoStock"></canvas>
+      </div>
+      <div class="flex gap-4 mt-4 flex-wrap">
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-[#00BBF9] border-2 border-black"></div>
+          <span class="text-xs font-black text-gray-700 uppercase">Piso de venta</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-[#8338EC] border-2 border-black"></div>
+          <span class="text-xs font-black text-gray-700 uppercase">Bodega interna</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 bg-[#06D6A0] border-2 border-black"></div>
+          <span class="text-xs font-black text-gray-700 uppercase">Global</span>
+        </div>
       </div>
     </div>
 
-    <div class="bg-white shadow rounded-xl p-6">
-      <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-        🏆 Productos más vendidos
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-6">
+      <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
+        🏆 Más vendidos
       </h2>
-      <div class="relative w-full h-[300px] sm:h-[380px]">
+      <div class="relative w-full h-72">
         <canvas id="chartMasVendidos"></canvas>
       </div>
     </div>
 
   </div>
 
-  <!-- Tabla de críticos -->
-  <div class="mt-6">
-    <h3 class="text-lg font-semibold mb-4">📋 Productos críticos</h3>
+  <!-- TABLA CRÍTICOS -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
 
-    <div class="overflow-x-auto rounded-lg shadow">
-      <table class="min-w-full border border-gray-200 rounded-lg">
-        <thead class="bg-gray-100">
+    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4">
+      <h3 class="font-black text-white uppercase tracking-widest text-sm">
+        📋 Productos críticos — ≤ 5 piezas
+      </h3>
+    </div>
+
+    <div class="overflow-x-auto bg-white">
+      <table class="tabla-criticos w-full divide-y-4 divide-black">
+        <thead class="bg-black">
           <tr>
-            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Producto</th>
-            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Inventario</th>
-            <th class="px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Ubicación</th>
-            <th class="px-4 py-2 text-center text-xs sm:text-sm font-medium text-gray-700">Acción</th>
+            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Producto</th>
+            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Piezas</th>
+            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Dónde</th>
+            <th class="px-4 py-3 text-center text-xs font-black text-white uppercase tracking-widest">Ir</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y-4 divide-black">
 
           {% for inv in bajos %}
-          <tr class="border-t">
+          <tr class="hover:bg-yellow-50 transition-colors">
 
-            <td class="px-4 py-2 text-sm">{{ inv.producto.nombre }}</td>
+            <td class="px-4 py-4 font-black text-black text-sm uppercase">
+              {{ inv.producto.nombre }}
+            </td>
 
-            <td class="px-4 py-2">
-              <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs sm:text-sm">
+            <td class="px-4 py-4">
+              <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1">
                 🔴 {{ inv.cantidad_actual }}
               </span>
             </td>
 
-            <td class="px-4 py-2 text-sm">{{ inv.ubicacion.nombre }}</td>
+            <td class="px-4 py-4 font-bold text-gray-800 text-sm">
+              {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso de Venta
+              {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega Interna
+              {% else %}🏭 Almacén Central{% endif %}
+              {% if inv.ubicacion.sucursal %}
+              <span class="block text-xs text-gray-500 font-semibold">{{ inv.ubicacion.sucursal.nombre }}</span>
+              {% endif %}
+            </td>
 
-            <td class="px-4 py-2 text-center whitespace-nowrap">
+            <td class="px-4 py-4 text-center">
               <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
-                 class="inline-block bg-blue-600 text-white px-3 py-1 rounded text-xs sm:text-sm hover:bg-blue-700 transition">
-                Ver en ubicación
+                 class="btn-ir bg-[#3A86FF] border-4 border-black shadow-[3px_3px_0_0_black]
+                        text-white font-black text-xs uppercase tracking-widest px-4 py-2">
+                <span>Ver</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="square" stroke-linejoin="miter" d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
               </a>
             </td>
 
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" class="px-4 py-2 text-center text-gray-500 text-sm">
-              No hay productos críticos registrados.
+            <td colspan="4" class="px-4 py-10 text-center font-black text-gray-300 uppercase tracking-widest text-xl">
+              Todo en orden. Sin críticos. 🎉
             </td>
           </tr>
           {% endfor %}
@@ -120,74 +282,103 @@
     </div>
   </div>
 
-  <!-- Acciones rápidas -->
-  <div>
-    <h2 class="text-lg font-semibold mb-4">⚡ Acciones rápidas</h2>
+  <!-- BOTONES ACCESO RÁPIDO -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+    <a href="{% url 'inventario:nuevo_producto' %}"
+       class="btn-accion border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FF006E] p-8 text-center block">
+      <span class="text-4xl block mb-2">➕</span>
+      <span class="text-white font-black text-lg uppercase tracking-widest block">Registrar producto</span>
+      <span class="text-white/70 font-semibold text-xs uppercase tracking-widest block mt-1">
+        Agrega un producto nuevo al catálogo
+      </span>
+    </a>
 
-      <a href="{% url 'inventario:nuevo_producto' %}"
-         class="bg-blue-600 text-white p-6 rounded-xl shadow hover:scale-105 transform transition text-center text-sm sm:text-base">
-        ➕ Registrar producto nuevo
-      </a>
+    <a href="{% url 'inventario:lista_productos' %}"
+       class="btn-accion border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FB5607] p-8 text-center block">
+      <span class="text-4xl block mb-2">🌍</span>
+      <span class="text-white font-black text-lg uppercase tracking-widest block">Inventario global</span>
+      <span class="text-white/70 font-semibold text-xs uppercase tracking-widest block mt-1">
+        Ve todos los productos de todas las ubicaciones
+      </span>
+    </a>
 
-      <a href="{% url 'inventario:lista_productos' %}"
-         class="bg-orange-600 text-white p-6 rounded-xl shadow hover:scale-105 transform transition text-center text-sm sm:text-base">
-        Inventario Global 🌍
-      </a>
-
-    </div>
   </div>
 
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-  const bajoStockLabels = [{% for inv in bajos %}'{{ inv.producto.nombre|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-  const bajoStockData = [{% for inv in bajos %}{{ inv.cantidad_actual }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+  const bajoStockData = [
+    {% for inv in bajos %}
+    {
+      label: "{{ inv.producto.nombre|escapejs }} · {% if inv.ubicacion.tipo == 'piso' %}Piso{% elif inv.ubicacion.tipo == 'bodega' %}Bodega{% else %}Central{% endif %}",
+      value: {{ inv.cantidad_actual }},
+      color: "{% if inv.ubicacion.tipo == 'piso' %}#00BBF9{% elif inv.ubicacion.tipo == 'bodega' %}#8338EC{% else %}#06D6A0{% endif %}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
 
-  new Chart(document.getElementById('chartBajoStock'), {
-    type: 'bar',
-    data: {
-      labels: bajoStockLabels,
-      datasets: [{
-        label: 'Inventario actual',
-        data: bajoStockData,
-        backgroundColor: '#ef4444',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+  if (bajoStockData.length > 0) {
+    new Chart(document.getElementById("chartBajoStock"), {
+      type: "bar",
+      data: {
+        labels: bajoStockData.map(d => d.label),
+        datasets: [{
+          label: "Piezas",
+          data: bajoStockData.map(d => d.value),
+          backgroundColor: bajoStockData.map(d => d.color),
+          borderColor: "#000",
+          borderWidth: 3,
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
+          x: { ticks: { font: { weight: "900" }, color: "#111", maxRotation: 40 } }
+        }
+      }
+    });
+  } else {
+    document.getElementById("chartBajoStock").parentElement.innerHTML =
+      '<p class="text-center font-black text-gray-300 uppercase tracking-widest text-sm py-20">Sin críticos 🎉</p>';
+  }
 
-  const masVendidosLabels = [{% for p in mas_vendidos %}'{{ p.producto__nombre|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
-  const masVendidosData = [{% for p in mas_vendidos %}{{ p.total|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+  const masVendidosLabels = [{% for p in mas_vendidos %}"{{ p.producto__nombre|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+  const masVendidosData   = [{% for p in mas_vendidos %}{{ p.total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
 
-  new Chart(document.getElementById('chartMasVendidos'), {
-    type: 'bar',
-    data: {
-      labels: masVendidosLabels,
-      datasets: [{
-        label: 'Ventas',
-        data: masVendidosData,
-        backgroundColor: '#3b82f6',
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+  if (masVendidosLabels.length > 0) {
+    new Chart(document.getElementById("chartMasVendidos"), {
+      type: "bar",
+      data: {
+        labels: masVendidosLabels,
+        datasets: [{
+          label: "Ventas",
+          data: masVendidosData,
+          backgroundColor: "#06D6A0",
+          borderColor: "#000",
+          borderWidth: 3,
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
+          x: { ticks: { font: { weight: "900" }, color: "#111", maxRotation: 40 } }
+        }
+      }
+    });
+  } else {
+    document.getElementById("chartMasVendidos").parentElement.innerHTML =
+      '<p class="text-center font-black text-gray-300 uppercase tracking-widest text-sm py-20">Sin ventas registradas aún</p>';
+  }
 </script>
 
 {% endblock %}
