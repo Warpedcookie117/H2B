@@ -13,22 +13,29 @@ document.addEventListener("DOMContentLoaded", function () {
   let ticking       = false;
   let ignoreScroll  = false;
 
+  // Estilos base del menú — sin depender de Tailwind para dinámica
+  menu.style.transition = "opacity 0.25s ease, transform 0.25s ease";
+  menu.style.display    = "none";
+  menu.style.opacity    = "0";
+  menu.style.transform  = "translateY(-12px)";
+
   // ABRIR MENÚ MOBILE
   function abrirMenu() {
-    menu.classList.remove("hidden");
-    // Forzar reflow para que la transición arranque
-    void menu.offsetHeight;
-    menu.classList.remove("opacity-0", "pointer-events-none", "-translate-y-4");
-    menu.classList.add("opacity-100", "pointer-events-auto", "translate-y-0");
+    menu.style.display      = "block";
+    menu.style.pointerEvents = "none";
+    void menu.offsetHeight; // forzar reflow para activar transición
+    menu.style.opacity      = "1";
+    menu.style.transform    = "translateY(0)";
+    menu.style.pointerEvents = "auto";
 
     // Animar cada link con stagger
     const links = menu.querySelectorAll("a, button");
     links.forEach((link, i) => {
-      link.style.opacity = "0";
-      link.style.transform = "translateX(-12px)";
+      link.style.opacity    = "0";
+      link.style.transform  = "translateX(-12px)";
       link.style.transition = `opacity 0.2s ease ${i * 40}ms, transform 0.2s ease ${i * 40}ms`;
       setTimeout(() => {
-        link.style.opacity = "1";
+        link.style.opacity   = "1";
         link.style.transform = "translateX(0)";
       }, 10);
     });
@@ -40,15 +47,16 @@ document.addEventListener("DOMContentLoaded", function () {
     links.forEach((link, i) => {
       const reverseI = links.length - 1 - i;
       link.style.transition = `opacity 0.15s ease ${reverseI * 25}ms, transform 0.15s ease ${reverseI * 25}ms`;
-      link.style.opacity = "0";
-      link.style.transform = "translateX(-8px)";
+      link.style.opacity    = "0";
+      link.style.transform  = "translateX(-8px)";
     });
 
     setTimeout(() => {
-      menu.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0");
-      menu.classList.add("opacity-0", "pointer-events-none", "-translate-y-4");
+      menu.style.opacity      = "0";
+      menu.style.transform    = "translateY(-12px)";
+      menu.style.pointerEvents = "none";
       setTimeout(() => {
-        if (!menuAbierto) menu.classList.add("hidden");
+        if (!menuAbierto) menu.style.display = "none";
       }, 250);
     }, links.length * 25 + 50);
   }
