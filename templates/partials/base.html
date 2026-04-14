@@ -7,17 +7,6 @@
   <title>{% block title %}Comercializadora Modelo{% endblock %}</title>
 
   <!-- Tailwind CSS -->
-  <script>
-    tailwind.config = {
-      safelist: [
-        'opacity-0', 'opacity-100',
-        'translate-y-0', '-translate-y-4', '-translate-y-full',
-        'pointer-events-none', 'pointer-events-auto',
-        'scale-0', 'scale-100',
-        'hidden', 'block', 'flex',
-      ]
-    }
-  </script>
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Font Awesome -->
@@ -41,6 +30,9 @@
   class="sidebar-open min-h-screen flex flex-col bg-gradient-to-br from-white to-red-50 text-gray-800"
   data-mostrar-modal="{{ mostrar_modal_etiqueta|default:'false' }}"
 >
+
+<!-- Safelist clases dinamicas para Tailwind CDN -->
+<div class="hidden opacity-0 opacity-100 translate-y-0 -translate-y-4 -translate-y-full pointer-events-none pointer-events-auto scale-0 scale-100 translate-x-0 -translate-x-full" aria-hidden="true" style="display:none"></div>
 
 {% include 'partials/navvar.html' %}
 {% include 'partials/sidebar.html' %}
