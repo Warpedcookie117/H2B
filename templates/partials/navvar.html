@@ -145,3 +145,52 @@
 
   </div>
 </nav>
+
+<script>
+(function () {
+  var toggle = document.getElementById("menu-toggle");
+  var menu   = document.getElementById("menu");
+  if (!toggle || !menu) return;
+
+  menu.style.transition = "opacity 0.25s ease, transform 0.25s ease";
+
+  var abierto = false;
+
+  toggle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    abierto = !abierto;
+    if (abierto) {
+      menu.style.display      = "block";
+      menu.style.pointerEvents = "none";
+      void menu.offsetHeight;
+      menu.style.opacity      = "1";
+      menu.style.transform    = "translateY(0)";
+      menu.style.pointerEvents = "auto";
+    } else {
+      menu.style.opacity      = "0";
+      menu.style.transform    = "translateY(-12px)";
+      menu.style.pointerEvents = "none";
+      setTimeout(function () { menu.style.display = "none"; }, 250);
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (abierto && !document.getElementById("navbar").contains(e.target)) {
+      abierto = false;
+      menu.style.opacity      = "0";
+      menu.style.transform    = "translateY(-12px)";
+      menu.style.pointerEvents = "none";
+      setTimeout(function () { menu.style.display = "none"; }, 250);
+    }
+  });
+
+  menu.querySelectorAll("a").forEach(function (link) {
+    link.addEventListener("click", function () {
+      abierto = false;
+      menu.style.opacity      = "0";
+      menu.style.transform    = "translateY(-12px)";
+      setTimeout(function () { menu.style.display = "none"; }, 250);
+    });
+  });
+})();
+</script>
