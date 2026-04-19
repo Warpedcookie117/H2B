@@ -65,7 +65,8 @@ export function initEscanerCamara({ codigoInput }) {
     function iniciar() {
         if (activo) return;
 
-        if (typeof Html5Qrcode === "undefined") {
+        const Lib = window.__Html5QrcodeLibrary__?.Html5Qrcode;
+        if (!Lib) {
             mostrarEstado("❌ Librería no cargó. Recarga la página.", "error");
             return;
         }
@@ -83,7 +84,7 @@ export function initEscanerCamara({ codigoInput }) {
         // Limpiar y arrancar
         document.getElementById("camara-reader").innerHTML = "";
 
-        scanner = new Html5Qrcode("camara-reader");
+        scanner = new Lib("camara-reader");
 
         const config = { fps: 10, qrbox: { width: 250, height: 120 } };
 
