@@ -1,44 +1,34 @@
 // ============================
 // ESCÁNER DE CÁMARA — html5-qr-code
-// Funciona en celular (cámara trasera) y en PC (webcam)
+// Html5Qrcode global desde /static/js/html5-qrcode.min.js
 // ============================
-
-// Html5Qrcode se carga como global desde /static/js/html5-qrcode.min.js
 
 export function initEscanerCamara({ codigoInput }) {
 
     const btnAbrir  = document.getElementById("btn-escanear-camara");
     const modal     = document.getElementById("modal-camara");
     const btnCerrar = document.getElementById("btn-cerrar-camara");
+    const reader    = document.getElementById("camara-reader");
 
-    if (!btnAbrir || !modal || !btnCerrar) return;
+    if (!btnAbrir || !modal || !btnCerrar || !reader) return;
 
     let scanner = null;
     let activo  = false;
 
     // ============================
-    // ABRIR MODAL
+    // ABRIR / CERRAR MODAL
     // ============================
     btnAbrir.addEventListener("click", () => {
         modal.showModal();
         iniciar();
     });
 
-    // ============================
-    // CERRAR — botón ✕
-    // ============================
     btnCerrar.addEventListener("click", cerrarModal);
 
-    // ============================
-    // CERRAR — click en el backdrop
-    // ============================
     modal.addEventListener("click", (e) => {
         if (e.target === modal) cerrarModal();
     });
 
-    // ============================
-    // CERRAR MODAL
-    // ============================
     function cerrarModal() {
         detener().then(() => modal.close());
     }
@@ -47,12 +37,10 @@ export function initEscanerCamara({ codigoInput }) {
     // CALLBACK: código escaneado
     // ============================
     function onEscaneado(codigo) {
-        console.log("[escaner] Código detectado:", codigo);
+        console.log("[escaner] ✅ Código detectado:", codigo);
         codigoInput.value = codigo;
-
         detener().then(() => {
             modal.close();
-            // Simula Enter para que producto_existente.js dispare la búsqueda
             codigoInput.dispatchEvent(
                 new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
             );
@@ -67,67 +55,54 @@ export function initEscanerCamara({ codigoInput }) {
 
         const Lib = window.__Html5QrcodeLibrary__?.Html5Qrcode;
         if (!Lib) {
-            mostrarEstado("❌ Librería no cargó. Recarga la página.", "error");
+            mostrarError("❌ Librería no cargó. Recarga la página.");
+            console.error("[escaner] window.__Html5QrcodeLibrary__ es undefined");
             return;
         }
 
         const esLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
         const esHttps     = location.protocol === "https:";
-
         if (!esLocalhost && !esHttps) {
-            mostrarEstado("📵 Cámara bloqueada en HTTP.\nFunciona en la versión en línea (HTTPS).", "error");
+            mostrarError("📵 Cámara solo disponible en HTTPS.");
+            console.warn("[escaner] Bloqueado: protocolo es", location.protocol);
             return;
         }
 
-        mostrarEstado("⏳ Iniciando cámara...", "info");
+        console.log("[escaner] Iniciando con cámara trasera...");
 
-        // Limpiar y arrancar
-        document.getElementById("camara-reader").innerHTML = "";
-
+        // Vaciar el reader UNA SOLA VEZ antes de crear el scanner
+        reader.innerHTML = "";
         scanner = new Lib("camara-reader");
 
         const config = { fps: 10, qrbox: { width: 250, height: 120 } };
 
-        // Intenta cámara trasera (celular) — si falla, usa cualquier cámara (PC)
-        scanner.start(
-            { facingMode: "environment" },
-            config,
-            onEscaneado,
-            () => {} // callback por frame sin código — ignorar
-        )
+        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
-            // NO tocar el innerHTML — el video ya está en camara-reader
+            console.log("[escaner] Cámara trasera OK — video en DOM:", !!reader.querySelector("video"));
         })
-        .catch(() => {
-            mostrarEstado("⏳ Intentando cámara frontal...", "info");
-            scanner.start(
-                { facingMode: "user" },
-                config,
-                onEscaneado,
-                () => {}
-            )
+        .catch((errEnv) => {
+            console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
+            // NO tocar reader.innerHTML — solo reintentar con facingMode diferente
+            scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
-                // NO tocar el innerHTML
+                console.log("[escaner] Cámara frontal OK — video en DOM:", !!reader.querySelector("video"));
             })
-            .catch((err) => {
-                mostrarEstado(`❌ Sin acceso a cámara.\nError: ${err}`, "error");
+            .catch((errUser) => {
+                console.error("[escaner] Ambas cámaras fallaron:", errUser);
+                mostrarError("❌ Sin acceso a cámara.\n" + errUser);
             });
         });
     }
 
     // ============================
-    // MOSTRAR ESTADO EN EL MODAL
+    // ERROR VISIBLE (solo errores fatales)
     // ============================
-    function mostrarEstado(msg, tipo = "info") {
-        const reader = document.getElementById("camara-reader");
-        if (!reader) return;
-        const bg = tipo === "error" ? "#FF006E" : tipo === "ok" ? "#06D6A0" : "#FFEE88";
-        const color = tipo === "error" ? "#fff" : "#111";
+    function mostrarError(msg) {
         reader.innerHTML = `
             <div style="padding:1.5rem;text-align:center;font-weight:700;font-size:0.85rem;
-                        color:${color};background:${bg};border:3px solid black;white-space:pre-line;">
+                        color:#fff;background:#FF006E;border:3px solid black;white-space:pre-line;">
                 ${msg}
             </div>`;
     }
@@ -140,7 +115,7 @@ export function initEscanerCamara({ codigoInput }) {
             try {
                 await scanner.stop();
                 scanner.clear();
-            } catch (_) { /* ignorar errores al detener */ }
+            } catch (_) {}
             scanner = null;
             activo  = false;
             console.log("[escaner] Cámara detenida.");
