@@ -97,10 +97,7 @@ export function initEscanerCamara({ codigoInput }) {
         )
         .then(() => {
             activo = true;
-            mostrarEstado("✅ Cámara lista. Apunta al código.", "ok");
-            setTimeout(() => {
-                document.getElementById("camara-reader").querySelector("div[style]")?.remove();
-            }, 1500);
+            // NO tocar el innerHTML — el video ya está en camara-reader
         })
         .catch(() => {
             mostrarEstado("⏳ Intentando cámara frontal...", "info");
@@ -112,7 +109,7 @@ export function initEscanerCamara({ codigoInput }) {
             )
             .then(() => {
                 activo = true;
-                mostrarEstado("✅ Cámara lista. Apunta al código.", "ok");
+                // NO tocar el innerHTML
             })
             .catch((err) => {
                 mostrarEstado(`❌ Sin acceso a cámara.\nError: ${err}`, "error");
