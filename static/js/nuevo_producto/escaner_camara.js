@@ -74,7 +74,18 @@ export function initEscanerCamara({ codigoInput }) {
         reader.innerHTML = "";
         scanner = new Lib("camara-reader");
 
-        const config = { fps: 10, qrbox: { width: 250, height: 120 } };
+        // Formatos de barras 1D + QR explícitos
+        const F = window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats;
+        const config = {
+            fps: 15,
+            qrbox: { width: 280, height: 100 },
+            formatsToSupport: F ? [
+                F.EAN_13, F.EAN_8,
+                F.UPC_A,  F.UPC_E,
+                F.CODE_128, F.CODE_39,
+                F.QR_CODE,
+            ] : undefined,
+        };
 
         scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .then(() => {
