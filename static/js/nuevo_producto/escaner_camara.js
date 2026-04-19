@@ -3,7 +3,7 @@
 // Funciona en celular (cámara trasera) y en PC (webcam)
 // ============================
 
-import { Html5Qrcode } from "https://cdn.jsdelivr.net/npm/html5-qr-code/+esm";
+// Html5Qrcode se carga como global desde /static/js/html5-qrcode.min.js
 
 export function initEscanerCamara({ codigoInput }) {
 
@@ -64,6 +64,11 @@ export function initEscanerCamara({ codigoInput }) {
     // ============================
     function iniciar() {
         if (activo) return;
+
+        if (typeof Html5Qrcode === "undefined") {
+            mostrarEstado("❌ Librería no cargó. Recarga la página.", "error");
+            return;
+        }
 
         const esLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
         const esHttps     = location.protocol === "https:";
