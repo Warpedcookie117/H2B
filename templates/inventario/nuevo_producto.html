@@ -1,9 +1,12 @@
 {% extends 'partials/base.html' %}
 {% load static %}
 
-{% block content %}
-
+{% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/nuevo_producto.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/html5-qr-code/html5-qr-code.min.js"></script>
+{% endblock %}
+
+{% block content %}
 
 <div class="max-w-3xl mx-auto px-4 py-10 space-y-8">
 
@@ -81,7 +84,15 @@
     <!-- CÓDIGO DE BARRAS -->
     <div class="space-y-1">
       <label class="label-90s">{{ form.codigo_barras.label }}</label>
-      <div class="input-wrapper wrapper-codigo">{{ form.codigo_barras }}</div>
+      <div class="flex gap-2 items-stretch">
+        <div class="input-wrapper wrapper-codigo flex-1">{{ form.codigo_barras }}</div>
+        <button type="button" id="btn-escanear-camara"
+                class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B]
+                       px-3 font-black text-xl flex items-center justify-center"
+                title="Escanear con cámara">
+          📷
+        </button>
+      </div>
     </div>
 
     <!-- NOMBRE -->
@@ -245,6 +256,22 @@
       </div>
       <span class="font-mono font-black text-lg bg-black text-white px-3 py-1">123456789012</span>
     </button>
+  </div>
+</dialog>
+
+<!-- MODAL CÁMARA ESCÁNER -->
+<dialog id="modal-camara"
+        class="border-4 border-black shadow-[8px_8px_0_0_black] p-0 w-[360px] max-w-[95vw]">
+  <div class="bg-[#FFBE0B] border-b-4 border-black px-5 py-3 flex justify-between items-center">
+    <h3 class="text-base font-black text-black uppercase tracking-widest">📷 Escanear código</h3>
+    <button id="btn-cerrar-camara" type="button"
+            class="font-black text-2xl text-black leading-none">✕</button>
+  </div>
+  <div class="bg-white p-4 space-y-3">
+    <div id="camara-reader" class="w-full border-2 border-black overflow-hidden"></div>
+    <p class="text-xs text-gray-500 font-semibold text-center uppercase tracking-widest">
+      Apunta la cámara al código de barras
+    </p>
   </div>
 </dialog>
 

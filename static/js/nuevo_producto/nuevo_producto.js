@@ -3,6 +3,7 @@ import { initCategorias }        from "./categorias.js";
 import { initAtributos }         from "./atributos.js";
 import { initBotonInventario }   from "./boton_inventario_nvproducto.js";
 import { iniciarBarraProgreso }  from "./barra_progreso.js";
+import { initEscanerCamara }     from "./escaner_camara.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -141,7 +142,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // 6. FOCO AUTOMÁTICO AL CAMPO CÓDIGO
+    // 6. ESCÁNER DE CÁMARA
+    // ============================
+    initEscanerCamara({ codigoInput });
+
+    // ============================
+    // 7. FOCO AUTOMÁTICO AL CAMPO CÓDIGO
     // ============================
     codigoInput.focus();
 

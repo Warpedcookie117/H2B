@@ -277,3 +277,21 @@
   color: #374151;
   margin-bottom: 0.25rem;
 }
+
+/* ============================
+   MODAL CÁMARA ESCÁNER
+   ============================ */
+#modal-camara::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+#camara-reader video {
+  width: 100% !important;
+}
+/* Ocultar botón de detener que genera html5-qr-code */
+#camara-reader button {
+  display: none !important;
+}
+/* Ocultar imagen de overlay que añade la librería */
+#camara-reader img[alt="Info icon"] {
+  display: none !important;
+}
