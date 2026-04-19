@@ -4,9 +4,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const menu    = document.getElementById("menu");
   const navbar  = document.getElementById("navbar");
 
-  console.log("[navbar] toggle:", toggle);
-  console.log("[navbar] menu:", menu);
-  console.log("[navbar] navbar:", navbar);
 
   let menuAbierto   = false;
   let lastScrollTop = 0;
@@ -89,10 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // CLICK EN HAMBURGUESA
   toggle.addEventListener("click", (e) => {
     e.stopPropagation();
-    console.log("[navbar] click hamburguesa, menuAbierto antes:", menuAbierto);
-    console.log("[navbar] menu classes antes:", menu.className);
     toggleMenu();
-    console.log("[navbar] menu classes despues:", menu.className);
   });
 
   // CLICK EN LINKS DEL MENÚ

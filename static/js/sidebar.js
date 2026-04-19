@@ -1,8 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  const sidebar = document.getElementById("sidebar");
-  const toggle  = document.getElementById("sidebar-toggle");
-  const tab     = document.getElementById("sidebar-tab");
+  const sidebar   = document.getElementById("sidebar");
+  const toggle    = document.getElementById("sidebar-toggle");
+  const tab       = document.getElementById("sidebar-tab");
+  const backdrop  = document.getElementById("sidebar-backdrop");
 
   if (!sidebar) return;
 
@@ -90,24 +91,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   // HAMBURGUESA MÓVIL
   // ============================================================
+  function animarHamburguesa(abrir) {
+    const top    = toggle.querySelector(".sb-top");
+    const mid    = toggle.querySelector(".sb-mid");
+    const bottom = toggle.querySelector(".sb-bottom");
+    top?.classList.toggle("sb-top-open",    abrir);
+    mid?.classList.toggle("sb-mid-open",    abrir);
+    bottom?.classList.toggle("sb-bottom-open", abrir);
+  }
+
+  function abrirSidebar() {
+    sidebar.classList.add("open");
+    backdrop?.classList.add("visible");
+    animarHamburguesa(true);
+  }
+
+  function cerrarSidebar() {
+    sidebar.classList.remove("open");
+    backdrop?.classList.remove("visible");
+    animarHamburguesa(false);
+  }
+
   if (toggle) {
     toggle.addEventListener("click", () => {
-      sidebar.classList.toggle("open");
+      sidebar.classList.contains("open") ? cerrarSidebar() : abrirSidebar();
     });
   }
+
+  // Cerrar al hacer clic en el backdrop
+  backdrop?.addEventListener("click", cerrarSidebar);
 
   // Cerrar móvil al hacer clic en un link
   sidebar.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
-      if (window.innerWidth < 768) {
-        sidebar.classList.remove("open");
-      }
+      if (window.innerWidth < 768) cerrarSidebar();
     });
   });
 
   window.addEventListener("resize", () => {
     if (window.innerWidth >= 768) {
-      sidebar.classList.remove("open");
+      cerrarSidebar();
       // Re-aplicar margen correcto al volver a desktop
       applyPinned(isPinned());
     } else {

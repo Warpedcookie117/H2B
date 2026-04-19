@@ -3,6 +3,8 @@
 // Funciona en celular (cámara trasera) y en PC (webcam)
 // ============================
 
+import { Html5Qrcode } from "https://cdn.jsdelivr.net/npm/html5-qr-code/+esm";
+
 export function initEscanerCamara({ codigoInput }) {
 
     const btnAbrir  = document.getElementById("btn-escanear-camara");
@@ -63,16 +65,10 @@ export function initEscanerCamara({ codigoInput }) {
     function iniciar() {
         if (activo) return;
 
-        const libreríaOk  = typeof window.Html5Qrcode !== "undefined";
         const esLocalhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
         const esHttps     = location.protocol === "https:";
-        const camaraOk    = esLocalhost || esHttps;
 
-        if (!libreríaOk) {
-            mostrarEstado("❌ Librería no cargó. Recarga la página.", "error");
-            return;
-        }
-        if (!camaraOk) {
+        if (!esLocalhost && !esHttps) {
             mostrarEstado("📵 Cámara bloqueada en HTTP.\nFunciona en la versión en línea (HTTPS).", "error");
             return;
         }
