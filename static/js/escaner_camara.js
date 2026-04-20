@@ -1,9 +1,10 @@
 // ============================
-// ESCÁNER DE CÁMARA — html5-qr-code
+// ESCÁNER DE CÁMARA — compartido entre vistas
+// Expone window.initEscanerCamara(onDetectado)
 // Html5Qrcode global desde /static/js/html5-qrcode.min.js
 // ============================
 
-export function initEscanerCamara({ codigoInput }) {
+function initEscanerCamara(onDetectado) {
 
     const btnAbrir  = document.getElementById("btn-escanear-camara");
     const modal     = document.getElementById("modal-camara");
@@ -38,12 +39,9 @@ export function initEscanerCamara({ codigoInput }) {
     // ============================
     function onEscaneado(codigo) {
         console.log("[escaner] ✅ Código detectado:", codigo);
-        codigoInput.value = codigo;
         detener().then(() => {
             modal.close();
-            codigoInput.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
-            );
+            onDetectado(codigo);
         });
     }
 
@@ -70,11 +68,9 @@ export function initEscanerCamara({ codigoInput }) {
 
         console.log("[escaner] Iniciando con cámara trasera...");
 
-        // Vaciar el reader UNA SOLA VEZ antes de crear el scanner
         reader.innerHTML = "";
         scanner = new Lib("camara-reader");
 
-        // Formatos de barras 1D + QR explícitos
         const F = window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats;
         const config = {
             fps: 15,
@@ -90,15 +86,14 @@ export function initEscanerCamara({ codigoInput }) {
         scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
-            console.log("[escaner] Cámara trasera OK — video en DOM:", !!reader.querySelector("video"));
+            console.log("[escaner] Cámara trasera OK");
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            // NO tocar reader.innerHTML — solo reintentar con facingMode diferente
             scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
-                console.log("[escaner] Cámara frontal OK — video en DOM:", !!reader.querySelector("video"));
+                console.log("[escaner] Cámara frontal OK");
             })
             .catch((errUser) => {
                 console.error("[escaner] Ambas cámaras fallaron:", errUser);

@@ -51,6 +51,16 @@ if (buscador) {
     buscador.addEventListener("input", function () {
         filtrarCards(this.value.toLowerCase().trim());
     });
+
+    // ============================
+    // ESCÁNER DE CÁMARA
+    // ============================
+    if (typeof initEscanerCamara === "function") {
+        initEscanerCamara((codigo) => {
+            buscador.value = codigo;
+            filtrarCards(codigo);
+        });
+    }
 }
 
 function filtrarCards(texto) {

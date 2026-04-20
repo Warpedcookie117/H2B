@@ -172,12 +172,12 @@
 #sidebar-toggle {
   position: fixed;
   bottom: 1.5rem;
-  left: 1rem;
+  right: 1rem;
   z-index: 60;
   background: #dc2626;
   color: white;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   border: 3px solid black;
   box-shadow: 4px 4px 0 0 black;

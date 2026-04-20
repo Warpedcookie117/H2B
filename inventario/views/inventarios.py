@@ -270,8 +270,8 @@ def ajustar_inventario(request, producto_id, ubicacion_id):
         })
 
     # ⭐ Si NO es dueño:
-    # Si la cantidad nueva es MAYOR → ajuste directo (no molestar al dueño)
-    if cantidad > cantidad_actual:
+    # Si la cantidad nueva es MAYOR O IGUAL → ajuste directo (no molestar al dueño)
+    if cantidad >= cantidad_actual:
         inv = InventarioService.ajuste(
             producto=producto,
             nueva_cantidad=cantidad,
@@ -381,28 +381,34 @@ def rechazar_solicitud(request, solicitud_id):
     })
     
 @login_required
-
 def aprobar_solicitud_panel(request, solicitud_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return render(request, "inventario/solicitudajuste/error_permiso.html")
+
     solicitud = get_object_or_404(SolicitudAjuste, id=solicitud_id)
 
     if solicitud.estado != "pendiente":
         messages.error(request, "Esta solicitud ya fue procesada.")
         return redirect("inventario:solicitudes_pendientes")
 
-    # Aplicar ajuste con el dueño como responsable
-    InventarioService.aplicar_ajuste(solicitud, request.user.empleado)
+    InventarioService.aplicar_ajuste(solicitud, empleado)
 
     solicitud.estado = "aprobado"
     solicitud.fecha_respuesta = timezone.now()
-    solicitud.aprobado_por = request.user.empleado
+    solicitud.aprobado_por = empleado
     solicitud.save()
 
     messages.success(request, "Solicitud aprobada y ajuste aplicado correctamente.")
     return redirect("inventario:solicitudes_pendientes")
 
-@login_required
 
+@login_required
 def rechazar_solicitud_panel(request, solicitud_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return render(request, "inventario/solicitudajuste/error_permiso.html")
+
     solicitud = get_object_or_404(SolicitudAjuste, id=solicitud_id)
 
     if solicitud.estado != "pendiente":
@@ -411,7 +417,7 @@ def rechazar_solicitud_panel(request, solicitud_id):
 
     solicitud.estado = "rechazado"
     solicitud.fecha_respuesta = timezone.now()
-    solicitud.aprobado_por = request.user.empleado
+    solicitud.aprobado_por = empleado
     solicitud.save()
 
     messages.success(request, "Solicitud rechazada correctamente.")
@@ -453,6 +459,7 @@ def solicitudes_pendientes(request):
         solicitudes_data.append({
             "solicitud": s,
             "cantidad_actual": inventario.cantidad_actual,
+            "delta": inventario.cantidad_actual - s.cantidad,
         })
 
     return render(request, "inventario/solicitudes_pendientes.html", {

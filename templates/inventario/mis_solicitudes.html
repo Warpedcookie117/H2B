@@ -1,128 +1,138 @@
 {% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Mis Solicitudes{% endblock %}
 
 {% block content %}
+<div class="max-w-3xl mx-auto px-4 py-10 space-y-8">
 
-<div class="min-h-screen bg-gray-50 py-8">
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-
-    <!-- HEADER -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-10">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900">Mis Solicitudes de Ajuste</h1>
-        <p class="mt-1 text-sm text-gray-500">
-          Historial completo de tus solicitudes de ajuste.
-        </p>
-      </div>
-
-      <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 border border-blue-100">
-        Total: {{ solicitudes|length }}
-      </span>
-    </div>
-
-    {% if solicitudes %}
-
-    <!-- TIMELINE -->
-    <div class="relative pl-10 space-y-10">
-
-      <!-- Línea vertical -->
-      <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
-
-      {% for s in solicitudes %}
-      <div class="relative">
-
-        <!-- Punto -->
-        <div class="absolute left-2.5 top-2 w-3 h-3 rounded-full
-          {% if s.estado == 'pendiente' %} bg-amber-500
-          {% elif s.estado == 'aprobado' %} bg-emerald-600
-          {% else %} bg-rose-600 {% endif %}">
-        </div>
-
-        <!-- CARD -->
-        <div class="bg-white border border-gray-100 shadow-sm rounded-xl p-5">
-
-          <!-- HEADER -->
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-
-            <div>
-              <p class="text-xs text-gray-400">Solicitud #{{ s.id }}</p>
-              <h2 class="text-lg font-semibold text-gray-900">{{ s.producto.nombre }}</h2>
-              <p class="text-xs text-gray-500 mt-1">{{ s.ubicacion.nombre }}</p>
-
-              <!-- Código -->
-              {% if s.producto.codigo_barras %}
-              <button
-                onclick="navigator.clipboard.writeText('{{ s.producto.codigo_barras }}')"
-                class="mt-2 inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-700">
-                <span class="font-mono bg-gray-100 px-2 py-0.5 rounded">
-                  {{ s.producto.codigo_barras }}
-                </span>
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2"
-                     viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M8 16h8M8 12h8m-6-8h6a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z"/>
-                </svg>
-              </button>
-              {% endif %}
-            </div>
-
-            <!-- ESTADO -->
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium border
-              {% if s.estado == 'pendiente' %} bg-amber-50 text-amber-700 border-amber-200
-              {% elif s.estado == 'aprobado' %} bg-emerald-50 text-emerald-700 border-emerald-200
-              {% else %} bg-rose-50 text-rose-700 border-rose-200 {% endif %}">
-              ● {{ s.estado|title }}
-            </span>
-
-          </div>
-
-          <!-- BODY -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-
-            <div>
-              <p class="text-gray-400 text-xs uppercase tracking-wide">Cantidad</p>
-              <p class="font-medium text-gray-800">{{ s.cantidad }}</p>
-            </div>
-
-            <div>
-              <p class="text-gray-400 text-xs uppercase tracking-wide">Motivo</p>
-              <p class="font-medium text-gray-800">{{ s.motivo|default:"—" }}</p>
-            </div>
-
-            <div>
-              <p class="text-gray-400 text-xs uppercase tracking-wide">Dueño</p>
-              <p class="font-medium text-gray-800">{{ s.producto.dueño.user.username }}</p>
-            </div>
-
-            <div>
-              <p class="text-gray-400 text-xs uppercase tracking-wide">Fecha</p>
-              <p class="font-medium text-gray-800">{{ s.fecha_solicitud|date:"d/m/Y H:i" }}</p>
-            </div>
-
-          </div>
-
-        </div>
-      </div>
-      {% endfor %}
-
-    </div>
-
-    {% else %}
-
-    <!-- EMPTY STATE -->
-    <div class="mt-20 flex flex-col items-center justify-center text-center text-gray-500">
-      <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-        <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 13h6m-3-3v6m9-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <p class="text-sm font-medium text-gray-700">Aún no tienes solicitudes de ajuste.</p>
-      <p class="text-xs text-gray-400 mt-1">Cuando registres un ajuste desde inventario, aparecerá aquí.</p>
-    </div>
-
-    {% endif %}
-
+  <!-- ENCABEZADO -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#3A86FF] p-8 text-center relative overflow-hidden">
+    <div class="absolute -top-4 -right-4 w-16 h-16 bg-[#FFBE0B] rotate-45 opacity-50"></div>
+    <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-[#8338EC] rounded-full opacity-40"></div>
+    <h1 class="text-4xl sm:text-5xl font-black text-white uppercase tracking-tight relative z-10 drop-shadow-[3px_3px_0_rgba(0,0,0,0.4)]">
+      📋 Mis Solicitudes
+    </h1>
+    <p class="text-white/80 font-bold text-base mt-2 relative z-10">
+      Historial de tus ajustes enviados al dueño.
+    </p>
   </div>
-</div>
 
+  <!-- MENSAJES DJANGO -->
+  {% if messages %}
+    {% for message in messages %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-6 py-3 uppercase tracking-widest text-sm
+                {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- CONTADOR -->
+  <div class="flex items-center gap-3">
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white px-5 py-2 font-black text-sm uppercase tracking-widest">
+      Total: {{ solicitudes|length }}
+    </div>
+  </div>
+
+  {% if solicitudes %}
+
+  <div class="space-y-5">
+    {% for s in solicitudes %}
+
+    <!-- CARD -->
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white overflow-hidden">
+
+      <!-- BARRA SUPERIOR DE ESTADO -->
+      <div class="border-b-4 border-black px-5 py-3 flex items-center justify-between
+        {% if s.estado == 'pendiente' %}bg-[#FFBE0B]
+        {% elif s.estado == 'aprobado' %}bg-[#06D6A0]
+        {% else %}bg-[#FF006E]{% endif %}">
+        <span class="font-black text-black text-xs uppercase tracking-widest">
+          Solicitud #{{ s.id }}
+        </span>
+        <span class="font-black text-black text-xs uppercase tracking-widest border-2 border-black px-3 py-0.5
+          {% if s.estado == 'rechazado' %}text-white border-white{% endif %}">
+          {% if s.estado == 'pendiente' %}⏳ Pendiente
+          {% elif s.estado == 'aprobado' %}✅ Aprobado
+          {% else %}❌ Rechazado{% endif %}
+        </span>
+      </div>
+
+      <div class="p-5 space-y-4">
+
+        <!-- NOMBRE + UBICACIÓN -->
+        <div>
+          <h2 class="font-black text-black text-lg uppercase tracking-wide leading-tight">
+            {{ s.producto.nombre }}
+          </h2>
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest mt-0.5">
+            📍 {{ s.ubicacion.nombre }}
+          </p>
+          {% if s.producto.codigo_barras %}
+          <span class="mt-1 inline-block font-mono text-xs bg-gray-100 border-2 border-black px-2 py-0.5 font-bold">
+            {{ s.producto.codigo_barras }}
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- DATOS EN GRID -->
+        <div class="grid grid-cols-2 gap-3">
+
+          <div class="border-4 border-black p-3 bg-[#F0FFF4]">
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Cantidad solicitada</p>
+            <p class="font-black text-2xl text-black mt-0.5">{{ s.cantidad }}</p>
+          </div>
+
+          <div class="border-4 border-black p-3 bg-white">
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Fecha</p>
+            <p class="font-black text-sm text-black mt-0.5">{{ s.fecha_solicitud|date:"d/m/Y" }}</p>
+            <p class="font-semibold text-xs text-gray-400">{{ s.fecha_solicitud|date:"H:i" }}</p>
+          </div>
+
+          <div class="border-4 border-black p-3 bg-white col-span-2">
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Motivo</p>
+            <p class="font-semibold text-sm text-black mt-0.5">{{ s.motivo|default:"—" }}</p>
+          </div>
+
+          <div class="border-4 border-black p-3 bg-white col-span-2">
+            <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Dueño del producto</p>
+            <p class="font-black text-sm text-black mt-0.5">
+              👤 {{ s.producto.dueño.user.get_full_name|default:s.producto.dueño.user.username }}
+            </p>
+          </div>
+
+        </div>
+
+        <!-- FECHA RESPUESTA (si ya fue procesada) -->
+        {% if s.fecha_respuesta %}
+        <div class="border-4 border-black p-3
+          {% if s.estado == 'aprobado' %}bg-[#06D6A0]{% else %}bg-[#FF006E]{% endif %}">
+          <p class="text-[10px] font-black uppercase tracking-widest
+            {% if s.estado == 'rechazado' %}text-white{% else %}text-black{% endif %}">
+            Respondida el {{ s.fecha_respuesta|date:"d/m/Y H:i" }}
+          </p>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+
+  {% else %}
+
+  <!-- EMPTY STATE -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#CCFF00] p-12 text-center">
+    <p class="text-6xl mb-4">📭</p>
+    <p class="font-black text-black text-xl uppercase tracking-widest">Sin solicitudes aún</p>
+    <p class="text-black/70 font-semibold text-sm mt-2">
+      Cuando hagas un ajuste negativo de inventario, aparecerá aquí para que veas si fue aprobado o rechazado.
+    </p>
+  </div>
+
+  {% endif %}
+
+</div>
 {% endblock %}

@@ -1,0 +1,171 @@
+/* ============================================================
+   BASE DE CONOCIMIENTOS
+   ============================================================ */
+
+/* HEADER — formas flotantes */
+@keyframes floatA {
+  0%, 100% { transform: translateY(0)   rotate(12deg); }
+  50%       { transform: translateY(-16px) rotate(20deg); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translateY(0)   rotate(45deg); }
+  50%       { transform: translateY(-10px) rotate(36deg); }
+}
+@keyframes floatC {
+  0%, 100% { transform: translateY(0)   rotate(-6deg); }
+  50%       { transform: translateY(-20px) rotate(-16deg); }
+}
+.kb-shape-a { animation: floatA 5s ease-in-out infinite; }
+.kb-shape-b { animation: floatB 4s ease-in-out infinite 0.7s; }
+.kb-shape-c { animation: floatC 6.5s ease-in-out infinite 1.4s; }
+.kb-shape-d { animation: floatA 4.5s ease-in-out infinite 2.1s; }
+
+/* TICKER — banda de tips en movimiento */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.kb-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 28s linear infinite;
+}
+.kb-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* STAT BADGES — contadores con pulso */
+@keyframes pulseBorder {
+  0%, 100% { box-shadow: 4px 4px 0 0 black; }
+  50%       { box-shadow: 6px 6px 0 0 black, 0 0 0 3px rgba(0,0,0,0.08); }
+}
+.kb-stat {
+  border: 4px solid black;
+  animation: pulseBorder 2.5s ease-in-out infinite;
+}
+.kb-stat:nth-child(2) { animation-delay: 0.5s; }
+.kb-stat:nth-child(3) { animation-delay: 1s; }
+
+/* CARD ENTRADA */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.kb-card {
+  border: 4px solid black;
+  box-shadow: 6px 6px 0 0 black;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-decoration: none;
+  animation: cardIn 0.45s ease both;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
+}
+.kb-card:hover  { transform: translate(-4px,-4px); box-shadow: 10px 10px 0 0 black; }
+.kb-card:active { transform: translate(2px,2px);   box-shadow: 3px 3px 0 0 black; }
+
+/* Stagger */
+.kb-card:nth-child(1) { animation-delay: 0.05s; }
+.kb-card:nth-child(2) { animation-delay: 0.10s; }
+.kb-card:nth-child(3) { animation-delay: 0.15s; }
+.kb-card:nth-child(4) { animation-delay: 0.20s; }
+.kb-card:nth-child(5) { animation-delay: 0.25s; }
+.kb-card:nth-child(6) { animation-delay: 0.30s; }
+
+/* CARD BAND — cabecera de color */
+.kb-band {
+  border-bottom: 4px solid black;
+  padding: 1.1rem 1.25rem 0.85rem;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.kb-band::before {
+  content: "";
+  position: absolute;
+  top: -18px; right: -18px;
+  width: 56px; height: 56px;
+  background: rgba(0,0,0,0.12);
+  transform: rotate(20deg);
+}
+.kb-band::after {
+  content: "";
+  position: absolute;
+  bottom: -10px; left: 20px;
+  width: 32px; height: 32px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+}
+
+/* CARD BODY */
+.kb-body {
+  padding: 1rem 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* REVEAL — lista que se despliega en hover/tap */
+.kb-reveal {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.38s ease, padding 0.3s ease;
+  border-top: 0px solid black;
+  padding: 0 1.25rem;
+}
+.kb-card:hover .kb-reveal,
+.kb-card.open   .kb-reveal {
+  max-height: 220px;
+  padding: 0.85rem 1.25rem 0.75rem;
+  border-top-width: 3px;
+}
+
+.kb-reveal li {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #111;
+  padding: 0.2rem 0;
+  padding-left: 1rem;
+  position: relative;
+  list-style: none;
+}
+.kb-reveal li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  font-weight: 900;
+}
+
+/* BADGE */
+.kb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 2px solid black;
+  padding: 0.2rem 0.55rem;
+  width: fit-content;
+  margin-top: auto;
+}
+.kb-badge.pronto     { background: #FFBE0B; color: black; }
+.kb-badge.disponible { background: #06D6A0; color: black; }
+
+/* SECTION LABEL */
+.kb-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  border: 3px solid black;
+  padding: 0.3rem 0.75rem;
+  margin-bottom: 1rem;
+}

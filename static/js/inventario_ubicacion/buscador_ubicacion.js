@@ -63,6 +63,16 @@ if (!buscador) {
     });
 
     // ============================
+    // ESCÁNER DE CÁMARA
+    // ============================
+    if (typeof initEscanerCamara === "function") {
+        initEscanerCamara((codigo) => {
+            buscador.value = codigo;
+            filtrarCards(codigo);
+        });
+    }
+
+    // ============================
     // FILTRAR CARDS + ANUNCIO
     // ============================
     function filtrarCards(texto) {

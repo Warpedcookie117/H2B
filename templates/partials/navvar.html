@@ -1,11 +1,18 @@
 {% load static %}
-
 <nav id="navbar" class="bg-red-600 text-white fixed top-0 left-0 right-0 z-50 shadow-md transition-transform duration-300">
   <div class="container mx-auto px-4 py-3 flex items-center justify-between relative">
 
     <!-- Logo -->
     <div class="flex-shrink-0">
-      <h1 class="text-lg md:text-xl lg:text-2xl font-bold truncate max-w-[160px] sm:max-w-none">
+      <!-- Imagen — solo en móvil donde el texto no cabe -->
+      <a href="{% url 'landing' %}" class="sm:hidden flex items-center">
+        <span class="bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
+          <img src="{% static 'img/logotienda.png' %}" alt="CM"
+               class="h-8 w-8 object-contain">
+        </span>
+      </a>
+      <!-- Texto completo — desde sm en adelante -->
+      <h1 class="hidden sm:block text-lg md:text-xl lg:text-2xl font-bold">
         <a href="{% url 'landing' %}" class="no-underline whitespace-nowrap">Comercializadora Modelo</a>
       </h1>
     </div>
