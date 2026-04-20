@@ -21,8 +21,8 @@
 
     <div class="relative z-10 space-y-3">
       <p class="text-white/60 font-black text-xs uppercase tracking-[0.3em]">📚 Aprende el sistema</p>
-      <h1 class="text-5xl sm:text-7xl font-black text-white uppercase tracking-tight drop-shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
-        Base de<br>Conocimientos
+      <h1 class="text-3xl sm:text-5xl lg:text-7xl font-black text-white uppercase tracking-tight drop-shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
+        Base de Conocimientos
       </h1>
       <p class="text-white/80 font-bold text-base max-w-2xl mx-auto leading-relaxed">
         Todo lo que necesitas saber para operar el sistema sin miedo. Tutoriales en video proximamente —
@@ -95,7 +95,7 @@
             Las ubicaciones son los "lugares físicos" donde existe el stock: un almacén central,
             la bodega de una sucursal o el piso de venta. Sin ubicaciones no hay inventario.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#3A86FF; background:#EFF6FF;">
           <li>Diferencia entre almacén, bodega y piso de venta</li>
@@ -119,7 +119,7 @@
             y docena, una foto y lo mandas a una ubicación. El sistema lo detecta automáticamente
             si ya existe al escanear.
           </p>
-          <span class="kb-badge disponible">✅ Disponible ahora</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#FF006E; background:#FFF0F6;">
           <li>El código de barras puede escanearse con la cámara del celular</li>
@@ -143,7 +143,7 @@
             Si subes la cantidad pasa directo. Si bajas la cantidad, el dueño recibe
             una notificación para aprobar o rechazar el cambio.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#FFBE0B; background:#FFFBEB;">
           <li>Ajuste positivo (subir) → pasa directo sin aprobación</li>
@@ -167,7 +167,7 @@
             un solo producto o usar la transferencia múltiple para reubicar varios
             de un jalón — perfecto para cuando llega mercancía nueva.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#06D6A0; background:#F0FFF9;">
           <li>Transferencia simple: un producto, origen → destino</li>
@@ -202,7 +202,7 @@
             color, talla, mililitros, aroma, tono... Se configuran por subcategoría
             y aparecen automáticamente al registrar un producto de esa categoría.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#8338EC; background:#F5F0FF;">
           <li>Se crean desde Catálogo → Atributos</li>
@@ -226,7 +226,7 @@
             y subcategoría (ej. "Perfumes de mujer"). Esto permite filtrar, reportar
             y asignar atributos con precisión.
           </p>
-          <span class="kb-badge disponible">✅ Disponible ahora</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#00BBF9; background:#F0FAFF;">
           <li>Una categoría padre puede tener varias subcategorías</li>
@@ -250,7 +250,7 @@
             Navidad, Día de Madres, Regreso a Clases, etc. Un producto puede
             pertenecer a varias temporadas al mismo tiempo.
           </p>
-          <span class="kb-badge disponible">✅ Disponible ahora</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#CCFF00; background:#FAFFF0;">
           <li>Un producto puede tener múltiples temporadas asignadas</li>
@@ -285,7 +285,7 @@
             cobras y listo. El sistema descuenta automáticamente el stock del piso
             de venta y genera el ticket de la transacción.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#FB5607; background:#FFF4EE;">
           <li>Debes abrir la caja antes de poder vender</li>
@@ -309,7 +309,7 @@
             el sistema calcula lo que debería haber y te muestra si hay diferencia.
             Todo queda registrado con fecha, hora y quién lo hizo.
           </p>
-          <span class="kb-badge pronto">⏳ Video próximamente</span>
+          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
         </div>
         <ul class="kb-reveal" style="border-color:#FF006E; background:#FFF0F6;">
           <li>Solo quien tiene la caja abierta puede hacer el corte</li>
@@ -325,9 +325,9 @@
 </div>
 
 <script>
-document.querySelectorAll(".kb-card").forEach(card => {
-    card.addEventListener("click", function () {
-        this.classList.toggle("open");
+document.querySelectorAll(".kb-accordion-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+        this.closest(".kb-card").classList.toggle("open");
     });
 });
 </script>

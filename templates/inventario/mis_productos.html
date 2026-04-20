@@ -80,19 +80,24 @@
     </div>
   </div>
 
+  <!-- BOTÓN NUEVO PRODUCTO -->
+  <a href="{% url 'inventario:nuevo_producto' %}"
+     class="btn-90s w-full bg-[#FFBE0B] border-4 border-black shadow-[4px_4px_0_0_black]
+            text-black font-black text-base uppercase tracking-widest py-3
+            flex items-center justify-center gap-2">
+    ➕ Nuevo producto
+  </a>
+
   <!-- BUSCADOR -->
-  <div class="flex gap-3 w-full">
-    <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex-1">
-      <input type="text" id="buscadorProductos"
-             placeholder="Busca por nombre, categoría, código de barras o temporada..."
-             class="w-full px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
-    </div>
-    <a href="{% url 'inventario:nuevo_producto' %}"
-       class="btn-90s bg-[#FFBE0B] border-4 border-black shadow-[4px_4px_0_0_black]
-              text-black font-black text-sm uppercase tracking-widest px-5 py-3
-              flex items-center gap-1 whitespace-nowrap">
-      + Nuevo
-    </a>
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex items-stretch w-full">
+    <input type="text" id="buscadorProductos"
+           placeholder="Busca por nombre, categoría, código de barras o temporada..."
+           class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+    <button type="button" id="btn-escanear-camara"
+            class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-4 font-black text-xl flex items-center justify-center"
+            title="Escanear con cámara">
+      📷
+    </button>
   </div>
 
   <!-- ============================================================ -->
@@ -312,6 +317,23 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- MODAL CÁMARA ESCÁNER -->
+<dialog id="modal-camara"
+        class="border-4 border-black shadow-[8px_8px_0_0_black] p-0 w-[360px] max-w-[95vw]">
+  <div class="bg-[#FFBE0B] border-b-4 border-black px-5 py-3 flex justify-between items-center">
+    <h3 class="text-base font-black text-black uppercase tracking-widest">📷 Escanear código</h3>
+    <button id="btn-cerrar-camara" type="button"
+            class="font-black text-2xl text-black leading-none">✕</button>
+  </div>
+  <div class="bg-white p-4 space-y-3">
+    <div id="camara-reader" class="w-full border-2 border-black overflow-hidden"></div>
+    <p class="text-xs text-gray-500 font-semibold text-center uppercase tracking-widest">
+      Apunta la cámara al código de barras
+    </p>
+  </div>
+</dialog>
+<script src="{% static 'js/html5-qrcode.min.js' %}"></script>
+<script src="{% static 'js/escaner_camara.js' %}"></script>
 <script src="{% static 'js/mostrarEtiqueta.js' %}"></script>
 <script src="{% static 'js/lista_productos.js' %}"></script>
 <script>

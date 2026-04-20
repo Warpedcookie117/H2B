@@ -108,7 +108,7 @@
   gap: 0.5rem;
 }
 
-/* REVEAL — lista que se despliega en hover/tap */
+/* REVEAL — acordeón, solo se abre con .open */
 .kb-reveal {
   max-height: 0;
   overflow: hidden;
@@ -116,11 +116,37 @@
   border-top: 0px solid black;
   padding: 0 1.25rem;
 }
-.kb-card:hover .kb-reveal,
-.kb-card.open   .kb-reveal {
+.kb-card.open .kb-reveal {
   max-height: 220px;
   padding: 0.85rem 1.25rem 0.75rem;
   border-top-width: 3px;
+}
+
+/* BOTÓN ACORDEÓN */
+.kb-accordion-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 2px solid black;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: white;
+  cursor: pointer;
+  margin-top: auto;
+  transition: background 0.1s ease;
+}
+.kb-accordion-btn:hover { background: #f3f4f6; }
+.kb-accordion-icon {
+  transition: transform 0.3s ease;
+  font-style: normal;
+  font-weight: 900;
+}
+.kb-card.open .kb-accordion-icon {
+  transform: rotate(180deg);
 }
 
 .kb-reveal li {

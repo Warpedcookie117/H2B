@@ -79,24 +79,24 @@
     </div>
   </div>
 
+  <!-- BOTÓN NUEVO PRODUCTO -->
+  <a href="{% url 'inventario:nuevo_producto' %}"
+     class="btn-90s w-full bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
+            text-black font-black text-base uppercase tracking-widest py-3
+            flex items-center justify-center gap-2">
+    ➕ Nuevo producto
+  </a>
+
   <!-- BUSCADOR -->
-  <div class="flex gap-3 w-full">
-    <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex-1 flex items-stretch">
-      <input type="text" id="buscadorProductos"
-             placeholder="Busca por nombre, categoría, código de barras o temporada..."
-             class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
-      <button type="button" id="btn-escanear-camara"
-              class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-3 font-black text-xl flex items-center justify-center"
-              title="Escanear con cámara">
-        📷
-      </button>
-    </div>
-    <a href="{% url 'inventario:nuevo_producto' %}"
-       class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
-              text-black font-black text-sm uppercase tracking-widest px-5 py-3
-              flex items-center gap-1 whitespace-nowrap">
-      + Nuevo
-    </a>
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex items-stretch w-full">
+    <input type="text" id="buscadorProductos"
+           placeholder="Busca por nombre, categoría, código de barras o temporada..."
+           class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+    <button type="button" id="btn-escanear-camara"
+            class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-4 font-black text-xl flex items-center justify-center"
+            title="Escanear con cámara">
+      📷
+    </button>
   </div>
 
   <!-- ============================================================ -->
