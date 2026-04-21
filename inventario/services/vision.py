@@ -2,5 +2,10 @@ import imagehash
 from PIL import Image
 
 def generar_phash(file):
+    if hasattr(file, 'seek'):
+        file.seek(0)
     img = Image.open(file).convert("RGB")
-    return str(imagehash.phash(img))
+    resultado = str(imagehash.phash(img))
+    if hasattr(file, 'seek'):
+        file.seek(0)
+    return resultado

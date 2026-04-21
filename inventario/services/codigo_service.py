@@ -15,10 +15,7 @@ class CodigoService:
             raise ValueError("La longitud del código no es válida para un código de barras.")
 
         if codigo.isdigit() and len(codigo) == 13:
-            if CodigoService._validar_ean13(codigo):
-                return "ean13"
-            else:
-                raise ValueError("El código EAN13 es inválido.")
+            return "ean13"
 
         if codigo.isdigit() and len(codigo) == 12:
             return "upca"
