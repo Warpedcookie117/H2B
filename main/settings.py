@@ -34,6 +34,8 @@ ALLOWED_HOSTS = [
     "192.168.137.122",
     "192.168.0.56",
     "h2b-ulx9.onrender.com",
+    "comercializadoramodelo.com",
+    "www.comercializadoramodelo.com",
     "10.111.122.37",
     "192.168.56.1",
     "192.168.41.33",
@@ -42,6 +44,8 @@ ALLOWED_HOSTS = [
 # ⭐ Render necesita esto
 CSRF_TRUSTED_ORIGINS = [
     "https://h2b-ulx9.onrender.com",
+    "https://comercializadoramodelo.com",
+    "https://www.comercializadoramodelo.com",
 ]
 
 
