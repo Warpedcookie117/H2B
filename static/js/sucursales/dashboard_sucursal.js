@@ -241,4 +241,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ============================
+  // ELIMINAR SUCURSAL
+  // ============================
+  window.confirmarEliminarSucursal = function () {
+    document.getElementById("modalEliminarSucursal").classList.remove("hidden");
+  };
+
+  window.cerrarModalEliminarSucursal = function () {
+    document.getElementById("modalEliminarSucursal").classList.add("hidden");
+  };
+
+  const btnConfirmarEliminarSucursal = document.getElementById("btnConfirmarEliminarSucursal");
+  if (btnConfirmarEliminarSucursal) {
+    btnConfirmarEliminarSucursal.addEventListener("click", function () {
+      const url = this.dataset.url;
+      fetch(url, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRF() }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = data.redirect;
+        } else {
+          showMsg("err", data.error || "No se pudo eliminar.");
+        }
+      })
+      .catch(() => showMsg("err", "Error de conexión."));
+    });
+  }
+
 });

@@ -102,9 +102,18 @@ def detalle_producto(request, producto_id):
         # Guardado general
         producto.nombre = request.POST.get("nombre", producto.nombre)
         producto.descripcion = request.POST.get("descripcion", producto.descripcion)
-        producto.precio_menudeo = request.POST.get("precio_menudeo", producto.precio_menudeo)
-        producto.precio_mayoreo = request.POST.get("precio_mayoreo", producto.precio_mayoreo)
-        producto.precio_docena = request.POST.get("precio_docena", producto.precio_docena)
+
+        precio_menudeo_raw = request.POST.get("precio_menudeo", "").strip()
+        if precio_menudeo_raw:
+            producto.precio_menudeo = precio_menudeo_raw
+
+        precio_mayoreo_raw = request.POST.get("precio_mayoreo", "").strip()
+        if precio_mayoreo_raw:
+            producto.precio_mayoreo = precio_mayoreo_raw
+
+        precio_docena_raw = request.POST.get("precio_docena", "").strip()
+        producto.precio_docena = precio_docena_raw if precio_docena_raw else None
+
         producto.save()
 
         for attr in sub_atributos:

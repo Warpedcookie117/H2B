@@ -84,6 +84,24 @@ def dashboard_sucursal(request, sucursal_id):
 
 @login_required
 @require_POST
+def eliminar_sucursal(request, sucursal_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"success": False, "error": "Sin permiso."}, status=403)
+
+    sucursal = get_object_or_404(Sucursal, id=sucursal_id)
+    sucursal.activa = False
+    sucursal.save()
+
+    if request.session.get("sucursal_actual") == sucursal_id:
+        request.session.pop("sucursal_actual", None)
+        request.session.pop("caja_actual", None)
+
+    return JsonResponse({"success": True, "redirect": "/"})
+
+
+@login_required
+@require_POST
 def eliminar_caja(request, caja_id):
 
     empleado = getattr(request.user, "empleado", None)
