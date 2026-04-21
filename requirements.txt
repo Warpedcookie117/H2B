@@ -11,7 +11,7 @@ certifi==2025.10.5
 cffi==2.0.0
 charset-normalizer==3.4.4
 click==8.3.0
-clip @ git+https://github.com/openai/CLIP.git@ded190a052fdf4585bd685cee5bc96e0310d2c93
+imagehash==4.3.2
 cloudinary==1.44.1
 colorama==0.4.6
 cssselect2==0.8.0
@@ -24,7 +24,6 @@ filelock==3.20.0
 fonttools==4.60.1
 frozenlist==1.8.0
 fsspec==2025.12.0
-ftfy==6.3.1
 gitignore_parser==0.1.13
 gunicorn==23.0.0
 h11==0.16.0
@@ -70,8 +69,6 @@ sympy==1.14.0
 tenacity==9.1.2
 tinycss2==1.4.0
 tinyhtml5==2.0.0
-torch==2.10.0
-torchvision==0.25.0
 tqdm==4.67.3
 treepoem==3.28.0
 twilio==9.10.2

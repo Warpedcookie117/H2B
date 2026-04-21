@@ -91,7 +91,7 @@ class Ubicacion(models.Model):
 class Producto(models.Model):
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField()
-    embedding = JSONField(null=True, blank=True)
+    phash = models.CharField(max_length=16, null=True, blank=True)
 
     precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=1)
     precio_menudeo = models.DecimalField(max_digits=10, decimal_places=1)
@@ -291,16 +291,15 @@ class Producto(models.Model):
         if self.precio_mayoreo > self.precio_menudeo:
             raise ValidationError({'precio_mayoreo': 'El precio de mayoreo no puede ser mayor que el precio de menudeo.'})
 
-        if self.foto_url and not self.embedding:
-            from .services.vision import generar_embedding
-            from .services.similaridad import buscar_producto_similar
+        if self.foto_url and not self.phash:
+            from .services.vision import generar_phash
+            from .services.similaridad import buscar_producto_similar_phash
 
-            embedding_nuevo = generar_embedding(self.foto_url)
-
-            similares = buscar_producto_similar(embedding_nuevo)
+            phash_nuevo = generar_phash(self.foto_url)
+            similares = buscar_producto_similar_phash(phash_nuevo)
 
             if similares:
-                producto, score = similares[0]
+                producto, _ = similares[0]
 
                 if not producto.activo:
                     raise ValidationError(
@@ -313,7 +312,7 @@ class Producto(models.Model):
                         f"Este producto ya existe: {producto.nombre} (ID {producto.id})."
                     )
 
-            self.embedding = embedding_nuevo
+            self.phash = phash_nuevo
 
     # ============================================================
     # META
