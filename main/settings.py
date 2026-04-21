@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     "tienda_temp",
-    "inventario",
+    "inventario.apps.InventarioConfig",
     "ventas",
     "sucursales",
 ]

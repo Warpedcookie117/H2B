@@ -6,7 +6,7 @@ def similitud_coseno(v1, v2):
     v2 = np.array(v2)
     return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
 
-UMBRAL = 0.80  # recomendado para ViT-L/14
+UMBRAL = 0.85  # recomendado para ViT-B/32
 
 def buscar_producto_similar(embedding_nuevo):
     candidatos = []
