@@ -303,13 +303,13 @@ class Producto(models.Model):
 
                 if not producto.activo:
                     raise ValidationError(
-                        f"Este producto ya existe pero está desactivado: "
-                        f"{producto.nombre} (ID {producto.id}). "
-                        f"Pide al dueño que lo reactive desde productos inactivos."
+                        f"La imagen coincide con un producto desactivado: {producto.nombre}. "
+                        f"Busca el ID {producto.id} en el inventario global."
                     )
                 else:
                     raise ValidationError(
-                        f"Este producto ya existe: {producto.nombre} (ID {producto.id})."
+                        f"La imagen coincide con un producto existente: {producto.nombre}. "
+                        f"Busca el ID {producto.id} en el inventario global."
                     )
 
             self.phash = phash_nuevo

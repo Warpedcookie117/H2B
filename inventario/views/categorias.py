@@ -263,17 +263,18 @@ def nuevo_atributo(request, subcat_id, atributo_id=None):
     if form.is_valid():
         nuevo = form.save(commit=False)
         nuevo.categoria = subcategoria
-        nuevo.save()
 
-        # Devolver SOLO los atributos en JSON
-        atributos = list(
-            subcategoria.atributos.values("id", "nombre", "tipo")
-        )
+        from django.db import IntegrityError
+        try:
+            nuevo.save()
+        except IntegrityError:
+            return JsonResponse({
+                "success": False,
+                "error": f"Ya existe un atributo con ese nombre en esta subcategoría."
+            })
 
-        return JsonResponse({
-            "success": True,
-            "atributos": atributos
-        })
+        atributos = list(subcategoria.atributos.values("id", "nombre", "tipo"))
+        return JsonResponse({"success": True, "atributos": atributos})
 
     # Si hay errores → devolver formulario con errores
     html = render_to_string(

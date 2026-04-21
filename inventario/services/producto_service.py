@@ -66,7 +66,14 @@ class ProductService:
         try:
             producto.save()
         except IntegrityError:
-            raise ValidationError("Este producto ya existe (firma única).")
+            from inventario.models import Producto as Prod
+            existente = Prod.objects.filter(codigo_barras=producto.codigo_barras).first()
+            if existente:
+                raise ValidationError(
+                    f"Este código de barras ya está registrado. "
+                    f"Busca el ID {existente.id} en el inventario global."
+                )
+            raise ValidationError("Este producto ya existe. Verifica el inventario global.")
 
         # Guardar M2M
         form.save_m2m()
@@ -81,7 +88,14 @@ class ProductService:
         try:
             producto.save(update_fields=["firma_unica"])
         except IntegrityError:
-            raise ValidationError("Este producto ya existe (firma única).")
+            from inventario.models import Producto as Prod
+            existente = Prod.objects.filter(firma_unica=firma).first()
+            if existente:
+                raise ValidationError(
+                    f"Este producto ya existe (firma única). "
+                    f"Busca el ID {existente.id} en el inventario global."
+                )
+            raise ValidationError("Este producto ya existe (firma única). Verifica el inventario global.")
 
         # Inventario inicial
         cantidad = cleaned.get("cantidad_inicial")
