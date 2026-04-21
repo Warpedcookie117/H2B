@@ -158,9 +158,21 @@ export function initBotonInventario({
             return;
         }
 
+        const formData = new FormData(form);
+        console.group("📦 nuevo_producto — payload enviado");
+        for (const [key, val] of formData.entries()) {
+            if (val instanceof File) {
+                console.log(`${key}: [File] ${val.name} (${(val.size/1024).toFixed(1)}KB, ${val.type})`);
+            } else {
+                console.log(`${key}: ${val}`);
+            }
+        }
+        console.log("action →", form.action || window.location.href);
+        console.groupEnd();
+
         const fetchPromise = fetch(form.action || window.location.href, {
             method: "POST",
-            body: new FormData(form),
+            body: formData,
             headers: { "X-Requested-With": "XMLHttpRequest" }
         });
 
