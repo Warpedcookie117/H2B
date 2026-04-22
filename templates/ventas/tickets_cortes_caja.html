@@ -36,13 +36,13 @@
     <div>
       <label class="block font-black text-xs uppercase tracking-widest mb-1">Fecha</label>
       <input type="date" name="fecha" value="{{ request.GET.fecha }}"
-             class="w-full border-4 border-black px-3 py-2 font-semibold text-sm outline-none">
+             class="w-full border-4 border-black px-3 py-2 font-semibold text-sm outline-none bg-white appearance-none rounded-none">
     </div>
 
     <div>
       <label class="block font-black text-xs uppercase tracking-widest mb-1">Caja</label>
       <select name="caja"
-              class="w-full border-4 border-black px-3 py-2 font-semibold text-sm outline-none bg-white">
+              class="w-full border-4 border-black px-3 py-2 font-semibold text-sm outline-none bg-white appearance-none rounded-none">
         <option value="">Todas</option>
         {% for caja in sucursal.cajas.all %}
         <option value="{{ caja.id }}"

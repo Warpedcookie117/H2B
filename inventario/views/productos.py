@@ -1,4 +1,5 @@
 import json
+from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
@@ -57,9 +58,13 @@ def productos_por_ubicacion(request, ubicacion_id):
 
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
+    paginator = Paginator(productos, 20)
+    page_obj  = paginator.get_page(request.GET.get("page", 1))
+
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,
-        "productos": productos,
+        "productos": page_obj,
+        "page_obj":  page_obj,
         "inventario_todas_json": inventario_todas_json,
         "ubicaciones": ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
@@ -198,13 +203,13 @@ def lista_productos(request):
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
     return render(request, 'inventario/productos.html', {
-        'productos': productos,
-        'empleados': empleados,
-        'dueños': dueños,
-        'registradores': registradores,
+        'productos':        productos,
+        'empleados':        empleados,
+        'dueños':           dueños,
+        'registradores':    registradores,
         'categorias_padre': categorias_padre,
-        'subcategorias': subcategorias,
-        'ubicaciones': ubicaciones,
+        'subcategorias':    subcategorias,
+        'ubicaciones':      ubicaciones,
     })
     
 
@@ -571,8 +576,12 @@ def productos_inactivos(request):
 
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
+    paginator = Paginator(productos, 20)
+    page_obj  = paginator.get_page(request.GET.get("page", 1))
+
     return render(request, "inventario/productos_inactivos.html", {
-        "productos": productos,
+        "productos":  page_obj,
+        "page_obj":   page_obj,
         "ubicaciones": ubicaciones,
     })
  

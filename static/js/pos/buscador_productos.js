@@ -2,6 +2,7 @@
 
 import { normalizar } from "./core.js";
 import { agregarProducto } from "./carrito.js";
+import { activarBusqueda, desactivarBusqueda } from "./paginacion.js";
 
 // ============================================================
 // 1. BUSCADOR POR TEXTO
@@ -18,11 +19,13 @@ export function initBuscador() {
         const items = document.querySelectorAll(".producto-item");
 
         if (!texto) {
-            // Sin texto → mostrar todos
-            items.forEach(item => { item.style.display = "flex"; });
+            // Sin texto → restaurar paginación
+            desactivarBusqueda();
             return;
         }
 
+        // Con texto → mostrar todos los que coincidan (sin paginación)
+        activarBusqueda();
         items.forEach(item => {
             const nombre = normalizar(item.dataset.nombre);
             const codigo = normalizar(item.dataset.codigo || "");

@@ -145,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ============================
     initEscanerCamara((codigo) => {
         codigoInput.value = codigo;
+        codigoInput.dispatchEvent(new Event("input", { bubbles: true }));
         codigoInput.dispatchEvent(
             new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
         );

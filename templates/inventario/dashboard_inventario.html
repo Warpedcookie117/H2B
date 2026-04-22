@@ -223,7 +223,39 @@
       </h3>
     </div>
 
-    <div class="overflow-x-auto bg-white">
+    <!-- CARDS MOBILE -->
+    <div class="sm:hidden divide-y-4 divide-black bg-white">
+      {% for inv in bajos %}
+      <div class="p-4 flex items-center justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <p class="font-black text-black text-xs uppercase tracking-wide leading-tight truncate">
+            {{ inv.producto.nombre }}
+          </p>
+          <p class="text-xs text-gray-500 font-semibold mt-0.5">
+            {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso
+            {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega
+            {% else %}🏭 Almacén{% endif %}
+            · {{ inv.ubicacion.sucursal.nombre }}
+          </p>
+        </div>
+        <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1 flex-shrink-0">
+          🔴 {{ inv.cantidad_actual }}
+        </span>
+        <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
+           class="border-4 border-black shadow-[3px_3px_0_0_black] bg-[#3A86FF]
+                  text-white font-black text-xs uppercase px-3 py-2 flex-shrink-0">
+          Ver →
+        </a>
+      </div>
+      {% empty %}
+      <div class="p-8 text-center">
+        <p class="font-black text-gray-300 uppercase tracking-widest">Sin críticos 🎉</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- TABLA DESKTOP -->
+    <div class="hidden sm:block overflow-x-auto bg-white">
       <table class="tabla-criticos w-full divide-y-4 divide-black">
         <thead class="bg-black">
           <tr>
@@ -234,20 +266,14 @@
           </tr>
         </thead>
         <tbody class="divide-y-4 divide-black">
-
           {% for inv in bajos %}
           <tr class="hover:bg-yellow-50 transition-colors">
-
-            <td class="px-4 py-4 font-black text-black text-sm uppercase">
-              {{ inv.producto.nombre }}
-            </td>
-
+            <td class="px-4 py-4 font-black text-black text-sm uppercase">{{ inv.producto.nombre }}</td>
             <td class="px-4 py-4">
               <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1">
                 🔴 {{ inv.cantidad_actual }}
               </span>
             </td>
-
             <td class="px-4 py-4 font-bold text-gray-800 text-sm">
               {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso de Venta
               {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega Interna
@@ -256,18 +282,13 @@
               <span class="block text-xs text-gray-500 font-semibold">{{ inv.ubicacion.sucursal.nombre }}</span>
               {% endif %}
             </td>
-
             <td class="px-4 py-4 text-center">
               <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
                  class="btn-ir bg-[#3A86FF] border-4 border-black shadow-[3px_3px_0_0_black]
                         text-white font-black text-xs uppercase tracking-widest px-4 py-2">
-                <span>Ver</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                  <path stroke-linecap="square" stroke-linejoin="miter" d="M5 12h14M13 6l6 6-6 6"/>
-                </svg>
+                Ver →
               </a>
             </td>
-
           </tr>
           {% empty %}
           <tr>
@@ -276,7 +297,6 @@
             </td>
           </tr>
           {% endfor %}
-
         </tbody>
       </table>
     </div>
@@ -336,10 +356,19 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: items => bajoStockData[items[0].dataIndex].label } }
+        },
         scales: {
           y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
-          x: { ticks: { font: { weight: "900" }, color: "#111", maxRotation: 40 } }
+          x: { ticks: {
+            font: { weight: "900" }, color: "#111", maxRotation: 0,
+            callback: function(val) {
+              const label = bajoStockData[val].label;
+              return label.length > 18 ? label.slice(0, 18) + "…" : label;
+            }
+          }}
         }
       }
     });
@@ -366,12 +395,22 @@
         }]
       },
       options: {
+        indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: items => masVendidosLabels[items[0].dataIndex] } }
+        },
         scales: {
-          y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
-          x: { ticks: { font: { weight: "900" }, color: "#111", maxRotation: 40 } }
+          x: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
+          y: { ticks: {
+            font: { weight: "700", size: 11 }, color: "#111",
+            callback: function(val) {
+              const label = masVendidosLabels[val];
+              return label.length > 25 ? label.slice(0, 25) + "…" : label;
+            }
+          }}
         }
       }
     });

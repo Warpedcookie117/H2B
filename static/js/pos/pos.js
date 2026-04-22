@@ -5,8 +5,12 @@ import { initUI } from "./ui.js";
 import { initImpresion } from "./impresion.js";
 import { initConsultaPrecios } from "./consulta_precios.js";
 import { initStock } from "./stock.js";
+import { initPaginacion } from "./paginacion.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+
+    // Paginación del grid (debe ir antes que el buscador)
+    initPaginacion();
 
     // Productos
     initBuscador();

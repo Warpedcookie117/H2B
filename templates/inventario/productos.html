@@ -104,7 +104,9 @@
   <!-- ============================================================ -->
   <div class="mobile-wrap space-y-8 lg:hidden">
     {% for u in ubicaciones %}
-    <div class="border-4 border-black shadow-[6px_6px_0_0_black]">
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black]"
+         data-ubicacion-id="{{ u.id }}"
+         data-ver-todos-url="{% url 'inventario:productos_por_ubicacion' u.id %}">
       <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-3">
         <h3 class="text-sm font-black text-white uppercase tracking-widest leading-tight">
           📦 {{ u.nombre }}
@@ -203,7 +205,9 @@
   <!-- ============================================================ -->
   <div class="kanban-wrap" style="display:none;">
     {% for u in ubicaciones %}
-    <div class="flex-shrink-0 w-72 bg-gray-100 border-4 border-black shadow-[6px_6px_0_0_black] p-3">
+    <div class="flex-shrink-0 w-72 bg-gray-100 border-4 border-black shadow-[6px_6px_0_0_black] p-3"
+         data-ubicacion-id="{{ u.id }}"
+         data-ver-todos-url="{% url 'inventario:productos_por_ubicacion' u.id %}">
 
       <div class="bg-[#3A86FF] border-4 border-black px-4 py-3 mb-4 -mx-3 -mt-3">
         <h3 class="text-sm font-black text-white uppercase tracking-widest leading-tight">
@@ -336,18 +340,4 @@
 <script src="{% static 'js/escaner_camara.js' %}"></script>
 <script src="{% static 'js/mostraretiqueta.js' %}"></script>
 <script src="{% static 'js/lista_productos.js' %}"></script>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const colores = [
-    "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
-    "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
-  ];
-  document.querySelectorAll(".cards-grid").forEach(grid => {
-    const cards = grid.querySelectorAll(".card-producto");
-    cards.forEach((card, i) => {
-      card.style.backgroundColor = colores[i % colores.length];
-    });
-  });
-});
-</script>
 {% endblock %}

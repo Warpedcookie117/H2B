@@ -1,0 +1,40 @@
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="flex flex-wrap items-center justify-center gap-3 mt-8 pt-6 border-t-4 border-black">
+
+  {% if page_obj.has_previous %}
+  <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.previous_page_number }}"
+     class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+            text-white font-black text-xs uppercase tracking-widest px-5 py-2">
+    ◀ Anterior
+  </a>
+  {% else %}
+  <span class="border-4 border-black bg-gray-200 text-gray-400
+               font-black text-xs uppercase tracking-widest px-5 py-2 cursor-not-allowed">
+    ◀ Anterior
+  </span>
+  {% endif %}
+
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-5 py-2 text-center min-w-[120px]">
+    <p class="font-black text-black text-sm uppercase tracking-widest leading-none">
+      {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+    </p>
+    <p class="font-semibold text-black/70 text-xs mt-0.5">
+      {{ page_obj.paginator.count }} productos
+    </p>
+  </div>
+
+  {% if page_obj.has_next %}
+  <a href="?{% if query_string %}{{ query_string }}&{% endif %}page={{ page_obj.next_page_number }}"
+     class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+            text-white font-black text-xs uppercase tracking-widest px-5 py-2">
+    Siguiente ▶
+  </a>
+  {% else %}
+  <span class="border-4 border-black bg-gray-200 text-gray-400
+               font-black text-xs uppercase tracking-widest px-5 py-2 cursor-not-allowed">
+    Siguiente ▶
+  </span>
+  {% endif %}
+
+</div>
+{% endif %}
