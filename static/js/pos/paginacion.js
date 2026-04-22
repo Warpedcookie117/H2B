@@ -1,6 +1,6 @@
 // paginacion.js — Paginación del grid de productos POS
 
-const ITEMS_POR_PAGINA = 4; // 2 columnas × 2 filas
+const ITEMS_POR_PAGINA = 8; // 2 columnas × 4 filas
 
 let paginaActual = 1;
 let busquedaActiva = false;
