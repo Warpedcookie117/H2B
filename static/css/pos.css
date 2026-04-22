@@ -95,6 +95,7 @@
     width: 480px;
     flex: 0 0 480px;
     min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
   }
 }
@@ -254,6 +255,7 @@
   cursor: pointer;
   user-select: none;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+  min-width: 0; /* permite que grid recorte el contenido en vez de expandirse */
 }
 
 /* Candy cycling */
