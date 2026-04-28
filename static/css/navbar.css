@@ -1,56 +1,379 @@
-.navbar a {
+/* ============================================================
+   navbar.css
+   ============================================================ */
+
+:root {
+  --nav-red:      #dc2626;
+  --nav-red-dark: #b91c1c;
+  --nav-red-menu: #991b1b;
+  --nav-black:    #111;
+  --nav-white:    #fff;
+  --nav-h:        3.5rem;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+#navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: var(--nav-red);
+  border-bottom: 3px solid var(--nav-black);
+  box-shadow: 0 3px 0 0 rgba(0,0,0,0.3);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-hidden { transform: translateY(-100%); }
+.hidden        { display: none !important; }
+
+/* ── Inner container ──────────────────────────────────────── */
+.nav-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  height: var(--nav-h);
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.nav-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   text-decoration: none;
-  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.nav-logo__icon {
+  background: var(--nav-white);
+  border: 2px solid var(--nav-black);
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.35);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-logo__icon img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+}
+
+.nav-logo__text {
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nav-white);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Logo press animation */
+.nav-logo--pressable {
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.1s;
+}
+.nav-logo--pressable:active {
+  transform: translate(2px, 2px) scale(0.95);
+  filter: brightness(0.88);
+}
+.nav-logo--pressable .nav-logo__icon {
+  transition: box-shadow 0.1s;
+}
+.nav-logo--pressable:active .nav-logo__icon {
+  box-shadow: 0px 0px 0 0 rgba(0,0,0,0.35);
+}
+
+/* ── Nav links (desktop) ──────────────────────────────────── */
+.nav-links {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.15rem;
 }
 
 .nav-link {
-  font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-}
-
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-
-.btn-auth, .btn-perfil {
-  font-weight: bold;
-  padding: 0.5rem 1rem;
-  border: 2px solid #fff;
-  border-radius: 8px;
-  background-color: #fff;
-  color: #dc2626;
-  transition: all 0.3s ease;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nav-white);
+  text-decoration: none;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid transparent;
   white-space: nowrap;
+  transition: background 0.14s, border-color 0.14s;
+}
+.nav-link:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.35);
+  color: var(--nav-white);
 }
 
-.btn-auth:hover, .btn-perfil:hover {
-  background-color: #fee2e2;
-  color: #b91c1c;
-  transform: scale(1.05);
+/* ── Actions area (desktop) ───────────────────────────────── */
+.nav-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.no-underline {
-  text-decoration: none !important;
+/* ── Auth buttons ─────────────────────────────────────────── */
+.nav-btn {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  padding: 0.42rem 1rem;
+  border: 2px solid var(--nav-white);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 0 rgba(0,0,0,0.3);
+  transition: transform 0.1s, box-shadow 0.1s, background 0.14s;
+}
+.nav-btn:hover  { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 0 rgba(0,0,0,0.4); }
+.nav-btn:active { transform: translate(1px,1px);   box-shadow: 1px 1px 0 0 rgba(0,0,0,0.2); }
+
+.nav-btn--login {
+  background: transparent;
+  color: var(--nav-white);
+}
+.nav-btn--login:hover { background: rgba(255,255,255,0.15); color: var(--nav-white); }
+
+.nav-btn--register {
+  background: var(--nav-white);
+  color: var(--nav-red);
+}
+.nav-btn--register:hover { background: #fee2e2; color: var(--nav-red-dark); }
+
+/* ── Profile ──────────────────────────────────────────────── */
+.nav-profile { position: relative; }
+
+.nav-profile__btn {
+  width: 34px;
+  height: 34px;
+  background: #4338ca;
+  border: 2px solid var(--nav-white);
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.3);
+  color: var(--nav-white);
+  font-weight: 900;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.nav-profile__btn:hover  { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 0 rgba(0,0,0,0.35); }
+.nav-profile__btn:active { transform: translate(1px,1px);   box-shadow: 1px 1px 0 0 rgba(0,0,0,0.2); }
+
+.nav-profile__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 185px;
+  background: var(--nav-white);
+  border: 3px solid var(--nav-black);
+  box-shadow: 5px 5px 0 0 var(--nav-black);
+  z-index: 300;
 }
 
-.navbar-hidden {
-  transform: translateY(-100%);
-  transition: transform 0.3s ease;
+/* Profile info block (username + rol) */
+.nav-profile__info {
+  padding: 0.7rem 1rem 0.6rem;
+  border-bottom: 3px solid var(--nav-black);
+  background: #f8f8f8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
 }
-#navbar {
-  z-index: 100 !important;
+.nav-profile__info-name {
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nav-black);
+  line-height: 1.2;
+}
+.nav-profile__info-role {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
 }
 
-/* Nav links container — scrollable horizontal sin scrollbar visible */
-#navbar [style*="scrollbar-width"]::-webkit-scrollbar {
+.nav-profile__item {
+  display: block;
+  padding: 0.6rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: var(--nav-black);
+  border-bottom: 2px solid #f3f4f6;
+  transition: background 0.12s;
+}
+.nav-profile__item:hover { background: #f3f4f6; }
+
+.nav-profile__form { margin: 0; padding: 0; }
+.nav-profile__logout {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--nav-red);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.nav-profile__logout:hover { background: #fee2e2; }
+
+/* ── Hamburger ────────────────────────────────────────────── */
+.nav-hamburger {
   display: none;
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: 2px solid var(--nav-white);
+  padding: 5px 7px;
+  cursor: pointer;
+  color: var(--nav-white);
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.25);
+  transition: background 0.14s;
+}
+.nav-hamburger:hover { background: rgba(255,255,255,0.15); }
+.nav-hamburger svg   { display: block; }
+
+/* ── Mobile menu ──────────────────────────────────────────── */
+.nav-mobile {
+  display: none;           /* oculto por defecto; JS lo muestra al abrir */
+  background: var(--nav-red-menu);
+  border-top: 3px solid var(--nav-black);
+  padding: 0.35rem 0;
 }
 
-/* Padding reducido en nav-links en pantallas pequeñas */
-@media (max-width: 639px) {
-  .nav-link {
-    padding: 0.35rem 0.4rem;
-  }
+.nav-mobile__link {
+  display: block;
+  padding: 0.72rem 1.25rem;
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nav-white);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.12s;
 }
+.nav-mobile__link:hover        { background: rgba(255,255,255,0.12); }
+.nav-mobile__link--accent      { color: #86efac; }
+.nav-mobile__link--warn        { color: #fde68a; }
+
+/* Link de configuración con info de usuario a la derecha */
+.nav-mobile__link--config {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.nav-mobile__userinfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+.nav-mobile__userinfo-name {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--nav-white);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+.nav-mobile__userinfo-role {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nav-mobile__sep {
+  height: 2px;
+  background: rgba(255,255,255,0.2);
+  margin: 0.3rem 0;
+}
+
+.nav-mobile__logout-form { margin: 0; padding: 0; }
+.nav-mobile__logout-form button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.72rem 1.25rem;
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fde68a;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.nav-mobile__logout-form button:hover { background: rgba(255,255,255,0.12); }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .nav-links    { display: none; }
+  .nav-actions  { display: none; }
+  .nav-hamburger { display: flex; align-items: center; }
+}
+@media (min-width: 768px) {
+  .nav-hamburger { display: none !important; }
+  .nav-mobile    { display: none !important; }
+}
+
+/* Reduce logo text on small screens */
+@media (max-width: 400px) {
+  .nav-logo__text { font-size: 0.78rem; }
+}
+
+/* ── Toasts globales (mensajes Django no consumidos por el template hijo) ── */
+#toast-container {
+  position: fixed;
+  top: 5rem;
+  right: 1rem;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 22rem;
+  pointer-events: none;
+}
+.toast-msg {
+  padding: 0.75rem 1.1rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 3px solid var(--nav-black);
+  box-shadow: 4px 4px 0 0 var(--nav-black);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.toast-msg--ok  { background: #06D6A0; color: #111; }
+.toast-msg--err { background: #FF006E; color: #fff; }

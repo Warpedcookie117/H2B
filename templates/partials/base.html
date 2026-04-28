@@ -37,23 +37,26 @@
 {% include 'partials/navvar.html' %}
 {% include 'partials/sidebar.html' %}
 
-{% if messages %}
-  {% for message in messages %}
-    <!-- Consumir mensajes sin mostrarlos -->
-    <span class="hidden">{{ message }}</span>
-  {% endfor %}
-{% endif %}
-
-
 <!-- Layout principal con espacio para navbar fijo -->
 <div class="pt-16 flex flex-col md:flex-row flex-1 transition-all duration-300" id="layout">
-  <main id="main-content" class="w-full p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] transition-all duration-300 md:ml-16">
+  <main id="main-content" class="flex-1 min-w-0 p-4 md:p-6 pb-24 min-h-[calc(100vh-4rem)] md:ml-16">
       {% block content %}{% endblock %}
   </main>
 </div>
 
 <!-- Footer -->
 {% include 'partials/footer.html' %}
+
+<!-- TOASTS GLOBALES — solo se muestran si el bloque content no los consumió ya -->
+{% if messages %}
+<div id="toast-container">
+  {% for message in messages %}
+  <div class="message-item toast-msg {% if message.tags == 'success' %}toast-msg--ok{% else %}toast-msg--err{% endif %}">
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <!-- Scripts -->
 

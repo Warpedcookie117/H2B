@@ -38,6 +38,9 @@ export function initUI() {
         actualizarTotales();
     });
 
+    // Redibuja el carrito cuando promociones.js actualiza promos_pendientes
+    document.addEventListener("pos:redraw-carrito", () => renderCarritoUI());
+
     renderCarritoUI();
     initBotonCobrar();
     initDescuentoUI();
@@ -54,50 +57,110 @@ function renderCarritoUI() {
     const cont = document.getElementById("carrito-lista");
     if (!cont) return;
 
+    const scrollTop = cont.scrollTop;
     cont.innerHTML = "";
 
     carrito.forEach((item, index) => {
         const div = document.createElement("div");
         div.className = "pos-carrito-item";
 
-        div.innerHTML = `
-            <div class="pos-carrito-item-header">
-                <span class="pos-carrito-item-nombre">${item.nombre}</span>
-                <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
-            </div>
+        if (item.es_regalo) {
+            div.innerHTML = `
+                <div class="pos-carrito-item-header">
+                    <span class="pos-carrito-item-nombre">🎁 ${item.nombre}</span>
+                    <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
+                </div>
+                <div class="pos-cantidad-controles">
+                    <button class="pos-cantidad-btn pos-cantidad-btn--menos pos-regalo-menos" data-idx="${index}">−</button>
+                    <span style="min-width:2rem;text-align:center;font-weight:900;font-size:.9rem;">x${item.cantidad}</span>
+                </div>
+                <div>
+                    <span class="pos-stock-badge" style="background:#00F5D4;color:black;font-size:.65rem;">REGALO · ${item.promo_nombre}</span>
+                </div>
+                <div class="pos-precio-aplicado" style="color:#16a34a;">
+                    $<span>0.00</span>
+                </div>
+            `;
+        } else if (item.es_servicio) {
+            div.innerHTML = `
+                <div class="pos-carrito-item-header">
+                    <span class="pos-carrito-item-nombre">🔧 ${item.nombre}</span>
+                    <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
+                </div>
+                <div>
+                    <span class="pos-stock-badge" style="background:#8338EC;color:white;">Servicio</span>
+                </div>
+                <div class="pos-precio-aplicado">
+                    $<span>${item.precio_aplicado.toFixed(2)}</span>
+                </div>
+            `;
+        } else {
+            div.innerHTML = `
+                <div class="pos-carrito-item-header">
+                    <span class="pos-carrito-item-nombre">${item.nombre}</span>
+                    <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
+                </div>
 
-            <div class="pos-cantidad-controles">
-                <button class="pos-cantidad-btn pos-cantidad-btn--menos" data-idx="${index}">−</button>
-                <input
-                    type="number" min="1"
-                    class="pos-cantidad-input"
-                    value="${item.cantidad}"
-                    data-idx="${index}"
-                >
-                <button class="pos-cantidad-btn pos-cantidad-btn--mas" data-idx="${index}">+</button>
-            </div>
+                <div class="pos-cantidad-controles">
+                    <button class="pos-cantidad-btn pos-cantidad-btn--menos" data-idx="${index}">−</button>
+                    <input
+                        type="number" min="1"
+                        class="pos-cantidad-input"
+                        value="${item.cantidad}"
+                        data-idx="${index}"
+                    >
+                    <button class="pos-cantidad-btn pos-cantidad-btn--mas" data-idx="${index}">+</button>
+                </div>
 
-            <div>${resolverBadge(item)}</div>
+                <div>${resolverBadge(item)}</div>
+                ${item.oferta_activa ? `<div>${renderOfertaBadge(item)}</div>` : ''}
 
-            <div class="pos-modo-botones">
-                ${renderBotonesPrecio(item, index)}
-            </div>
+                <div class="pos-modo-botones">
+                    ${renderBotonesPrecio(item, index)}
+                </div>
 
-            <div class="pos-precio-aplicado">
-                $<span>${item.precio_aplicado.toFixed(2)}</span>
-            </div>
-        `;
+                <div class="pos-precio-aplicado">
+                    $<span>${item.precio_aplicado.toFixed(2)}</span>
+                </div>
+            `;
+
+            // Badge por cada regalo pendiente (cuando el cajero clickó "Sin regalo")
+            if (item.promos_pendientes?.length) {
+                item.promos_pendientes.forEach(pp => {
+                    const btnRegalo = document.createElement("button");
+                    btnRegalo.className = "pos-btn-regalo-pendiente";
+                    const cant = pp.cantidad > 1 ? ` x${pp.cantidad}` : "";
+                    btnRegalo.textContent = `🎁${cant} sin regalo — ${pp.nombre} (agregar)`;
+                    btnRegalo.onclick = () => window.abrirRegaloManual(pp.id, pp.nombre, index);
+                    div.appendChild(btnRegalo);
+                });
+            }
+        }
 
         cont.appendChild(div);
     });
 
     bindCarritoListeners();
+    cont.scrollTop = scrollTop;
 }
 
 
 // ============================================================
-// 3. Badges de stock
+// 3. Badges de stock y oferta
 // ============================================================
+
+function renderOfertaBadge(item) {
+    if (!item.oferta_activa) return '';
+    const o = item.oferta_activa;
+    let detalle = '';
+    switch (o.tipo) {
+        case 'porcentaje': detalle = `${o.valor}% off`; break;
+        case 'fijo':       detalle = `$${o.valor} menos`; break;
+        case '2x1':        detalle = '2×1'; break;
+        case 'nxprecio':   detalle = `${o.cantidad_n} × $${o.valor}`; break;
+    }
+    return `<span class="pos-stock-badge" style="background:#FF006E;color:#fff;font-size:.65rem;">🏷️ ${o.nombre}${detalle ? ' · ' + detalle : ''}</span>`;
+}
 
 function resolverBadge(item) {
     if (item.cantidad <= item.stock_piso) {
@@ -105,6 +168,9 @@ function resolverBadge(item) {
     }
     if (item.cantidad <= item.stock_bodega) {
         return `<span class="pos-stock-badge pos-stock-badge--bodega">Se descontará de Bodega</span>`;
+    }
+    if (item.cantidad <= (item.stock_piso || 0) + (item.stock_bodega || 0)) {
+        return `<span class="pos-stock-badge pos-stock-badge--split">Alcanza entre ambas — bodega primero</span>`;
     }
     return `<span class="pos-stock-badge pos-stock-badge--sin-stock">No hay stock suficiente</span>`;
 }
@@ -143,27 +209,161 @@ function renderBotonesPrecio(item, index) {
 
 
 // ============================================================
-// 5. Listeners del carrito
+// 5. Helpers de cascade y pendientes
+// ============================================================
+
+// Promos de categoría que aplican a este ítem
+function _promosDeItem(item) {
+    if (!window.PROMOCIONES?.length) return [];
+    return window.PROMOCIONES.filter(p =>
+        p.tipo_condicion === "categoria" &&
+        (p.categoria_disparadora_id == item.subcategoria_id ||
+         (item.cat_padre_id && p.categoria_disparadora_id == item.cat_padre_id))
+    );
+}
+
+// Añade `cantidad` al badge de pendientes del ítem (sin abrir modal)
+function _addPendienteItem(item, cantidad = 1) {
+    const promos = _promosDeItem(item);
+    if (!promos.length) return;
+    if (!item.promos_pendientes) item.promos_pendientes = [];
+    promos.forEach(promo => {
+        const pp = item.promos_pendientes.find(p => p.id === promo.id);
+        if (pp) pp.cantidad += cantidad;
+        else item.promos_pendientes.push({ id: promo.id, nombre: promo.nombre, cantidad });
+    });
+    document.dispatchEvent(new CustomEvent("pos:redraw-carrito"));
+}
+
+// Cuando se quita 1 del regalo → añade 1 al badge del disparador
+function _addPendienteDesdeRegalo(regaloItem) {
+    if (!regaloItem.promo_id || !window.PROMOCIONES?.length) return;
+    const promo = window.PROMOCIONES.find(p => p.id === regaloItem.promo_id);
+    if (!promo?.categoria_disparadora_id) return;
+    const catId = promo.categoria_disparadora_id;
+    const trig  = carrito.find(i =>
+        !i.es_regalo && !i.es_servicio &&
+        (i.subcategoria_id == catId || i.cat_padre_id == catId)
+    );
+    if (!trig) return;
+    if (!trig.promos_pendientes) trig.promos_pendientes = [];
+    const pp = trig.promos_pendientes.find(p => p.id === promo.id);
+    if (pp) pp.cantidad++;
+    else trig.promos_pendientes.push({ id: promo.id, nombre: promo.nombre, cantidad: 1 });
+    document.dispatchEvent(new CustomEvent("pos:redraw-carrito"));
+}
+
+// Quita delta del regalo en carrito Y del badge en el disparador.
+// delta = Infinity → eliminar todo. itemIdx = -1 → no tocar el badge.
+function cascadeRegalo(subcategoria_id, cat_padre_id, delta, itemIdx = -1) {
+    if (!window.PROMOCIONES?.length) return;
+
+    const promos = window.PROMOCIONES.filter(p =>
+        p.tipo_condicion === "categoria" &&
+        (p.categoria_disparadora_id == subcategoria_id ||
+         (cat_padre_id && p.categoria_disparadora_id == cat_padre_id))
+    );
+
+    promos.forEach(promo => {
+        // 1. Badge del disparador — ANTES del splice para no perder el índice
+        if (itemIdx >= 0 && carrito[itemIdx]?.promos_pendientes) {
+            const pp = carrito[itemIdx].promos_pendientes.find(p => p.id === promo.id);
+            if (pp) {
+                if (delta === Infinity) {
+                    carrito[itemIdx].promos_pendientes =
+                        carrito[itemIdx].promos_pendientes.filter(p => p.id !== promo.id);
+                } else {
+                    pp.cantidad = Math.max(0, pp.cantidad - delta);
+                    if (pp.cantidad === 0)
+                        carrito[itemIdx].promos_pendientes =
+                            carrito[itemIdx].promos_pendientes.filter(p => p.id !== promo.id);
+                }
+            }
+        }
+
+        // 2. El ítem de regalo en carrito
+        const ri = carrito.findIndex(r => r.es_regalo && r.promo_id === promo.id);
+        if (ri === -1) return;
+        const regalo = carrito[ri];
+        if (delta === Infinity || regalo.cantidad <= delta) {
+            eliminarProducto(ri);
+        } else {
+            cambiarCantidad(ri, regalo.cantidad - delta);
+        }
+    });
+
+    document.dispatchEvent(new CustomEvent("pos:redraw-carrito"));
+}
+
+
+// ============================================================
+// 6. Listeners del carrito
 // ============================================================
 
 function bindCarritoListeners() {
+    // ✕ — eliminar ítem; si era disparador, borra también su regalo (badge ya no importa)
     document.querySelectorAll(".pos-carrito-item-btn-eliminar").forEach(btn => {
-        btn.onclick = () => eliminarProducto(parseInt(btn.dataset.idx));
+        btn.onclick = () => {
+            const idx  = parseInt(btn.dataset.idx);
+            const item = carrito[idx];
+            if (!item) return;
+            if (!item.es_regalo && !item.es_servicio) {
+                const { subcategoria_id, cat_padre_id } = item;
+                eliminarProducto(idx);
+                cascadeRegalo(subcategoria_id, cat_padre_id, Infinity, -1);
+            } else {
+                eliminarProducto(idx);
+            }
+        };
     });
 
+    // + — añade al badge de pendientes; el cajero abre 1 modal cuando quiera
     document.querySelectorAll(".pos-cantidad-btn--mas").forEach(btn => {
-        btn.onclick = () => cambiarCantidad(parseInt(btn.dataset.idx), carrito[btn.dataset.idx].cantidad + 1);
+        btn.onclick = () => {
+            const idx  = parseInt(btn.dataset.idx);
+            const item = carrito[idx];
+            if (!item || item.es_regalo || item.es_servicio) return;
+            cambiarCantidad(idx, item.cantidad + 1);
+            _addPendienteItem(item, 1);
+        };
     });
 
+    // − en disparador → cascade regalo y badge; en regalo → baja 1 y badge al disparador
     document.querySelectorAll(".pos-cantidad-btn--menos").forEach(btn => {
-        btn.onclick = () => cambiarCantidad(parseInt(btn.dataset.idx), carrito[btn.dataset.idx].cantidad - 1);
+        btn.onclick = () => {
+            const idx  = parseInt(btn.dataset.idx);
+            const item = carrito[idx];
+            if (!item) return;
+            if (item.es_regalo) {
+                _addPendienteDesdeRegalo(item);   // siempre, antes de tocar el carrito
+                if (item.cantidad <= 1) {
+                    eliminarProducto(idx);
+                } else {
+                    cambiarCantidad(idx, item.cantidad - 1);
+                }
+                return;
+            }
+            const prevQty = item.cantidad;
+            cambiarCantidad(idx, prevQty - 1);
+            const newQty  = carrito[idx]?.cantidad ?? prevQty;
+            if (newQty < prevQty) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, 1, idx);
+        };
     });
 
+    // Input numérico — cascade decrementos; incrementos al badge
     document.querySelectorAll(".pos-cantidad-input").forEach(input => {
         input.oninput = () => {
-            const idx = parseInt(input.dataset.idx);
-            const val = parseInt(input.value) || 1;
-            cambiarCantidad(idx, val);
+            const idx  = parseInt(input.dataset.idx);
+            const item = carrito[idx];
+            if (!item || item.es_regalo) return;
+            const prevQty = item.cantidad;
+            const newVal  = parseInt(input.value) || 1;
+            cambiarCantidad(idx, newVal);
+            const newQty = carrito[idx]?.cantidad ?? newVal;
+            const decr   = prevQty - newQty;
+            const incr   = newQty  - prevQty;
+            if (decr > 0) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, decr, idx);
+            if (incr > 0) _addPendienteItem(item, incr);
         };
     });
 
@@ -361,9 +561,11 @@ export function mostrarAlertaUI(msg, tipo = "ok") {
     if (!box) return;
 
     box.textContent = msg;
-    box.className = "pos-alerta " + (tipo === "ok"
-        ? "pos-alerta--ok"
-        : "pos-alerta--error");
+    box.className = "pos-alerta " + (
+        tipo === "ok"    ? "pos-alerta--ok"    :
+        tipo === "promo" ? "pos-alerta--promo"  :
+                           "pos-alerta--error"
+    );
 
     box.classList.remove("pos-alerta--hidden");
     setTimeout(() => box.classList.add("pos-alerta--hidden"), 3000);

@@ -1,0 +1,234 @@
+<form method="POST"
+      onsubmit="enviarPromocion(event, {% if promocion %}{{ promocion.id }}{% else %}null{% endif %})">
+
+  {% csrf_token %}
+
+  {# Título con fondo negro que sangra hasta los bordes del modal #}
+  <div class="bg-black -mx-8 -mt-8 px-8 pt-6 pb-4 mb-6">
+    <h2 class="text-xl font-black text-white uppercase tracking-widest">
+      {% if promocion %}✏️ Editar paquete / regalo{% else %}🎁 Nuevo paquete / regalo{% endif %}
+    </h2>
+    <p class="text-sm font-semibold text-gray-300 mt-1 normal-case tracking-normal">
+      El cliente compra y recibe un producto extra gratis. El cajero recibe aviso automático.
+    </p>
+  </div>
+
+  <!-- ERROR GLOBAL -->
+  <div id="formError"
+       class="hidden border-4 border-black bg-[#FF006E] text-white font-black px-4 py-2 mb-4 text-sm uppercase tracking-wide">
+  </div>
+
+  <!-- NOMBRE -->
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">Nombre de la promoción</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <input type="text" name="nombre" id="id_nombre"
+             value="{{ promocion.nombre|default:'' }}"
+             placeholder="Ej: Tinte + peroxido de regalo"
+             class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+    </div>
+  </div>
+
+  <!-- DESCRIPCIÓN (opcional) -->
+  <div class="space-y-1 mb-5">
+    <label class="text-xs font-black uppercase tracking-widest text-black">Descripción <span class="text-gray-400 font-normal normal-case">(opcional)</span></label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <textarea name="descripcion" id="id_descripcion" rows="2"
+                placeholder="Nota interna para el equipo..."
+                class="w-full px-3 py-2 font-semibold text-black bg-white outline-none resize-none">{{ promocion.descripcion|default:'' }}</textarea>
+    </div>
+  </div>
+
+  <!-- SEPARADOR -->
+  <div class="border-t-4 border-black my-5 relative">
+    <span class="absolute -top-3 left-3 bg-black px-2 text-xs font-black uppercase text-white tracking-widest">¿Cuándo aplica?</span>
+  </div>
+
+  <!-- TIPO CONDICIÓN -->
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿En qué momento se da el regalo?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+      <select name="tipo_condicion" id="id_tipo_condicion"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Elige una opción —</option>
+        <option value="categoria" {% if promocion.tipo_condicion == 'categoria' %}selected{% endif %}>
+          📦 Paquete — cada que vendes un producto de cierta categoría
+        </option>
+        <option value="monto" {% if promocion.tipo_condicion == 'monto' %}selected{% endif %}>
+          💰 Regalo por compra grande — si el cliente gasta más de $X en total
+        </option>
+        <option value="monto_categoria" {% if promocion.tipo_condicion == 'monto_categoria' %}selected{% endif %}>
+          🏷️ Regalo por categoría — si el cliente gasta más de $X en una categoría específica
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA DISPARADORA -->
+  <div id="sec_categoria_disparadora" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿De qué categoría de productos?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+      <select name="categoria_disparadora" id="id_categoria_disparadora"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Selecciona —</option>
+        {% for padre in padres %}
+        <optgroup label="{{ padre.nombre }}">
+          <option value="{{ padre.id }}"
+                  {% if promocion.categoria_disparadora_id == padre.id %}selected{% endif %}>
+            📁 {{ padre.nombre }} (toda la categoría)
+          </option>
+          {% for sub in subcategorias %}
+            {% if sub.padre_id == padre.id %}
+            <option value="{{ sub.id }}"
+                    {% if promocion.categoria_disparadora_id == sub.id %}selected{% endif %}>
+              └ {{ sub.nombre }}
+            </option>
+            {% endif %}
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <!-- MONTO MÍNIMO -->
+  <div id="sec_monto_minimo" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿A partir de cuánto aplica? ($)</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <input type="number" name="monto_minimo" id="id_monto_minimo"
+             value="{{ promocion.monto_minimo|default:'' }}"
+             min="0" step="1"
+             placeholder="Ej: 500"
+             class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+    </div>
+  </div>
+
+  <!-- SEPARADOR -->
+  <div class="border-t-4 border-black my-5 relative">
+    <span class="absolute -top-3 left-3 bg-black px-2 text-xs font-black uppercase text-white tracking-widest">¿Qué se regala?</span>
+  </div>
+
+  <!-- TIPO RESULTADO -->
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Cómo se elige el regalo?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+      <select name="tipo_resultado" id="id_tipo_resultado"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Elige una opción —</option>
+        <option value="regalo_fijo" {% if promocion.tipo_resultado == 'regalo_fijo' %}selected{% endif %}>
+          🎁 Siempre el mismo producto (tú decides cuál)
+        </option>
+        <option value="regalo_variante" {% if promocion.tipo_resultado == 'regalo_variante' %}selected{% endif %}>
+          🎁 El cajero elige en el momento (el cliente escoge de varias opciones)
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PRODUCTO REGALO (fijo) -->
+  <div id="sec_producto_regalo" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Cuál producto se regala?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+      <select name="producto_regalo" id="id_producto_regalo"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Selecciona el producto —</option>
+        {% for prod in productos %}
+        <option value="{{ prod.id }}"
+                {% if promocion.producto_regalo_id == prod.id %}selected{% endif %}>
+          {{ prod.nombre }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <p class="text-xs text-gray-500 font-semibold">Se agrega al carrito con precio $0.</p>
+  </div>
+
+  <!-- NOTA: categoría heredada (solo para monto_categoria + variante) -->
+  <div id="nota_cat_heredada" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-[#00F5D4] shadow-[3px_3px_0_0_black] px-4 py-3">
+      <p class="text-sm font-black text-black uppercase tracking-wide">🏷️ Categoría automática</p>
+      <p class="text-sm font-semibold text-black mt-1">El cajero elegirá el regalo de la misma categoría que dispara la promoción. No necesitas configurar nada más.</p>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA REGALO (variante) -->
+  <div id="sec_categoria_regalo" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿De qué productos puede elegir el cajero?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black]">
+      <select name="categoria_regalo" id="id_categoria_regalo"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Selecciona la categoría —</option>
+        {% for padre in padres %}
+        <optgroup label="{{ padre.nombre }}">
+          <option value="{{ padre.id }}"
+                  {% if promocion.categoria_regalo_id == padre.id %}selected{% endif %}>
+            📁 {{ padre.nombre }} (toda la categoría)
+          </option>
+          {% for sub in subcategorias %}
+            {% if sub.padre_id == padre.id %}
+            <option value="{{ sub.id }}"
+                    {% if promocion.categoria_regalo_id == sub.id %}selected{% endif %}>
+              └ {{ sub.nombre }}
+            </option>
+            {% endif %}
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <p class="text-xs text-gray-500 font-semibold">El sistema le mostrará las opciones al cajero para que el cliente elija. Se agrega gratis.</p>
+  </div>
+
+  <!-- FILTRO POR ATRIBUTOS (solo cuando regalo_variante) -->
+  <div id="sec_filtro_atributo" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-white shadow-[3px_3px_0_0_black] p-3 space-y-2">
+      <p class="text-xs font-black uppercase tracking-widest text-gray-700">
+        Filtrar regalos por atributo
+        <span class="font-normal normal-case text-gray-400">(opcional — el cajero solo ve productos que cumplan todos los filtros)</span>
+      </p>
+      <div id="promo_filtros_rows" class="space-y-2">
+        {% for f in promocion.filtros_atributos %}
+        <div class="filtro-fila flex gap-2 items-center">
+          <div class="flex-1">
+            <select name="filtro_nombre[]"
+                    class="promo-filtro-nombre w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-nombre="{{ f.nombre }}">
+              <option value="">— Atributo —</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <select name="filtro_valor[]"
+                    class="promo-filtro-valor w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-valor="{{ f.valor }}">
+              <option value="{{ f.valor }}">{{ f.valor }}</option>
+            </select>
+          </div>
+          <button type="button"
+                  class="border-2 border-black px-2 py-1 font-black text-sm bg-white hover:bg-black hover:text-white transition-colors flex-shrink-0"
+                  onclick="this.closest('.filtro-fila').remove()">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="btn_agregar_filtro_promo"
+              class="text-xs font-black uppercase tracking-widest border-4 border-black px-3 py-1 bg-black text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black transition-colors shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]">
+        + Agregar filtro
+      </button>
+      <p class="text-xs text-gray-400">Sin filtros, el cajero verá todos los productos de esa categoría.</p>
+    </div>
+  </div>
+
+  <!-- BOTONES -->
+  <div class="flex justify-end gap-3 pt-4 border-t-4 border-black mt-5">
+    <button type="button" onclick="cerrarModal()"
+            class="btn-90s bg-gray-200 border-4 border-black shadow-[4px_4px_0_0_black]
+                   font-black text-xs uppercase tracking-widest px-4 py-2 text-black">
+      Cancelar
+    </button>
+    <button type="submit"
+            class="btn-90s bg-[#8338EC] border-4 border-black shadow-[4px_4px_0_0_black]
+                   text-white font-black text-xs uppercase tracking-widest px-6 py-2">
+      💾 Guardar
+    </button>
+  </div>
+
+</form>

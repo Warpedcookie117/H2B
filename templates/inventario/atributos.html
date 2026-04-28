@@ -4,6 +4,10 @@
 {% block content %}
 
 <style>
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   .btn-90s {
     transition: transform 0.1s ease, box-shadow 0.1s ease;
   }

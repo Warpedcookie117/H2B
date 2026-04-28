@@ -1,0 +1,395 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/promociones.css' %}">
+
+<div class="prom-page">
+
+  {# ── Header ──────────────────────────────────────────────────── #}
+  <header class="prom-header">
+    <div class="prom-header__shapes" aria-hidden="true">
+      <span class="prom-shape s1"></span>
+      <span class="prom-shape s2"></span>
+      <span class="prom-shape s3"></span>
+      <span class="prom-shape s4"></span>
+      <span class="prom-shape s5"></span>
+    </div>
+    <div class="prom-header__content">
+      <h1 class="prom-header__title">🎁 Promociones Ofertas y Regalos</h1>
+      <p class="prom-header__sub">
+        Crea paquetes y regalos automáticos. El sistema le avisa al cajero solito cuándo aplicarlos.
+      </p>
+      <div class="prom-header__tipos">
+        <div class="prom-tipo-info" style="background:#CCFF00">
+          <p class="prom-tipo-info__label">📦 Paquete</p>
+          <p class="prom-tipo-info__desc">
+            Cada que vendes un producto de cierta categoría, el cliente se lleva un regalo.
+            Ej: <em>Tinte → peroxido gratis</em>.
+          </p>
+        </div>
+        <div class="prom-tipo-info" style="background:#FFD6A5">
+          <p class="prom-tipo-info__label">💰 Regalo por compra grande</p>
+          <p class="prom-tipo-info__desc">
+            Si el cliente gasta más de cierta cantidad en total, se lleva un regalo.
+            Ej: <em>$500 → cosmetiquera gratis</em>.
+          </p>
+        </div>
+        <div class="prom-tipo-info" style="background:#00F5D4">
+          <p class="prom-tipo-info__label">🏷️ Regalo por categoría</p>
+          <p class="prom-tipo-info__desc">
+            Si el cliente gasta más de cierta cantidad en una sola categoría, se lleva un regalo de esa misma categoría.
+            Ej: <em>$500 en uñas → esmalte gratis</em>.
+          </p>
+        </div>
+      </div>
+
+      {# Diferencia visual entre Paquete y Oferta #}
+      <div class="prom-diferencia">
+        <div class="prom-dif__bloque prom-dif__bloque--promo">
+          <span class="prom-dif__emoji">🎁</span>
+          <p class="prom-dif__titulo">Paquete / Regalo</p>
+          <p class="prom-dif__desc">El cliente compra algo y <strong>recibe otro producto gratis</strong>. El cajero recibe aviso y lo agrega al carrito.</p>
+          <p class="prom-dif__ejemplo">Ej: Tinte → peroxido de regalo</p>
+        </div>
+        <div class="prom-dif__vs">VS</div>
+        <div class="prom-dif__bloque prom-dif__bloque--oferta">
+          <span class="prom-dif__emoji">🏷️</span>
+          <p class="prom-dif__titulo">Oferta / Descuento</p>
+          <p class="prom-dif__desc">El precio del producto <strong>baja directo</strong> en el carrito. Sin artículo extra.</p>
+          <p class="prom-dif__ejemplo">Ej: 2×1 globos → el sistema cobra solo la mitad</p>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  {# ── Mensajes ────────────────────────────────────────────────── #}
+  <div id="msgSuccess" class="prom-msg prom-msg--ok hidden"></div>
+  <div id="msgError"   class="prom-msg prom-msg--err hidden"></div>
+
+  {# ── Modo toggle ─────────────────────────────────────────────── #}
+  <div class="prom-modo">
+    <button class="prom-modo__btn activo" data-modo="paquetes" onclick="PromocionesPage.setModo('paquetes')">
+      🎁 Paquetes y Regalos
+    </button>
+    <button class="prom-modo__btn" data-modo="ofertas" onclick="PromocionesPage.setModo('ofertas')">
+      🏷️ Ofertas y Descuentos
+    </button>
+  </div>
+
+  {# ── Sección Paquetes ─────────────────────────────────────────── #}
+  <div id="seccionPaquetes">
+
+  {# ── Tabs sticky ─────────────────────────────────────────────── #}
+  <nav class="prom-tabs" id="tabsPaquetes" role="tablist">
+    <button class="prom-tabs__trigger" type="button" onclick="this.closest('.prom-tabs').classList.toggle('open')">
+      <span class="prom-tabs__trigger-dot"></span>
+      <span class="prom-tabs__trigger-label">Todos</span>
+      <span class="prom-tabs__trigger-arrow">▾</span>
+    </button>
+    <div class="prom-tabs__list">
+      <button class="prom-tab activo" data-seccion="paquete" data-tipo="todos" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Todos</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="paquete" data-tipo="categoria" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Paquetes</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="paquete" data-tipo="monto" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Compra grande</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="paquete" data-tipo="monto_categoria" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Por categoría</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+    </div>
+  </nav>
+
+  {# ── Toolbar ─────────────────────────────────────────────────── #}
+  <div class="prom-toolbar">
+    <h2 id="promTitulo" class="prom-toolbar__titulo">Todos los paquetes y regalos</h2>
+    {% if not solo_lectura %}
+    <button class="prom-btn-nueva" style="background:#CCFF00;color:#000;" onclick="PromocionesPage.nueva()">➕ Nuevo paquete</button>
+    {% endif %}
+  </div>
+
+  {# ── Grid de cards ───────────────────────────────────────────── #}
+  <div id="promCards" class="prom-cards">
+
+    {% for p in promociones %}
+    <article class="prom-card {% if not p.activo %}inactiva{% endif %}"
+             data-tipo="{{ p.tipo_condicion }}">
+
+      <div class="prom-card__acento"></div>
+
+      <div class="prom-card__inner">
+        <div class="prom-card__body">
+
+          <div class="prom-card__top">
+            <span class="prom-card__nombre">{{ p.nombre }}</span>
+            <span class="prom-badge {% if p.activo %}prom-badge--activa{% else %}prom-badge--inactiva{% endif %}">
+              {% if p.activo %}Activa{% else %}Inactiva{% endif %}
+            </span>
+          </div>
+
+          <div class="prom-card__regla">
+            {% if p.tipo_condicion == 'categoria' and p.categoria_disparadora %}
+              📦 Cada que vendes de
+              <span class="prom-chip prom-chip--cat">{{ p.categoria_disparadora.nombre }}</span>
+            {% elif p.tipo_condicion == 'monto' and p.monto_minimo %}
+              💰 Si el cliente gasta más de
+              <span class="prom-chip prom-chip--monto">${{ p.monto_minimo }}</span>
+              en total
+            {% elif p.tipo_condicion == 'monto_categoria' and p.categoria_disparadora and p.monto_minimo %}
+              🏷️ Si gastan más de
+              <span class="prom-chip prom-chip--monto">${{ p.monto_minimo }}</span>
+              en <span class="prom-chip prom-chip--cyan">{{ p.categoria_disparadora.nombre }}</span>
+            {% endif %}
+            →
+            {% if p.tipo_resultado == 'regalo_fijo' and p.producto_regalo %}
+              🎁 de regalo
+              <span class="prom-chip prom-chip--green">{{ p.producto_regalo.nombre }}</span>
+            {% elif p.tipo_resultado == 'regalo_variante' and p.categoria_regalo %}
+              🎁 el cajero elige de
+              <span class="prom-chip prom-chip--green">{{ p.categoria_regalo.nombre }}</span>
+            {% endif %}
+          </div>
+
+          {% if p.descripcion %}
+          <p class="prom-card__desc">{{ p.descripcion }}</p>
+          {% endif %}
+
+        </div>
+
+        {% if not solo_lectura %}
+        <div class="prom-card__actions">
+          <button class="prom-btn-accion {% if p.activo %}prom-btn-accion--pausar{% else %}prom-btn-accion--activar{% endif %}"
+                  onclick="PromocionesPage.toggle({{ p.id }})">
+            {% if p.activo %}⏸ Pausar{% else %}▶ Activar{% endif %}
+          </button>
+          <button class="prom-btn-accion prom-btn-accion--editar"
+                  onclick="PromocionesPage.editar({{ p.id }})">
+            ✏️ Editar
+          </button>
+          <button class="prom-btn-accion prom-btn-accion--borrar"
+                  onclick="PromocionesPage.confirmarEliminar({{ p.id }}, '{{ p.nombre|escapejs }}')">
+            🗑 Borrar
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+    </article>
+    {% endfor %}
+
+    {# Estado vacío — JS lo controla #}
+    <div id="promEmpty" class="prom-empty hidden">
+      <span class="prom-empty__icon">🎁</span>
+      <p class="prom-empty__text">Sin paquetes ni regalos de este tipo</p>
+      {% if not solo_lectura %}
+      <p class="prom-empty__sub">Crea uno nuevo con el botón de arriba.</p>
+      {% endif %}
+    </div>
+
+  </div>{# /promCards #}
+
+  {% if solo_lectura %}
+  <div class="prom-readonly">
+    <p class="prom-readonly__titulo">👁 Solo lectura</p>
+    <p class="prom-readonly__sub">Puedes ver los paquetes y regalos pero no modificarlos. Habla con el dueño.</p>
+  </div>
+  {% endif %}
+
+  </div>{# /seccionPaquetes #}
+
+  {# ── Sección Ofertas ──────────────────────────────────────────── #}
+  <div id="seccionOfertas" style="display:none">
+
+  <nav class="prom-tabs" id="tabsOfertas" role="tablist">
+    <button class="prom-tabs__trigger" type="button" onclick="this.closest('.prom-tabs').classList.toggle('open')">
+      <span class="prom-tabs__trigger-dot"></span>
+      <span class="prom-tabs__trigger-label">Todos</span>
+      <span class="prom-tabs__trigger-arrow">▾</span>
+    </button>
+    <div class="prom-tabs__list">
+      <button class="prom-tab activo" data-seccion="oferta" data-tipo="todos" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Todos</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="oferta" data-tipo="porcentaje" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">% Descuento</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="oferta" data-tipo="fijo" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">$ Descuento</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="oferta" data-tipo="2x1" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">2×1</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+      <button class="prom-tab" data-seccion="oferta" data-tipo="nxprecio" role="tab">
+        <span class="prom-tab__dot"></span>
+        <span class="prom-tab__label">Precio paquete</span>
+        <span class="prom-tab__count">0</span>
+      </button>
+    </div>
+  </nav>
+
+    <div class="prom-toolbar">
+      <h2 id="ofertaTitulo" class="prom-toolbar__titulo">Todas las ofertas y descuentos</h2>
+      {% if not solo_lectura %}
+      <button class="prom-btn-nueva" style="background:#FF006E;color:#fff;" onclick="PromocionesPage.nuevaOferta()">➕ Nueva oferta</button>
+      {% endif %}
+    </div>
+
+    <div id="ofertaCards" class="prom-cards">
+
+      {% for o in ofertas %}
+      <article class="prom-card {% if not o.activo %}inactiva{% endif %}"
+               data-tipo="{{ o.tipo }}">
+
+        <div class="prom-card__acento"></div>
+
+        <div class="prom-card__inner">
+          <div class="prom-card__body">
+
+            <div class="prom-card__top">
+              <span class="prom-card__nombre">{{ o.nombre }}</span>
+              <span class="prom-badge {% if o.activo %}prom-badge--activa{% else %}prom-badge--inactiva{% endif %}">
+                {% if o.activo %}Activa{% else %}Inactiva{% endif %}
+              </span>
+            </div>
+
+            <div class="prom-card__regla">
+              {% if o.tipo == 'porcentaje' %}
+                🏷️ <span class="prom-chip prom-chip--purple">{{ o.valor }}% off</span>
+              {% elif o.tipo == 'fijo' %}
+                💵 <span class="prom-chip prom-chip--blue">${{ o.valor }} menos</span>
+              {% elif o.tipo == '2x1' %}
+                🎯 <span class="prom-chip prom-chip--cat">2 × 1</span>
+              {% elif o.tipo == 'nxprecio' %}
+                📦 <span class="prom-chip prom-chip--cyan">{{ o.cantidad_n }} piezas × ${{ o.valor }}</span>
+              {% endif %}
+              →
+              {% if o.aplica_a == 'producto' and o.producto %}
+                en <span class="prom-chip prom-chip--green">{{ o.producto.nombre }}</span>
+              {% elif o.aplica_a == 'categoria' and o.categoria %}
+                en <span class="prom-chip prom-chip--cat">{{ o.categoria.nombre }}</span>
+              {% endif %}
+              {% if o.fecha_inicio or o.fecha_fin %}
+                <span style="font-size:.7rem;color:#9ca3af;">
+                  ({% if o.fecha_inicio %}desde {{ o.fecha_inicio }}{% endif %}{% if o.fecha_fin %} hasta {{ o.fecha_fin }}{% endif %})
+                </span>
+              {% endif %}
+            </div>
+
+            {% if o.descripcion %}
+            <p class="prom-card__desc">{{ o.descripcion }}</p>
+            {% endif %}
+
+          </div>
+
+          {% if not solo_lectura %}
+          <div class="prom-card__actions">
+            <button class="prom-btn-accion {% if o.activo %}prom-btn-accion--pausar{% else %}prom-btn-accion--activar{% endif %}"
+                    onclick="PromocionesPage.toggleOferta({{ o.id }})">
+              {% if o.activo %}⏸ Pausar{% else %}▶ Activar{% endif %}
+            </button>
+            <button class="prom-btn-accion prom-btn-accion--editar"
+                    onclick="PromocionesPage.editarOferta({{ o.id }})">
+              ✏️ Editar
+            </button>
+            <button class="prom-btn-accion prom-btn-accion--borrar"
+                    onclick="PromocionesPage.confirmarEliminar({{ o.id }}, '{{ o.nombre|escapejs }}', 'oferta')">
+              🗑 Borrar
+            </button>
+          </div>
+          {% endif %}
+        </div>
+
+      </article>
+      {% endfor %}
+
+      <div id="ofertaEmpty" class="prom-empty {% if ofertas %}hidden{% endif %}">
+        <span class="prom-empty__icon">🏷️</span>
+        <p class="prom-empty__text">Sin ofertas configuradas</p>
+        {% if not solo_lectura %}
+        <p class="prom-empty__sub">Crea una nueva con el botón de arriba.</p>
+        {% endif %}
+      </div>
+
+    </div>{# /ofertaCards #}
+
+    {% if solo_lectura %}
+    <div class="prom-readonly">
+      <p class="prom-readonly__titulo">👁 Solo lectura</p>
+      <p class="prom-readonly__sub">Puedes ver las ofertas pero no modificarlas. Habla con el dueño.</p>
+    </div>
+    {% endif %}
+
+  </div>{# /seccionOfertas #}
+
+</div>{# /prom-page #}
+
+
+{# ── Modal principal ─────────────────────────────────────────── #}
+<div id="modalPromocion" class="prom-modal">
+  <div class="prom-modal__box">
+    <button class="prom-modal__close" onclick="PromocionesPage.cerrarModal()">✕</button>
+    <div id="modalContenido">Cargando…</div>
+  </div>
+</div>
+
+{# ── Modal confirmar eliminación ─────────────────────────────── #}
+<div id="modalConfirmar" class="prom-modal">
+  <div class="prom-confirm__box">
+    <h2 class="prom-confirm__titulo">⚠️ Eliminar</h2>
+    <p class="prom-confirm__desc">
+      ¿Eliminar "<strong id="confirmNombre"></strong>"?<br>
+      Esta acción no se puede deshacer.
+    </p>
+    <div class="prom-confirm__actions">
+      <button class="prom-btn-accion" onclick="PromocionesPage.cerrarConfirmar()">Cancelar</button>
+      <button class="prom-btn-accion prom-btn-accion--borrar" onclick="PromocionesPage.ejecutarEliminar()">
+        Sí, eliminar
+      </button>
+    </div>
+  </div>
+</div>
+
+
+{# ── Config para el JS ───────────────────────────────────────── #}
+<script>
+window.PROM_CONFIG = {
+  urls: {
+    modalNueva:        "{% url 'ventas:promocion_modal_nueva' %}",
+    guardarNueva:      "{% url 'ventas:promocion_guardar_nueva' %}",
+    modalEditar:       "/ventas/promociones/modal/",
+    guardar:           "/ventas/promociones/guardar/",
+    toggle:            "/ventas/promociones/toggle/",
+    eliminar:          "/ventas/promociones/eliminar/",
+    modalNuevaOferta:  "{% url 'ventas:oferta_modal_nueva' %}",
+    guardarNuevaOferta:"{% url 'ventas:oferta_guardar_nueva' %}",
+    modalEditarOferta: "/ventas/ofertas/modal/",
+    guardarOferta:     "/ventas/ofertas/guardar/",
+    toggleOferta:      "/ventas/ofertas/toggle/",
+    eliminarOferta:    "/ventas/ofertas/eliminar/",
+  },
+  soloLectura: {{ solo_lectura|lower }},
+};
+</script>
+<script src="{% static 'js/promociones.js' %}"></script>
+
+{% endblock %}

@@ -90,22 +90,30 @@ def generar_texto_ticket(obj):
         tipos_precio = set()
 
         for item in venta.detalles.all():
+            es_regalo = (item.atributos_snapshot or {}).get("tipo") == "regalo"
             producto_id = item.producto.id if item.producto else "?"
             nombre = item.nombre_snapshot or (
                 item.producto.nombre if item.producto else "PRODUCTO ELIMINADO"
             )
 
-            # Formato compacto estilo Oxxo/Walmart: #ID Nombre xCant  $precio
-            etiqueta = f"#{producto_id} {nombre} x{item.cantidad}"
-            precio_str = f"${item.precio_unitario:.2f}"
-            # Alinear precio a la derecha dentro del ancho del ticket
+            if es_regalo:
+                etiqueta  = f"#{producto_id} {nombre} x{item.cantidad}"
+                precio_str = "$0.00 *PROMO*"
+            else:
+                etiqueta  = f"#{producto_id} {nombre} x{item.cantidad}"
+                precio_str = f"${item.precio_unitario:.2f}"
+
             espacio = ANCHO - len(etiqueta) - len(precio_str)
             if espacio > 0:
                 lineas.append(f"{etiqueta}{' ' * espacio}{precio_str}")
             else:
-                # Si el nombre es muy largo, precio en la siguiente línea
                 lineas.append(etiqueta)
                 lineas.append(f"  {precio_str}")
+
+            if es_regalo:
+                promo_nombre = (item.atributos_snapshot or {}).get("promo", "")
+                if promo_nombre:
+                    lineas.append(f"  --> {promo_nombre}")
 
             tipos_precio.add(_detectar_tipo_precio(item))
 
@@ -142,9 +150,16 @@ def generar_texto_ticket(obj):
 
         for v in corte.ventas.all():
             for item in v.detalles.all():
+                snap = item.atributos_snapshot or {}
+                # Regalos en $0 no cuentan para ingresos de nadie
+                if snap.get("tipo") == "regalo":
+                    continue
+
                 if item.producto and item.producto.dueño:
                     u = item.producto.dueño.user
                     nombre_dueno = u.first_name or u.username
+                elif snap.get("tipo") == "servicio":
+                    nombre_dueno = "Servicios"
                 else:
                     nombre_dueno = item.nombre_snapshot or "SIN DUEÑO"
 
@@ -187,8 +202,9 @@ def generar_texto_ticket(obj):
         for dueno, data in resumen_duenos.items():
             lineas.append(f"  {dueno}")
             lineas.append(f"  Total vendido: ${data['total']:.2f}")
-            lineas.append(f"  Efectivo:      ${data['efectivo']:.2f}")
-            lineas.append(f"  Tarjeta:       ${data['tarjeta']:.2f}")
+            if dueno != "Servicios":
+                lineas.append(f"  Efectivo:      ${data['efectivo']:.2f}")
+                lineas.append(f"  Tarjeta:       ${data['tarjeta']:.2f}")
             lineas.append(_sep("-"))
         lineas.append(_sep())
         lineas.append(_c("DETALLE DEL CORTE"))

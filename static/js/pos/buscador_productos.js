@@ -70,21 +70,7 @@ export function initBuscador() {
     // ============================================================
 
     document.querySelectorAll(".producto-item").forEach(card => {
-        card.onclick = () => {
-            const id = parseInt(card.dataset.id);
-            const nombre = card.dataset.nombre;
-
-            const precios = {
-                men: parseFloat(card.dataset.men),
-                may: parseFloat(card.dataset.may),
-                doc: parseFloat(card.dataset.doc)
-            };
-
-            const stock_piso = parseInt(card.dataset.stockPiso);
-            const stock_bodega = parseInt(card.dataset.stockBodega);
-
-            agregarProducto(id, nombre, precios, stock_piso, stock_bodega);
-        };
+        card.onclick = () => agregarDesdeCard(card);
     });
 }
 
@@ -112,7 +98,10 @@ export function initDragDrop() {
                 may: parseFloat(item.dataset.may),
                 doc: parseFloat(item.dataset.doc),
                 stock_piso: parseInt(item.dataset.stockPiso),
-                stock_bodega: parseInt(item.dataset.stockBodega)
+                stock_bodega: parseInt(item.dataset.stockBodega),
+                subcategoria_id: item.dataset.subcategoria ? parseInt(item.dataset.subcategoria) : null,
+                cat_padre_id:    item.dataset.catPadre     ? parseInt(item.dataset.catPadre)     : null,
+                atributos:       item.dataset.atributos ? JSON.parse(item.dataset.atributos) : {},
             }));
         });
     });
@@ -125,15 +114,11 @@ export function initDragDrop() {
         const precios = JSON.parse(e.dataTransfer.getData("precios"));
 
         agregarProducto(
-            id,
-            nombre,
-            {
-                men: precios.men,
-                may: precios.may,
-                doc: precios.doc
-            },
-            precios.stock_piso,
-            precios.stock_bodega
+            id, nombre,
+            { men: precios.men, may: precios.may, doc: precios.doc },
+            precios.stock_piso, precios.stock_bodega,
+            precios.subcategoria_id, precios.cat_padre_id,
+            precios.atributos || {},
         );
     });
 }
@@ -186,6 +171,10 @@ export function initEscaneo() {
             "#modal-pago:not(.pos-modal--hidden), #modal-resultado:not(.pos-modal--hidden), #modal-consulta-precios:not(.pos-modal--hidden)"
         );
         if (modalAbierto) return;
+
+        // Si el modal de servicio está abierto → no capturar
+        const modalServicio = document.getElementById("modal-servicio");
+        if (modalServicio && modalServicio.style.display === "flex") return;
 
         if (e.key === "Enter") {
             e.preventDefault();
@@ -245,8 +234,11 @@ function agregarDesdeCard(card) {
         doc: parseFloat(card.dataset.doc)
     };
 
-    const stock_piso = parseInt(card.dataset.stockPiso || card.dataset.stock_piso);
-    const stock_bodega = parseInt(card.dataset.stockBodega || card.dataset.stock_bodega);
+    const stock_piso    = parseInt(card.dataset.stockPiso    || card.dataset.stock_piso);
+    const stock_bodega  = parseInt(card.dataset.stockBodega  || card.dataset.stock_bodega);
+    const subcategoria_id = card.dataset.subcategoria  ? parseInt(card.dataset.subcategoria)  : null;
+    const cat_padre_id    = card.dataset.catPadre      ? parseInt(card.dataset.catPadre)      : null;
+    const atributos       = card.dataset.atributos     ? JSON.parse(card.dataset.atributos)   : {};
 
-    agregarProducto(id, nombre, precios, stock_piso, stock_bodega);
+    agregarProducto(id, nombre, precios, stock_piso, stock_bodega, subcategoria_id, cat_padre_id, atributos);
 }

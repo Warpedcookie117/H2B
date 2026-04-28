@@ -25,18 +25,26 @@ function cerrarModalAtributo() {
 // MENSAJES
 // ======================================================
 
-function showSuccess(msg) {
-    let box = document.getElementById("msgSuccess");
-    box.innerText = msg;
-    box.classList.remove("hidden");
-    setTimeout(() => box.classList.add("hidden"), 3000);
-}
+function showSuccess(msg) { toast("msgSuccess", msg, 2800); }
+function showError(msg)   { toast("msgError",   msg, 4000); }
 
-function showError(msg) {
-    let box = document.getElementById("msgError");
-    box.innerText = msg;
+function toast(id, msg, duration) {
+    const box = document.getElementById(id);
+    box.textContent = msg;
+    box.style.transition = "opacity .2s ease, transform .2s ease";
+    box.style.opacity    = "0";
+    box.style.transform  = "translateY(-8px)";
     box.classList.remove("hidden");
-    setTimeout(() => box.classList.add("hidden"), 4000);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        box.style.opacity   = "1";
+        box.style.transform = "translateY(0)";
+    }));
+    clearTimeout(box._timer);
+    box._timer = setTimeout(() => {
+        box.style.opacity   = "0";
+        box.style.transform = "translateY(-8px)";
+        setTimeout(() => box.classList.add("hidden"), 220);
+    }, duration);
 }
 
 
@@ -46,48 +54,54 @@ function showError(msg) {
 
 const TIPO_DISPLAY = { texto: "Texto", numero: "Número" };
 
+const S = {
+    li:       "border:4px solid black;padding:1rem;background:#F0FFF4;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;animation:fadeSlideIn .25s ease;",
+    nombre:   "font-weight:900;color:black;font-size:1rem;text-transform:uppercase;letter-spacing:.05em;margin:0;",
+    badge:    "display:inline-block;margin-top:.25rem;border:2px solid black;background:#CCFF00;color:black;font-weight:900;font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;padding:.1rem .35rem;",
+    acciones: "display:flex;gap:.5rem;flex-shrink:0;",
+    btnEdit:  "border:4px solid black;box-shadow:3px 3px 0 0 black;background:#06D6A0;color:black;font-weight:900;font-size:.75rem;text-transform:uppercase;padding:.4rem .65rem;cursor:pointer;transition:transform .1s,box-shadow .1s;",
+    btnDel:   "border:4px solid black;box-shadow:3px 3px 0 0 black;background:#FF006E;color:white;font-weight:900;font-size:.75rem;text-transform:uppercase;padding:.4rem .65rem;cursor:pointer;transition:transform .1s,box-shadow .1s;",
+    hover:    "this.style.transform='translate(-2px,-2px)';this.style.boxShadow='5px 5px 0 0 black'",
+    out:      "this.style.transform='';this.style.boxShadow='3px 3px 0 0 black'",
+};
+
 function renderAtributos(subcat_id, atributos) {
     const card = document.getElementById(`card-${subcat_id}`);
     if (!card) return;
 
-    // Eliminar lista o mensaje vacío existente
-    const viejaLista = card.querySelector("ul");
-    const viejoVacio = card.querySelector(".sin-atributos");
-    if (viejaLista) viejaLista.remove();
-    if (viejoVacio) viejoVacio.remove();
+    card.querySelector("ul")?.remove();
+    card.querySelector(".sin-atributos")?.remove();
 
     if (atributos.length === 0) {
         const p = document.createElement("p");
-        p.className = "sin-atributos text-gray-400 font-bold text-sm border-4 border-dashed border-gray-200 p-4 text-center";
+        p.className   = "sin-atributos";
+        p.style.cssText = "color:#9ca3af;font-weight:700;font-size:.875rem;border:4px dashed #e5e7eb;padding:1rem;text-align:center;";
         p.textContent = "Sin atributos todavía. Ponle, no seas flojo. 👀";
         card.appendChild(p);
         return;
     }
 
     const ul = document.createElement("ul");
-    ul.className = "space-y-3";
+    ul.style.cssText = "list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.75rem;";
 
     atributos.forEach(a => {
         const tipoLabel = TIPO_DISPLAY[a.tipo] || a.tipo;
-        ul.innerHTML += `
-            <li class="border-4 border-black p-4 bg-[#F0FFF4] flex items-center justify-between gap-4 flex-wrap">
-                <div class="min-w-0 flex-1">
-                    <p class="font-black text-black text-base uppercase tracking-wide">${a.nombre}</p>
-                    <span class="inline-block mt-1 border-2 border-black bg-[#CCFF00]
-                                 text-black font-black text-[10px] uppercase tracking-widest px-2 py-0.5">
-                        ${tipoLabel}
-                    </span>
-                </div>
-                <div class="flex gap-2 flex-shrink-0">
-                    <button onclick="abrirModalAtributo(${subcat_id}, ${a.id})"
-                            class="btn-90s bg-[#06D6A0] border-4 border-black shadow-[3px_3px_0_0_black]
-                                   text-black font-black text-xs uppercase px-3 py-2">✏️</button>
-                    <button onclick="confirmarEliminar(${subcat_id}, ${a.id})"
-                            class="btn-90s bg-[#FF006E] border-4 border-black shadow-[3px_3px_0_0_black]
-                                   text-white font-black text-xs uppercase px-3 py-2">🗑️</button>
-                </div>
-            </li>
-        `;
+        const li = document.createElement("li");
+        li.style.cssText = S.li;
+        li.innerHTML = `
+            <div style="min-width:0;flex:1;">
+                <p style="${S.nombre}">${a.nombre}</p>
+                <span style="${S.badge}">${tipoLabel}</span>
+            </div>
+            <div style="${S.acciones}">
+                <button onclick="abrirModalAtributo(${subcat_id},${a.id})"
+                        style="${S.btnEdit}"
+                        onmouseover="${S.hover}" onmouseout="${S.out}">✏️</button>
+                <button onclick="confirmarEliminar(${subcat_id},${a.id})"
+                        style="${S.btnDel}"
+                        onmouseover="${S.hover}" onmouseout="${S.out}">🗑️</button>
+            </div>`;
+        ul.appendChild(li);
     });
 
     card.appendChild(ul);

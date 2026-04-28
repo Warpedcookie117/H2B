@@ -5,228 +5,352 @@
 {% block content %}
 
 <!-- ========================================================= -->
-<!-- MENSAJE SI YA ESTÁ LOGUEADO -->
+<!-- METICHON                                                  -->
 <!-- ========================================================= -->
 {% if user.is_authenticated %}
-<div class="max-w-4xl mx-auto mt-4 mb-4 p-4 bg-[#FFBE0B] border-4 border-black shadow-[6px_6px_0_0_black] text-center">
+<div class="mx-4 mt-4 mb-2 p-4 bg-[#FFBE0B] border-4 border-black shadow-[6px_6px_0_0_black] text-center">
   <p class="font-black uppercase text-lg text-black tracking-wide">
-    ¿Qué haces acá metichón?
+    ⚠️ ¿Qué haces acá, {{ user.username }}? Vuelve a trabajar.
   </p>
 </div>
 {% endif %}
 
 <!-- ========================================================= -->
-<!-- HERO — VIDEO -->
+<!-- HERO — video full con texto encima + click burst         -->
 <!-- ========================================================= -->
-<section class="relative flex justify-center items-center min-h-[60vh] mt-4 mb-4 overflow-hidden">
-  <video
-    autoplay muted loop playsinline
-    class="mx-auto rounded-none w-full max-w-5xl border-4 border-black shadow-[8px_8px_0_0_black]">
+<section id="hero-section"
+         class="relative flex justify-center items-center min-h-[82vh] overflow-hidden border-b-4 border-black cursor-crosshair">
+
+  <video autoplay muted loop playsinline
+         class="absolute inset-0 w-full h-full object-cover">
     <source src="{% static 'videos/landing.mp4' %}" type="video/mp4">
-    Tu navegador no soporta video HTML5.
   </video>
 
-  <!-- Overlay ligero -->
-  <div class="absolute inset-0 bg-black/20 pointer-events-none"></div>
+  <!-- Overlay -->
+  <div class="absolute inset-0 bg-black/55 pointer-events-none"></div>
 
-  <!-- Texto centrado -->
-  <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-10">
-    <h1 class="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight
-               drop-shadow-[4px_4px_0_rgba(0,0,0,1)] leading-tight">
+  <!-- Contenido -->
+  <div class="relative z-10 flex flex-col items-center justify-center text-center px-6 py-16 w-full max-w-5xl mx-auto">
+
+    <span id="hero-badge"
+          class="inline-block bg-[#FFBE0B] border-2 border-black text-black font-black uppercase text-xs tracking-[.2em] px-4 py-1 mb-6 shadow-[3px_3px_0_0_black]">
+      Comercializadora Modelo &middot; Est. 2019
+    </span>
+
+    <h1 id="hero-title"
+        class="font-black text-white uppercase leading-none tracking-tight drop-shadow-[4px_4px_0_rgba(0,0,0,0.9)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl">
       Bienvenido a<br>
-      <span class="text-[#FFBE0B]">Comercializadora Modelo</span>
+      <span class="text-[#FFBE0B]">Comercializadora Modelo.</span>
     </h1>
-    <p class="mt-4 text-base sm:text-lg font-bold text-white
-              drop-shadow-[2px_2px_0_rgba(0,0,0,1)] max-w-xl">
-      Confianza, calidad y atención personalizada desde el primer clic.
+
+    <p id="hero-sub"
+       class="mt-6 text-base sm:text-lg font-bold text-white/90 drop-shadow-[2px_2px_0_rgba(0,0,0,1)] max-w-xl">
+      Gestión de inventario, ventas y sucursales en un solo lugar.
     </p>
 
     {% if not user.is_authenticated %}
-    <!-- BOTÓN INICIAR SESIÓN -->
-    <a href="{% url 'tienda_temp:login' %}"
-       class="mt-6 inline-block bg-[#3A86FF] border-4 border-black shadow-[4px_4px_0_0_black]
-              text-white font-black uppercase px-6 py-3 text-sm
-              hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
-              transition-all duration-150">
-      Iniciar sesión →
-    </a>
-
-    <!-- BOTÓN REGISTRARME -->
-    <a href="{% url 'tienda_temp:registro_cliente' %}"
-       class="mt-3 inline-block bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
-              text-black font-black uppercase px-6 py-3 text-sm
-              hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[6px_6px_0_0_black]
-              transition-all duration-150">
-      Registrarme →
-    </a>
+    <div id="hero-btns" class="flex flex-col sm:flex-row gap-3 mt-8">
+      <a href="{% url 'tienda_temp:login' %}"
+         class="bg-[#dc2626] border-4 border-black shadow-[5px_5px_0_0_black]
+                text-white font-black uppercase px-8 py-3 text-sm tracking-widest
+                hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_black]
+                transition-all duration-100">
+        Iniciar sesión →
+      </a>
+      <a href="{% url 'tienda_temp:registro_cliente' %}"
+         class="bg-[#FFBE0B] border-4 border-black shadow-[5px_5px_0_0_black]
+                text-black font-black uppercase px-8 py-3 text-sm tracking-widest
+                hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_black]
+                transition-all duration-100">
+        Registrarme →
+      </a>
+    </div>
+    {% else %}
+    <div id="hero-btns"></div>
     {% endif %}
+
+    <!-- Hint de clic -->
+    <p id="hero-hint" class="mt-10 text-white/40 font-bold uppercase text-xs tracking-widest select-none">
+      ↓ Haz clic en cualquier parte del hero ↓
+    </p>
+
   </div>
 </section>
 
 <!-- ========================================================= -->
-<!-- MARQUEE -->
+<!-- TICKER                                                    -->
 <!-- ========================================================= -->
 <div class="bg-[#FFBE0B] border-y-4 border-black py-3 overflow-hidden">
-  <div class="flex whitespace-nowrap animate-marquee gap-12 text-black font-black uppercase text-sm tracking-widest">
+  <div class="flex whitespace-nowrap gap-16 text-black font-black uppercase text-sm tracking-widest"
+       style="animation: marquee 18s linear infinite;">
     <span>📦 Inventario en tiempo real</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>⭐ Calidad garantizada</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🏬 Múltiples sucursales</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>💳 Pago en efectivo y tarjeta</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🚀 Sistema POS integrado</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>📊 Reportes y cortes de caja</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🔥 Comercializadora Modelo</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>📦 Inventario en tiempo real</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>⭐ Calidad garantizada</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🏬 Múltiples sucursales</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>💳 Pago en efectivo y tarjeta</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🚀 Sistema POS integrado</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>📊 Reportes y cortes de caja</span>
+    <span class="text-[#dc2626]">&#9670;</span>
     <span>🔥 Comercializadora Modelo</span>
+    <span class="text-[#dc2626]">&#9670;</span>
   </div>
 </div>
 
 <!-- ========================================================= -->
-<!-- BENEFICIOS -->
+<!-- BENEFICIOS                                                -->
 <!-- ========================================================= -->
-<section class="max-w-7xl mx-auto px-4 py-16 space-y-6">
+<section class="bg-white border-b-4 border-black px-4 py-16">
+  <div class="max-w-7xl mx-auto">
 
-  <h2 class="text-3xl font-black text-gray-900 uppercase text-center tracking-wide mb-10">
-    ¿Por qué elegirnos?
-  </h2>
-
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-    <!-- Card 1 -->
-    <div class="bg-[#FF006E] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -top-4 -right-4 w-14 h-14 bg-[#FFBE0B] rotate-45 opacity-50"></div>
-      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
-        🚚
-      </div>
-      <h3 class="text-xl font-black text-white uppercase mb-2">Envíos rápidos</h3>
-      <p class="text-white font-semibold text-sm">
-        Tan rápido que tu pedido llega antes de que te arrepientas.
-      </p>
+    <div class="mb-12 text-center">
+      <span class="inline-block bg-[#dc2626] text-white font-black uppercase text-xs tracking-[.2em] px-4 py-1 border-2 border-black mb-3">
+        Nuestros valores
+      </span>
+      <h2 class="font-black text-black uppercase text-3xl sm:text-5xl leading-none" style="letter-spacing:-0.02em;">
+        ¿Por qué elegirnos?
+      </h2>
     </div>
 
-    <!-- Card 2 -->
-    <div class="bg-[#8338EC] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -bottom-4 -left-4 w-16 h-16 bg-[#FB5607] rounded-full opacity-40"></div>
-      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
-        ✅
-      </div>
-      <h3 class="text-xl font-black text-white uppercase mb-2">Calidad garantizada</h3>
-      <p class="text-white font-semibold text-sm">
-        Si no te gusta, le echamos la culpa a tu mal gusto. (Broma, siempre tienes razón.)
-      </p>
-    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-    <!-- Card 3 -->
-    <div class="bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -top-3 right-3 w-10 h-10 bg-[#06D6A0] rotate-45 opacity-50"></div>
-      <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-2xl font-black mb-4">
-        📞
+      <div class="gsap-card bg-[#FF006E] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="absolute top-0 right-2 font-black text-white/10 leading-none select-none pointer-events-none"
+              style="font-size:8rem;line-height:1;">01</span>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-3xl mb-5 relative z-10">🚚</div>
+        <h3 class="text-2xl font-black text-white uppercase mb-2 relative z-10">Envíos rápidos</h3>
+        <p class="text-white font-semibold text-sm leading-relaxed relative z-10">
+          Tan rápido que tu pedido llega antes de que te arrepientas. Si parpadeas, lo perdiste.
+        </p>
       </div>
-      <h3 class="text-xl font-black text-white uppercase mb-2">Atención personalizada</h3>
-      <p class="text-white font-semibold text-sm">
-        Contestamos más rápido que tu ex.
-      </p>
-    </div>
 
+      <div class="gsap-card bg-[#8338EC] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="absolute top-0 right-2 font-black text-white/10 leading-none select-none pointer-events-none"
+              style="font-size:8rem;line-height:1;">02</span>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-3xl mb-5 relative z-10">✅</div>
+        <h3 class="text-2xl font-black text-white uppercase mb-2 relative z-10">Calidad garantizada</h3>
+        <p class="text-white font-semibold text-sm leading-relaxed relative z-10">
+          Si no te gusta, le echamos la culpa a tu mal gusto. (Broma &mdash; siempre tienes la razón.)
+        </p>
+      </div>
+
+      <div class="gsap-card bg-[#3A86FF] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="absolute top-0 right-2 font-black text-white/10 leading-none select-none pointer-events-none"
+              style="font-size:8rem;line-height:1;">03</span>
+        <div class="w-14 h-14 border-4 border-black bg-white flex items-center justify-center text-3xl mb-5 relative z-10">📞</div>
+        <h3 class="text-2xl font-black text-white uppercase mb-2 relative z-10">Atención personalizada</h3>
+        <p class="text-white font-semibold text-sm leading-relaxed relative z-10">
+          Contestamos más rápido que tu ex. Y con mucho más estilo.
+        </p>
+      </div>
+
+    </div>
   </div>
-
 </section>
 
 <!-- ========================================================= -->
-<!-- TESTIMONIOS -->
+<!-- TESTIMONIOS                                               -->
 <!-- ========================================================= -->
-<section class="max-w-7xl mx-auto px-4 pb-16">
+<section class="bg-[#111] border-b-4 border-black px-4 py-16">
+  <div class="max-w-7xl mx-auto">
 
-  <h2 class="text-3xl font-black text-gray-900 uppercase text-center tracking-wide mb-10">
-    Lo que dicen nuestros clientes
-  </h2>
-
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-    <div class="bg-[#06D6A0] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -top-3 -right-3 w-10 h-10 bg-[#FFBE0B] rotate-45 opacity-60"></div>
-      <p class="text-black font-bold text-sm italic mb-4">
-        "Excelente servicio y productos de calidad. ¡Recomendado! Mi negocio creció un chingo desde que los uso."
-      </p>
-      <p class="text-black font-black uppercase text-xs tracking-widest">— María G., cliente desde 2022</p>
+    <div class="mb-12 text-center">
+      <span class="inline-block bg-[#FFBE0B] text-black font-black uppercase text-xs tracking-[.2em] px-4 py-1 border-2 border-[#FFBE0B] mb-3">
+        Clientes reales
+      </span>
+      <h2 class="font-black text-white uppercase text-3xl sm:text-5xl leading-none" style="letter-spacing:-0.02em;">
+        Lo que dicen de nosotros.
+      </h2>
     </div>
 
-    <div class="bg-[#FFBE0B] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -bottom-3 -left-3 w-12 h-12 bg-[#FF006E] rounded-full opacity-50"></div>
-      <p class="text-black font-bold text-sm italic mb-4">
-        "Pensé que era otra empresa más del montón. Me equivoqué completamente. El sistema es súper fácil de usar."
-      </p>
-      <p class="text-black font-black uppercase text-xs tracking-widest">— Carlos R., dueño de tienda</p>
-    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-    <div class="bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black] p-6
-                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
-                relative overflow-hidden">
-      <div class="absolute -top-4 left-4 w-12 h-12 bg-[#8338EC] rotate-45 opacity-50"></div>
-      <p class="text-white font-bold text-sm italic mb-4">
-        "Antes llevaba el inventario en un cuaderno. Ahora soy una empresaria del siglo XXI. ¡Gracias!"
-      </p>
-      <p class="text-white font-black uppercase text-xs tracking-widest">— Ana P., emprendedora</p>
-    </div>
+      <div class="gsap-card bg-[#06D6A0] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="block font-black text-black/15 leading-none mb-2 select-none"
+              style="font-family:Georgia,serif;font-size:6rem;line-height:0.8;">&ldquo;</span>
+        <p class="text-black font-bold text-sm italic mb-5 leading-relaxed">
+          Excelente servicio y productos de calidad. ¡Recomendado!
+          Mi negocio creció un chingo desde que los uso.
+        </p>
+        <p class="text-black font-black uppercase text-xs tracking-widest border-t-2 border-black/20 pt-3">
+          &mdash; María G., cliente desde 2022
+        </p>
+      </div>
 
+      <div class="gsap-card bg-[#FFBE0B] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="block font-black text-black/15 leading-none mb-2 select-none"
+              style="font-family:Georgia,serif;font-size:6rem;line-height:0.8;">&ldquo;</span>
+        <p class="text-black font-bold text-sm italic mb-5 leading-relaxed">
+          Pensé que era otra empresa más del montón.
+          Me equivoqué completamente. El sistema es súper fácil de usar.
+        </p>
+        <p class="text-black font-black uppercase text-xs tracking-widest border-t-2 border-black/20 pt-3">
+          &mdash; Carlos R., dueño de tienda
+        </p>
+      </div>
+
+      <div class="gsap-card bg-[#FB5607] border-4 border-black shadow-[8px_8px_0_0_black] p-7
+                  transition-all duration-100 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                  relative overflow-hidden">
+        <span class="block font-black text-white/15 leading-none mb-2 select-none"
+              style="font-family:Georgia,serif;font-size:6rem;line-height:0.8;">&ldquo;</span>
+        <p class="text-white font-bold text-sm italic mb-5 leading-relaxed">
+          Antes llevaba el inventario en un cuaderno. Ahora soy una empresaria del siglo XXI.
+          ¡Gracias!
+        </p>
+        <p class="text-white font-black uppercase text-xs tracking-widest border-t-2 border-white/20 pt-3">
+          &mdash; Ana P., emprendedora
+        </p>
+      </div>
+
+    </div>
   </div>
-
 </section>
 
 <!-- ========================================================= -->
-<!-- CTA FINAL (ANIMADO, SIN ACCIÓN) -->
+<!-- CTA FINAL                                                 -->
 <!-- ========================================================= -->
-<section class="max-w-7xl mx-auto px-4 pb-20">
-  <div class="bg-black border-4 border-black shadow-[8px_8px_0_0_#3A86FF] p-10 text-center relative overflow-hidden">
-    <div class="absolute -top-6 -left-6 w-20 h-20 bg-[#FFBE0B] rotate-45 opacity-50"></div>
-    <div class="absolute -bottom-6 -right-6 w-20 h-20 bg-[#8338EC] rotate-45 opacity-50"></div>
-
-    <h2 class="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight mb-4">
-      ¿Listo para dejar de perder el control?
+{% if not user.is_authenticated %}
+<section class="bg-[#dc2626] border-b-4 border-black px-4 py-20 text-center relative overflow-hidden">
+  <div class="absolute inset-0 pointer-events-none"
+       style="background:repeating-linear-gradient(-45deg,transparent,transparent 35px,rgba(0,0,0,0.06) 35px,rgba(0,0,0,0.06) 36px);"></div>
+  <div class="relative z-10 max-w-3xl mx-auto gsap-cta">
+    <h2 class="font-black text-white uppercase leading-none mb-4 text-4xl sm:text-6xl" style="letter-spacing:-0.02em;">
+      ¿Listo para<br>
+      <span class="text-[#FFBE0B]">dejar de perder</span><br>
+      el control?
     </h2>
-    <p class="text-gray-400 font-bold mb-8 max-w-xl mx-auto">
+    <p class="text-white/85 font-bold mb-10 max-w-xl mx-auto text-base sm:text-lg">
       Únete a Comercializadora Modelo y deja que el sistema haga el trabajo duro.
     </p>
-
-    <div
-      class="inline-block px-10 py-4 border-4 border-white text-white font-black uppercase text-lg
-             shadow-[4px_4px_0_0_white] cursor-default animate-pulse-neon">
-      ¡Explora el sistema!
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'tienda_temp:login' %}"
+         class="bg-white border-4 border-black shadow-[5px_5px_0_0_black]
+                text-[#dc2626] font-black uppercase px-10 py-4 text-sm tracking-widest
+                hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_black]
+                transition-all duration-100">
+        Iniciar sesión →
+      </a>
+      <a href="{% url 'tienda_temp:registro_cliente' %}"
+         class="bg-transparent border-4 border-white shadow-[5px_5px_0_0_rgba(0,0,0,0.3)]
+                text-white font-black uppercase px-10 py-4 text-sm tracking-widest
+                hover:-translate-x-1 hover:-translate-y-1 hover:bg-white/10
+                transition-all duration-100">
+        Crear cuenta
+      </a>
     </div>
   </div>
 </section>
+{% endif %}
 
 <style>
   @keyframes marquee {
-    0% { transform: translateX(0); }
+    0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
-  }
-  .animate-marquee {
-    animation: marquee 20s linear infinite;
-  }
-
-  @keyframes pulseNeon {
-    0% { box-shadow: 0 0 8px #3A86FF, 0 0 16px #3A86FF; }
-    50% { box-shadow: 0 0 16px #3A86FF, 0 0 32px #3A86FF; }
-    100% { box-shadow: 0 0 8px #3A86FF, 0 0 16px #3A86FF; }
-  }
-  .animate-pulse-neon {
-    animation: pulseNeon 1.8s ease-in-out infinite;
   }
 </style>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* ── Animación de entrada del hero ── */
+const tl = gsap.timeline({ delay: 0.15 });
+tl.from("#hero-badge", { y: -30, opacity: 0, duration: 0.5, ease: "back.out(1.7)" })
+  .from("#hero-title", { y: 60,  opacity: 0, duration: 0.7, ease: "back.out(1.4)" }, "-=0.2")
+  .from("#hero-sub",   { y: 20,  opacity: 0, duration: 0.5, ease: "power2.out"    }, "-=0.3")
+  .from("#hero-btns",  { y: 20,  opacity: 0, duration: 0.4, ease: "power2.out"    }, "-=0.25")
+  .from("#hero-hint",  { opacity: 0, duration: 0.6 }, "-=0.1");
+
+/* ── Burst de partículas al hacer clic en el hero ── */
+const COLORS = ["#FFBE0B","#dc2626","#ffffff","#3A86FF","#06D6A0","#FF006E","#8338EC","#FB5607"];
+document.getElementById("hero-section").addEventListener("click", function(e) {
+  const count = 18;
+  for (let i = 0; i < count; i++) {
+    const el  = document.createElement("div");
+    const sz  = 8 + Math.random() * 14;
+    const col = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const round = Math.random() > 0.5;
+    el.style.cssText = [
+      "position:fixed",
+      `width:${sz}px`,
+      `height:${sz}px`,
+      `background:${col}`,
+      "border:2px solid #111",
+      `left:${e.clientX}px`,
+      `top:${e.clientY}px`,
+      "pointer-events:none",
+      "z-index:9999",
+      `border-radius:${round ? "50%" : "0"}`,
+      "transform:translate(-50%,-50%)"
+    ].join(";");
+    document.body.appendChild(el);
+
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const dist  = 70 + Math.random() * 110;
+    gsap.to(el, {
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist,
+      opacity: 0,
+      scale: 0,
+      rotation: Math.random() * 540 - 270,
+      duration: 0.65 + Math.random() * 0.5,
+      ease: "power2.out",
+      onComplete: () => el.remove()
+    });
+  }
+});
+
+/* ── Cards y testimonios: entran al hacer scroll ── */
+gsap.utils.toArray(".gsap-card").forEach(function(card, i) {
+  gsap.from(card, {
+    scrollTrigger: { trigger: card, start: "top 88%" },
+    y: 55,
+    opacity: 0,
+    duration: 0.55,
+    delay: (i % 3) * 0.1,
+    ease: "back.out(1.5)"
+  });
+});
+
+/* ── CTA entra al hacer scroll ── */
+const cta = document.querySelector(".gsap-cta");
+if (cta) {
+  gsap.from(cta, {
+    scrollTrigger: { trigger: cta, start: "top 85%" },
+    y: 40, opacity: 0, duration: 0.7, ease: "back.out(1.4)"
+  });
+}
+</script>
 {% endblock %}

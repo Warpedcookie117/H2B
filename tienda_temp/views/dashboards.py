@@ -2,7 +2,8 @@ import json
 
 from django.db.models import Sum, F
 from django.db.models.functions import TruncMonth
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.utils.timezone import now
 from django.utils.timezone import localtime
 from datetime import timedelta
@@ -107,9 +108,14 @@ def dashboard_socio(request):
 
 
 
+@login_required
 def dashboard_dueno(request):
 
-    empleado = request.user.empleado
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        messages.error(request, "Acceso denegado.")
+        return redirect("tienda_temp:dashboard_socio")
+
     hoy = now().date()
     mes_actual = now().strftime("%B").capitalize()
 

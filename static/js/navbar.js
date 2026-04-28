@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (menuAbierto) {
       abrirMenu();
-      navbar.classList.remove("-translate-y-full");
+      navbar.classList.remove("navbar-hidden");
     } else {
       cerrarMenu();
     }
@@ -116,13 +116,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const subiendo = currentScroll < lastScrollTop - 5;
 
         if (bajando && currentScroll > 60) {
-          navbar.style.transition = "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)";
-          navbar.classList.add("-translate-y-full");
+          navbar.classList.add("navbar-hidden");
         } else if (subiendo) {
-          navbar.style.transition = "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)";
-          navbar.classList.remove("-translate-y-full");
+          navbar.classList.remove("navbar-hidden");
         }
-
         lastScrollTop = currentScroll <= 0 ? 0 : currentScroll;
         ticking = false;
       });

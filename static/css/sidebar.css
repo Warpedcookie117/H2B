@@ -1,29 +1,44 @@
 /* ============================================================
-   SIDEBAR
+   SIDEBAR — 90s Brutalist
    ============================================================ */
 
-/* BASE — top y height se calculan en JS dinámicamente */
+:root {
+  --sb-red:   #dc2626;
+  --sb-dark:  #b91c1c;
+  --sb-black: #111;
+  --sb-white: #fff;
+  --sb-w-col: 4rem;
+  --sb-w-exp: 16rem;
+}
+
+/* ── BASE — top y height se calculan en JS dinámicamente ───── */
 #sidebar {
   position: fixed;
   left: 0;
   top: 4rem;
   height: calc(100vh - 4rem);
-  width: 4rem;
-  background: #fff;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+  width: var(--sb-w-col);
+  background: var(--sb-white);
+  border-right: 3px solid var(--sb-black);
+  box-shadow: 3px 0 0 0 rgba(0,0,0,0.12);
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width 0.25s ease;
+  transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 40;
+}
+
+/* Contenido principal — sigue al sidebar al anclar */
+#main-content {
+  transition: margin-left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* PINNED o HOVER → expandido */
 #sidebar.pinned,
 #sidebar:hover {
-  width: 16rem;
+  width: var(--sb-w-exp);
 }
 
-/* TEXTO — solo visible cuando expandido */
+/* ── TEXTO — solo visible cuando expandido ─────────────────── */
 #sidebar:not(.pinned):not(:hover) .sidebar-text {
   opacity: 0;
   width: 0;
@@ -40,7 +55,7 @@
   transition: opacity 0.2s ease 0.05s;
 }
 
-/* FLECHAS DE SUBMENÚ — ocultas cuando sidebar cerrado */
+/* ── FLECHAS DE SUBMENÚ — ocultas cuando sidebar cerrado ───── */
 #sidebar:not(.pinned):not(:hover) #flecha-inventario,
 #sidebar:not(.pinned):not(:hover) #flecha-sucursales,
 #sidebar:not(.pinned):not(:hover) .sucursal-flecha {
@@ -58,25 +73,34 @@
   transition: opacity 0.2s ease;
 }
 
-/* LINKS */
+/* ── LINKS ─────────────────────────────────────────────────── */
 .sidebar-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--color-base, #dc2626);
-  font-weight: 600;
+  padding: 11px 14px;
+  border-radius: 0;
+  color: var(--color-base, var(--sb-red));
+  font-weight: 700;
+  font-size: 0.93rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   text-decoration: none;
-  transition: background 0.15s ease;
   cursor: pointer;
   background: none;
   border: none;
+  border-left: 3px solid transparent;
   width: 100%;
   text-align: left;
+  transition: background 0.12s, border-left-color 0.12s;
 }
 .sidebar-link:hover {
   background-color: var(--color-hover, #fee2e2);
+  border-left-color: var(--color-base, var(--sb-red));
+}
+.sidebar-link:active {
+  transform: translate(1px, 1px);
+  filter: brightness(0.88);
 }
 .sidebar-link i {
   flex-shrink: 0;
@@ -84,7 +108,7 @@
   text-align: center;
 }
 
-/* SUBMENÚ */
+/* ── SUBMENÚ ────────────────────────────────────────────────── */
 .submenu-transition {
   max-height: 0;
   overflow: hidden;
@@ -94,40 +118,42 @@
   max-height: 600px;
 }
 
-/* PESTAÑA DE ANCLAJE — position fixed, JS mueve el left */
+/* ── PESTAÑA DE ANCLAJE — position fixed, JS mueve el left ─── */
 #sidebar-tab {
   position: fixed;
   top: 4.75rem;
-  left: 4rem;
-  width: 1rem;
-  height: 2.5rem;
-  background: #dc2626;
-  color: white;
-  border-radius: 0 6px 6px 0;
+  left: var(--sb-w-col);
+  width: 1.1rem;
+  height: 2.6rem;
+  background: var(--sb-red);
+  color: var(--sb-white);
+  border-radius: 0;
+  border: 2px solid var(--sb-black);
+  border-left: none;
+  box-shadow: 2px 2px 0 0 var(--sb-black);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 50;
-  transition: background 0.2s ease, width 0.2s ease, left 0.25s ease;
+  transition: background 0.12s, width 0.12s, left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #sidebar-tab:hover {
-  background: #b91c1c;
-  width: 1.4rem;
+  background: var(--sb-dark);
+  width: 1.5rem;
 }
-#sidebar.pinned ~ * #sidebar-tab,
 #sidebar.pinned #sidebar-tab {
-  left: 16rem;
+  left: var(--sb-w-exp);
 }
 #tab-icon {
-  transition: transform 0.3s ease;
-  font-size: 0.65rem;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 0.6rem;
 }
 #sidebar.pinned #tab-icon {
   transform: rotate(180deg);
 }
 
-/* ROTATE HELPER */
+/* ── ROTATE HELPER ─────────────────────────────────────────── */
 .rotate-180 {
   transform: rotate(180deg);
 }
@@ -137,7 +163,7 @@
    ============================================================ */
 @media (max-width: 767px) {
   #sidebar {
-    width: 16rem;
+    width: var(--sb-w-exp);
     top: 4rem;
     height: calc(100vh - 4rem);
     transform: translateX(-100%);
@@ -167,20 +193,20 @@
 }
 
 /* ============================================================
-   BOTÓN HAMBURGUESA
+   BOTÓN HAMBURGUESA — cuadrado brutalist
    ============================================================ */
 #sidebar-toggle {
   position: fixed;
   bottom: 1.5rem;
   right: 1rem;
   z-index: 60;
-  background: #dc2626;
-  color: white;
+  background: var(--sb-red);
+  color: var(--sb-white);
   width: 2.75rem;
   height: 2.75rem;
-  border-radius: 50%;
-  border: 3px solid black;
-  box-shadow: 4px 4px 0 0 black;
+  border-radius: 0;
+  border: 3px solid var(--sb-black);
+  box-shadow: 4px 4px 0 0 var(--sb-black);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -189,11 +215,11 @@
 }
 #sidebar-toggle:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 0 black;
+  box-shadow: 5px 5px 0 0 var(--sb-black);
 }
 #sidebar-toggle:active {
   transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 0 black;
+  box-shadow: 2px 2px 0 0 var(--sb-black);
 }
 
 /* ============================================================
@@ -224,7 +250,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0,0,0,0.55);
   z-index: 35;
   animation: backdropIn 0.2s ease;
 }
@@ -235,3 +261,142 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* ============================================================
+   LAYOUT SEMÁNTICO — clases propias sin Tailwind
+   ============================================================ */
+
+/* Contenedor principal del nav */
+.sb-nav {
+  padding: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-weight: 700;
+}
+
+/* Etiquetas de sección (CATÁLOGO) — estilo stamp */
+.sb-section-label {
+  font-size: 0.72rem;
+  color: var(--sb-black);
+  background: #f3f4f6;
+  padding: 0.3rem 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 900;
+  border-top: 2px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 0.2rem;
+}
+
+/* Colapsado: barra gris en lugar de texto invisible */
+#sidebar:not(.pinned):not(:hover) .sb-section-label {
+  display: block !important;
+  width: auto !important;
+  opacity: 1 !important;
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  padding: 0;
+  margin: 0.45rem 0.6rem;
+  height: 3px;
+  background: #d1d5db;
+  border: none;
+  letter-spacing: 0;
+}
+
+/* Separadores */
+.sb-divider {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 0.3rem 0;
+}
+
+/* Grupos con submenú */
+.sb-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Botón expandible: flecha al extremo derecho */
+.sb-expandable {
+  justify-content: space-between;
+}
+
+/* Span interior (icono + texto) en botones expandibles */
+.sb-btn-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Flecha de submenú */
+.sb-chevron {
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+/* Submenús: indentación */
+.sb-submenu {
+  padding-left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-left: 2px solid #e5e7eb;
+  margin-left: 1.1rem;
+}
+
+/* Segundo nivel (sucursal → dashboard/piso/bodega/cajas) — menos espacio */
+.sb-submenu .sb-submenu {
+  margin-left: 0.7rem;
+  padding-left: 0.4rem;
+}
+
+/* Links del segundo nivel — sin uppercase para que no corten */
+.sb-submenu .sb-submenu .sidebar-link {
+  padding: 9px 10px;
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+/* Separador visual antes de las cajas */
+.sb-caja-sep {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem 0.2rem;
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #6b7280;
+  border-top: 1px dashed #d1d5db;
+}
+
+/* Estado vacío */
+.sb-empty {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  padding: 0.4rem 0.5rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+/* Mensaje de error de caja */
+.msg-caja {
+  color: var(--sb-red);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 0.15rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--sb-red);
+}
+.msg-caja.hidden { display: none !important; }

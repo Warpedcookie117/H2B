@@ -16,7 +16,7 @@ def crear_sucursal(request):
     # Validación de rol
     if not empleado or empleado.rol != "dueño":
         messages.error(request, "Acceso denegado. Solo el dueño puede crear sucursales.")
-        return redirect("tienda_temp:dashboard_dueno")
+        return redirect("tienda_temp:dashboard_socio")
 
     if request.method == "POST":
         form = SucursalForm(request.POST)

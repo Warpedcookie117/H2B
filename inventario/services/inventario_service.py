@@ -119,7 +119,14 @@ class InventarioService:
             InventarioService.salida(producto, cantidad, bodega, empleado, "venta")
             return "bodega"
 
-        # 3. No hay suficiente stock → AVISAR
+        # 3. Split: bodega primero (reservar exhibición), resto de piso
+        if stock_piso + stock_bodega >= cantidad:
+            if stock_bodega > 0:
+                InventarioService.salida(producto, stock_bodega, bodega, empleado, "venta")
+            InventarioService.salida(producto, cantidad - stock_bodega, piso, empleado, "venta")
+            return "split"
+
+        # 4. No hay suficiente stock
         raise ValidationError(
             f"No hay suficiente inventario en la sucursal {sucursal.nombre}. "
             f"Piso: {stock_piso}, Bodega: {stock_bodega}, Pedido: {cantidad}. "

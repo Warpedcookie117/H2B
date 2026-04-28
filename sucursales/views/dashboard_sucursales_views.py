@@ -79,6 +79,7 @@ def dashboard_sucursal(request, sucursal_id):
         "ultimos_cortes": ultimos_cortes,
         "es_dueno": empleado.rol == "dueño",
         "puede_ver_historial": empleado.rol in ["dueño", "cajero"],
+        "puede_entrar_caja": empleado.rol in ["dueño", "cajero"],
     })
 
 

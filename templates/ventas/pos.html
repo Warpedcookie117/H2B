@@ -8,6 +8,8 @@
 
 <script>
     const sucursal_id = {{ ubicacion_pos.id }};
+    window.PROMOCIONES = {{ promociones_json|safe }};
+    window.OFERTAS     = {{ ofertas_json|safe }};
 </script>
 
 <!-- WRAPPER POS -->
@@ -61,6 +63,16 @@
             class="pos-scan-input"
             autofocus
         >
+
+        <!-- ATAJOS DE TECLADO -->
+        <div class="pos-atajos">
+            <table>
+                <tbody>
+                    <tr><td><kbd>E</kbd></td><td>Escanear código</td></tr>
+                    <tr><td><kbd>S</kbd></td><td>Cobrar servicio</td></tr>
+                </tbody>
+            </table>
+        </div>
 
         <!-- CARRITO -->
         <div id="carrito-lista"
@@ -127,6 +139,9 @@
                 data-doc="{{ p.precio_docena }}"
                 data-stock-piso="{{ p.stock_piso }}"
                 data-stock-bodega="{{ p.stock_bodega }}"
+                data-subcategoria="{{ p.categoria_id }}"
+                data-cat-padre="{{ p.categoria_padre_id }}"
+                data-atributos="{{ p.atributos_json }}"
                 draggable="true"
             >
                 <div class="pos-producto-img">
@@ -297,6 +312,112 @@
 
 
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
+
+<!-- MODAL REGALO PROMOCIÓN -->
+<div id="modal-regalo" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+    <div style="background:#fff;border:4px solid black;box-shadow:10px 10px 0 0 black;width:100%;max-width:480px;padding:2rem;position:relative;max-height:90vh;overflow-y:auto;">
+        <h2 style="font-size:1.3rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;border-bottom:4px solid black;padding-bottom:.75rem;margin-bottom:.5rem;">
+            🎁 ¡Regalo disponible!
+        </h2>
+        <p id="regalo-promo-nombre" style="font-size:.85rem;font-weight:700;color:#4b5563;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em;"></p>
+        <p id="regalo-pendientes-info" style="display:none;background:#FB5607;color:#fff;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;padding:.25rem .6rem;margin-bottom:.6rem;border:2px solid black;"></p>
+        <p style="font-size:.875rem;font-weight:600;color:#111;margin-bottom:.6rem;">¿Cuál quiere llevar el cliente?</p>
+        <input id="regalo-buscar" type="text" placeholder="Buscar por nombre o atributo..."
+               style="width:100%;border:3px solid black;padding:.4rem .75rem;font-weight:600;font-size:.875rem;outline:none;box-shadow:3px 3px 0 0 black;margin-bottom:.75rem;">
+        <div id="regalo-opciones" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem;"></div>
+        <div style="display:flex;justify-content:flex-end;">
+            <button onclick="omitirRegalo()"
+                    style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;box-shadow:4px 4px 0 0 black;cursor:pointer;">
+                Sin regalo
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL SERVICIO -->
+<div id="modal-servicio" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">
+    <div style="background:#fff;border:4px solid black;box-shadow:10px 10px 0 0 black;width:100%;max-width:400px;padding:2rem;position:relative;">
+        <h2 style="font-size:1.4rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;border-bottom:4px solid black;padding-bottom:.75rem;margin-bottom:1.25rem;">
+            🔧 Cobro de servicio
+        </h2>
+        <div style="margin-bottom:1rem;">
+            <label style="font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.25rem;">¿Qué servicio?</label>
+            <input id="srv-nombre" type="text" placeholder="Ej: Vinil en globo, Aplicación de tinte…"
+                   style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:600;font-size:1rem;outline:none;box-shadow:4px 4px 0 0 black;">
+        </div>
+        <div style="margin-bottom:1.5rem;">
+            <label style="font-size:.75rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.25rem;">¿Cuánto cobras? ($)</label>
+            <input id="srv-precio" type="number" min="0" step="0.5" placeholder="0.0"
+                   style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:1.25rem;outline:none;box-shadow:4px 4px 0 0 black;">
+        </div>
+        <div id="srv-error" style="display:none;background:#FF006E;color:white;font-weight:900;font-size:.8rem;text-transform:uppercase;padding:.5rem .75rem;margin-bottom:1rem;border:3px solid black;"></div>
+        <div style="display:flex;justify-content:flex-end;gap:.75rem;">
+            <button onclick="cerrarModalServicio()"
+                    style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;box-shadow:4px 4px 0 0 black;cursor:pointer;">
+                Cancelar
+            </button>
+            <button onclick="confirmarServicio()"
+                    style="border:4px solid black;background:#8338EC;color:white;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1.25rem;box-shadow:4px 4px 0 0 black;cursor:pointer;">
+                ➕ Agregar al carrito
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { agregarServicio } from "{% static 'js/pos/carrito.js' %}";
+
+function abrirModalServicio() {
+    document.getElementById("srv-nombre").value  = "";
+    document.getElementById("srv-precio").value  = "";
+    document.getElementById("srv-error").style.display = "none";
+    const m = document.getElementById("modal-servicio");
+    m.style.display = "flex";
+    setTimeout(() => document.getElementById("srv-nombre").focus(), 50);
+}
+
+window.cerrarModalServicio = function() {
+    document.getElementById("modal-servicio").style.display = "none";
+    document.getElementById("scan-input")?.focus();
+};
+
+window.confirmarServicio = function() {
+    const nombre = document.getElementById("srv-nombre").value.trim() || "Servicio";
+    const precio = parseFloat(document.getElementById("srv-precio").value);
+    const err    = document.getElementById("srv-error");
+
+    if (!precio || precio <= 0) {
+        err.textContent = "Escribe un precio mayor a $0";
+        err.style.display = "block";
+        return;
+    }
+    err.style.display = "none";
+    agregarServicio(nombre, precio);
+    window.cerrarModalServicio();
+};
+
+// Tecla S (solo cuando no hay un input activo)
+document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        abrirModalServicio();
+    }
+});
+
+// Cerrar con Enter en precio
+document.getElementById("srv-precio")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") window.confirmarServicio();
+});
+
+// Cerrar haciendo click fuera
+document.getElementById("modal-servicio")?.addEventListener("click", function(e) {
+    if (e.target === this) window.cerrarModalServicio();
+});
+document.getElementById("modal-regalo")?.addEventListener("click", function(e) {
+    if (e.target === this) window.cerrarModalRegalo?.();
+});
+</script>
 
 {% endblock %}
 {% block extra_head %}

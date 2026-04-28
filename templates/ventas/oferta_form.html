@@ -1,0 +1,266 @@
+<form method="POST"
+      onsubmit="enviarOferta(event, {% if oferta %}{{ oferta.id }}{% else %}null{% endif %})">
+
+  {% csrf_token %}
+
+  {# Título con fondo negro que sangra hasta los bordes del modal #}
+  <div class="bg-black -mx-8 -mt-8 px-8 pt-6 pb-4 mb-6">
+    <h2 class="text-xl font-black text-white uppercase tracking-widest">
+      {% if oferta %}✏️ Editar oferta{% else %}🏷️ Nueva oferta{% endif %}
+    </h2>
+    <p class="text-sm font-semibold text-gray-300 mt-1 normal-case tracking-normal">
+      El precio del producto baja directo en el carrito. Sin producto extra.
+    </p>
+  </div>
+
+  <div id="ofertaFormError"
+       class="hidden border-4 border-black bg-black text-white font-black px-4 py-2 mb-4 text-sm uppercase tracking-wide">
+  </div>
+
+  {# NOMBRE #}
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">Nombre de la oferta</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <input type="text" name="nombre" id="id_oferta_nombre"
+             value="{{ oferta.nombre|default:'' }}"
+             placeholder="Ej: 2x1 en globos, Docena de esmaltes"
+             class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+    </div>
+  </div>
+
+  {# DESCRIPCIÓN #}
+  <div class="space-y-1 mb-5">
+    <label class="text-xs font-black uppercase tracking-widest text-black">
+      Descripción <span class="text-gray-600 font-normal normal-case">(opcional)</span>
+    </label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <textarea name="descripcion" id="id_oferta_desc" rows="2"
+                placeholder="Nota interna..."
+                class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none resize-none">{{ oferta.descripcion|default:'' }}</textarea>
+    </div>
+  </div>
+
+  <div class="border-t-4 border-black my-5 relative">
+    <span class="absolute -top-3 left-3 bg-black px-2 text-xs font-black uppercase text-white tracking-widest">¿Qué tipo de descuento?</span>
+  </div>
+
+  {# TIPO #}
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">Tipo de oferta</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white">
+      <select name="tipo" id="id_oferta_tipo"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— ¿Qué tipo de descuento? —</option>
+        <option value="porcentaje" {% if oferta.tipo == 'porcentaje' %}selected{% endif %}>🏷️ Le bajo el % — le quito un porcentaje al precio (ej: 20% off)</option>
+        <option value="fijo"       {% if oferta.tipo == 'fijo'       %}selected{% endif %}>💵 Le quito pesos directo — precio fijo menos X pesos (ej: $30 menos)</option>
+        <option value="2x1"        {% if oferta.tipo == '2x1'        %}selected{% endif %}>🎯 2×1 — se lleva dos, le cobras uno (mismo producto)</option>
+        <option value="nxprecio"   {% if oferta.tipo == 'nxprecio'   %}selected{% endif %}>📦 Precio de paquete — N piezas por $X aunque sean modelos distintos (ej: 3 globos por $20)</option>
+      </select>
+    </div>
+  </div>
+
+  {# VALOR % #}
+  <div id="sec_oferta_pct" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Cuánto % de descuento?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <input type="number" name="valor" id="id_oferta_valor_pct"
+             value="{% if oferta.tipo == 'porcentaje' %}{{ oferta.valor|default:'' }}{% endif %}"
+             min="1" max="99" step="1" placeholder="Ej: 20"
+             class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+    </div>
+    <p class="text-xs text-black font-semibold">Ej: 20 → el producto queda a 80% de su precio normal.</p>
+  </div>
+
+  {# VALOR $ FIJO #}
+  <div id="sec_oferta_fijo" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Cuántos pesos de descuento?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+      <input type="number" name="valor" id="id_oferta_valor_fijo"
+             value="{% if oferta.tipo == 'fijo' %}{{ oferta.valor|default:'' }}{% endif %}"
+             min="0" step="1" placeholder="Ej: 30"
+             class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+    </div>
+    <p class="text-xs text-black font-semibold">Se resta directo del precio. Si el producto vale $150 y pones $30, queda en $120.</p>
+  </div>
+
+  {# N x PRECIO #}
+  <div id="sec_oferta_nx" class="mb-4" style="display:none">
+    <div class="flex gap-3">
+      <div class="flex-1 space-y-1">
+        <label class="text-xs font-black uppercase tracking-widest text-black">¿Cuántas piezas entran?</label>
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+          <input type="number" name="cantidad_n" id="id_oferta_cantidad_n"
+                 value="{{ oferta.cantidad_n|default:'' }}"
+                 min="2" step="1" placeholder="Ej: 12"
+                 class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+        </div>
+      </div>
+      <div class="flex-1 space-y-1">
+        <label class="text-xs font-black uppercase tracking-widest text-black">¿Por cuánto en total? ($)</label>
+        <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+          <input type="number" name="valor" id="id_oferta_valor_nx"
+                 value="{% if oferta.tipo == 'nxprecio' %}{{ oferta.valor|default:'' }}{% endif %}"
+                 min="0" step="1" placeholder="Ej: 72"
+                 class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+        </div>
+      </div>
+    </div>
+    <p class="text-xs text-black font-semibold mt-1">
+      Ej: 3 globos por $20 → el cajero agrega varios globos de diferente modelo y el sistema agrupa de 3 en 3.
+      Si lleva 7: 2 grupos × $20 = $40, el 7mo va a precio normal.
+    </p>
+  </div>
+
+  {# NOTA 2x1 #}
+  <div id="sec_oferta_2x1_nota" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-[#CCFF00] shadow-[3px_3px_0_0_black] px-4 py-3">
+      <p class="text-sm font-black text-black uppercase tracking-wide">🎯 Cómo funciona el 2×1</p>
+      <p class="text-sm font-semibold text-black mt-1">
+        El cajero agrega 2 unidades del mismo producto y el sistema cobra solo 1.
+        Si agrega 4, paga 2. Funciona automáticamente, no tienes que hacer nada más.
+      </p>
+    </div>
+  </div>
+
+  <div class="border-t-4 border-black my-5 relative">
+    <span class="absolute -top-3 left-3 bg-black px-2 text-xs font-black uppercase text-white tracking-widest">¿A qué producto aplica?</span>
+  </div>
+
+  {# APLICA A #}
+  <div class="space-y-1 mb-4">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿En qué aplica el descuento?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white">
+      <select name="aplica_a" id="id_oferta_aplica_a"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Elige —</option>
+        <option value="producto"  {% if oferta.aplica_a == 'producto'  %}selected{% endif %}>📦 Un producto específico</option>
+        <option value="categoria" {% if oferta.aplica_a == 'categoria' %}selected{% endif %}>📁 Toda una categoría de productos</option>
+      </select>
+    </div>
+  </div>
+
+  {# PRODUCTO — typeahead en lugar de select gigante #}
+  <div id="sec_oferta_producto" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Cuál producto?</label>
+    <input type="hidden" name="producto" id="id_oferta_producto_id"
+           value="{{ oferta.producto_id|default:'' }}">
+    <div class="relative">
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white focus-within:shadow-[6px_6px_0_0_black] transition-all">
+        <input type="text" id="id_oferta_producto_buscar"
+               value="{{ oferta.producto.nombre|default:'' }}"
+               placeholder="Escribe el nombre del producto para buscarlo…"
+               autocomplete="off"
+               class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+      </div>
+      <div id="id_oferta_producto_resultados"
+           class="absolute z-50 w-full border-4 border-t-0 border-black bg-white shadow-[4px_4px_0_0_black] hidden"
+           style="max-height:180px;overflow-y:auto">
+      </div>
+    </div>
+    <p class="text-xs text-black font-semibold">Escribe mínimo 2 letras para buscar entre todos tus productos.</p>
+  </div>
+
+  {# CATEGORÍA #}
+  <div id="sec_oferta_categoria" class="space-y-1 mb-4" style="display:none">
+    <label class="text-xs font-black uppercase tracking-widest text-black">¿Qué categoría?</label>
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white">
+      <select name="categoria" id="id_oferta_categoria"
+              class="w-full px-3 py-2 font-semibold text-black bg-white outline-none">
+        <option value="">— Selecciona la categoría —</option>
+        {% for padre in padres %}
+        <optgroup label="{{ padre.nombre }}">
+          <option value="{{ padre.id }}" {% if oferta.categoria_id == padre.id %}selected{% endif %}>
+            📁 {{ padre.nombre }} (toda la categoría)
+          </option>
+          {% for sub in subcategorias %}
+            {% if sub.padre_id == padre.id %}
+            <option value="{{ sub.id }}" {% if oferta.categoria_id == sub.id %}selected{% endif %}>
+              └ {{ sub.nombre }}
+            </option>
+            {% endif %}
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  {# FILTROS DE ATRIBUTO — solo para categoría #}
+  <div id="sec_oferta_filtros" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-white shadow-[3px_3px_0_0_black] p-3 space-y-2">
+      <p class="text-xs font-black uppercase tracking-widest text-gray-700">
+        Filtrar por atributos
+        <span class="font-normal normal-case text-gray-400">(opcional — aplica solo a productos que cumplan todos los filtros)</span>
+      </p>
+      <div id="oferta_filtros_rows" class="space-y-2">
+        {% for f in oferta.filtros_atributos %}
+        <div class="filtro-fila flex gap-2 items-center">
+          <div class="flex-1">
+            <select name="filtro_nombre[]"
+                    class="oferta-filtro-nombre w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-nombre="{{ f.nombre }}">
+              <option value="">— Atributo —</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <select name="filtro_valor[]"
+                    class="oferta-filtro-valor w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-valor="{{ f.valor }}">
+              <option value="{{ f.valor }}">{{ f.valor }}</option>
+            </select>
+          </div>
+          <button type="button"
+                  class="border-2 border-black px-2 py-1 font-black text-sm bg-white hover:bg-black hover:text-white transition-colors flex-shrink-0"
+                  onclick="this.closest('.filtro-fila').remove()">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="btn_agregar_filtro_oferta"
+              class="text-xs font-black uppercase tracking-widest border-4 border-black px-3 py-1 bg-black text-[#FF006E] hover:bg-[#FF006E] hover:text-black transition-colors shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]">
+        + Agregar filtro
+      </button>
+      <p class="text-xs text-gray-400">Sin filtros, la oferta aplica a todos los productos de la categoría.</p>
+    </div>
+  </div>
+
+  {# FECHAS (opcionales) #}
+  <div class="border-t-4 border-black my-5 relative">
+    <span class="absolute -top-3 left-3 bg-black px-2 text-xs font-black uppercase text-white tracking-widest">
+      ¿Cuándo aplica? <span class="font-normal normal-case">(opcional)</span>
+    </span>
+  </div>
+  <div class="flex gap-3 mb-2">
+    <div class="flex-1 space-y-1">
+      <label class="text-xs font-black uppercase tracking-widest text-black">Desde</label>
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white">
+        <input type="date" name="fecha_inicio" id="id_oferta_fecha_ini"
+               value="{{ oferta.fecha_inicio|date:'Y-m-d'|default:'' }}"
+               class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+      </div>
+    </div>
+    <div class="flex-1 space-y-1">
+      <label class="text-xs font-black uppercase tracking-widest text-black">Hasta</label>
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white">
+        <input type="date" name="fecha_fin" id="id_oferta_fecha_fin"
+               value="{{ oferta.fecha_fin|date:'Y-m-d'|default:'' }}"
+               class="w-full px-3 py-2 font-semibold text-black bg-transparent outline-none">
+      </div>
+    </div>
+  </div>
+  <p class="text-xs text-black font-semibold mb-5">Si dejas las fechas vacías, la oferta aplica siempre mientras esté activa.</p>
+
+  {# BOTONES #}
+  <div class="flex justify-end gap-3 pt-4 border-t-4 border-black mt-5">
+    <button type="button" onclick="cerrarModal()"
+            class="btn-90s bg-white border-4 border-black shadow-[4px_4px_0_0_black]
+                   font-black text-xs uppercase tracking-widest px-4 py-2 text-black">
+      Cancelar
+    </button>
+    <button type="submit"
+            class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_black]
+                   text-white font-black text-xs uppercase tracking-widest px-6 py-2">
+      💾 Guardar oferta
+    </button>
+  </div>
+
+</form>

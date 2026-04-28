@@ -99,15 +99,6 @@ export function initBotonInventario({
                 return;
             }
 
-            const temporadaChecks = document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]');
-            if (temporadaChecks.length > 0) {
-                const alguna = Array.from(temporadaChecks).some(cb => cb.checked);
-                if (!alguna) {
-                    mostrarError("Selecciona al menos una temporada.");
-                    return;
-                }
-            }
-
             const fotoInput = document.getElementById("id_foto_url");
             if (fotoInput && fotoInput.files.length === 0) {
                 marcarCampo(fotoInput);

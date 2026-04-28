@@ -4,7 +4,8 @@
     {% if atributo %}✏️ Editar atributo{% else %}➕ Nuevo atributo{% endif %}
   </h2>
 
-  <form id="formAtributo" class="space-y-4">
+  <form id="formAtributo" class="space-y-4"
+        onsubmit="event.preventDefault(); guardarAtributo({{ subcategoria.id }}, {{ atributo.id|default:'null' }})">
     {% csrf_token %}
 
     <!-- CAMPO NOMBRE -->

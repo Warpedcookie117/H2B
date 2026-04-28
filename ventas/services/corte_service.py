@@ -17,6 +17,8 @@ def generar_corte_para_fecha(caja, fecha):
                     empleado_dueno.user.get_full_name()
                     or empleado_dueno.user.username
                 ) if empleado_dueno else "Sin dueño"
+            elif item.atributos_snapshot and item.atributos_snapshot.get("tipo") == "servicio":
+                nombre = "Servicios"
             else:
                 nombre = item.nombre_snapshot or "PRODUCTO ELIMINADO"
 

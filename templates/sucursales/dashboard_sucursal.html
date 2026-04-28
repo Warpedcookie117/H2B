@@ -105,6 +105,7 @@
         <p class="font-black text-lg text-gray-900 uppercase tracking-wide mb-4">{{ caja.nombre }}</p>
 
         <div class="flex gap-3">
+          {% if puede_entrar_caja %}
           <button class="btn-90s btn-entrar-caja flex-1 bg-[#06D6A0] border-4 border-black shadow-[4px_4px_0_0_black]
                          text-black font-black text-xs uppercase tracking-widest py-2
                          flex items-center justify-center"
@@ -112,6 +113,7 @@
                   data-caja-nombre="{{ caja.nombre }}">
             Entrar
           </button>
+          {% endif %}
 
           {% if es_dueno %}
           <button onclick="confirmarEliminarCaja({{ caja.id }}, '{{ caja.nombre }}')"

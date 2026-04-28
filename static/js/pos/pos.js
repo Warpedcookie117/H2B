@@ -6,26 +6,21 @@ import { initImpresion } from "./impresion.js";
 import { initConsultaPrecios } from "./consulta_precios.js";
 import { initStock } from "./stock.js";
 import { initPaginacion } from "./paginacion.js";
+import { initPromociones } from "./promociones.js";
+import { initOfertas }    from "./ofertas.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    // Paginación del grid (debe ir antes que el buscador)
     initPaginacion();
 
-    // Productos
     initBuscador();
     initDragDrop();
     initEscaneo();
 
-    // UI general del carrito
     initUI();
-
-    // Impresora térmica
     initImpresion();
-
-    // Consulta de precios (tecla E)
     initConsultaPrecios();
-
-    // Stock en tiempo real
     initStock();
+    initPromociones();
+    initOfertas();
 });

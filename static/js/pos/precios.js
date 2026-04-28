@@ -10,34 +10,31 @@ import { carrito, setDescuentoActivo } from "./core.js";
 
 export function aplicarPreciosGlobales() {
 
-    // --- Paso 1: Calcular modo global (MAY vs MEN) ---
-    const totalPiezas = carrito.reduce((acc, p) => acc + p.cantidad, 0);
-    const totalValor = carrito.reduce((acc, p) => {
-        return acc + (p.precios.men * p.cantidad);
-    }, 0);
+    // --- Paso 1: Calcular modo global (MAY vs MEN) ignorando servicios y regalos ---
+    const productos = carrito.filter(p => !p.es_servicio && !p.es_regalo);
+    const totalPiezas = productos.reduce((acc, p) => acc + p.cantidad, 0);
+    const totalValor  = productos.reduce((acc, p) => acc + (p.precios.men * p.cantidad), 0);
 
     let modoGlobal = "MEN";
     if (totalPiezas >= 6 && totalValor > 80) {
         modoGlobal = "MAY";
     }
 
-    // --- Paso 2: Aplicar a cada item ---
+    // --- Paso 2: Aplicar a cada item (saltar servicios y regalos) ---
     carrito.forEach(item => {
+        if (item.es_servicio || item.es_regalo) return;
 
         let modoPrecio = item.modo_precio;
 
         if (modoPrecio === "AUTO") {
-            // DOC solo si ESE item tiene 12+ unidades y tiene precio de docena
             const tieneDoc = item.precios.doc && item.precios.doc > 0;
-
             if (item.cantidad >= 12 && tieneDoc) {
                 modoPrecio = "DOC";
             } else {
-                modoPrecio = modoGlobal; // MAY o MEN según reglas globales
+                modoPrecio = modoGlobal;
             }
         }
 
-        // Si el modo resuelto es DOC pero no tiene precio de docena, bajar a MAY
         const tieneDoc = item.precios.doc && item.precios.doc > 0;
         if (modoPrecio === "DOC" && !tieneDoc) {
             modoPrecio = "MAY";

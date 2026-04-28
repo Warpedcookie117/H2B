@@ -151,14 +151,25 @@
           <p class="font-black text-sm uppercase text-black">
             {{ item.nombre_snapshot|default:item.producto.nombre }}
           </p>
-          {% if item.atributos_snapshot %}
-          {% for k, v in item.atributos_snapshot.items %}
-          <p class="text-[#8338EC] text-[10px] font-bold">{{ k }}: {{ v }}</p>
-          {% endfor %}
+          {% if item.atributos_snapshot.tipo == "regalo" %}
+            <span class="inline-block mt-1 border-2 border-black bg-[#00F5D4] text-black font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
+              🎁 PROMOCIÓN — {{ item.atributos_snapshot.promo }}
+            </span>
+            <p class="text-gray-500 text-xs font-bold mt-0.5">x{{ item.cantidad }} × <span class="text-green-600 font-black">$0.00 EN OFERTA</span></p>
+          {% elif item.atributos_snapshot %}
+            {% for k, v in item.atributos_snapshot.items %}
+              {% if k != "tipo" %}<p class="text-[#8338EC] text-[10px] font-bold">{{ k }}: {{ v }}</p>{% endif %}
+            {% endfor %}
+            <p class="text-gray-500 text-xs font-bold mt-0.5">x{{ item.cantidad }} × ${{ item.precio_unitario }}</p>
+          {% else %}
+            <p class="text-gray-500 text-xs font-bold mt-0.5">x{{ item.cantidad }} × ${{ item.precio_unitario }}</p>
           {% endif %}
-          <p class="text-gray-500 text-xs font-bold mt-0.5">x{{ item.cantidad }} × ${{ item.precio_unitario }}</p>
         </div>
-        <p class="font-black text-lg text-black shrink-0">${{ item.subtotal }}</p>
+        {% if item.atributos_snapshot.tipo == "regalo" %}
+          <p class="font-black text-lg text-green-600 shrink-0">$0.00</p>
+        {% else %}
+          <p class="font-black text-lg text-black shrink-0">${{ item.subtotal }}</p>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

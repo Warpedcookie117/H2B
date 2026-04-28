@@ -28,6 +28,14 @@
   .chevron {
     transition: transform 0.3s ease;
   }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .lista-categorias-anim {
+    transition: opacity .25s ease, transform .25s ease;
+  }
   .chevron.open {
     transform: rotate(180deg);
   }
@@ -93,7 +101,7 @@
   {% endif %}
 
   <!-- ACCORDIONS -->
-  <div class="space-y-4">
+  <div id="lista-categorias" class="space-y-4 lista-categorias-anim">
 
     {% for padre in categorias_padre %}
     <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden bg-white">

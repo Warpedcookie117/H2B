@@ -4,8 +4,8 @@
 <!-- BACKDROP MÓVIL -->
 <div id="sidebar-backdrop"></div>
 
-<!-- BOTÓN HAMBURGUESA (MÓVIL) -->
-<button id="sidebar-toggle" class="md:hidden" aria-label="Abrir menú">
+<!-- BOTÓN HAMBURGUESA (MÓVIL) — CSS lo oculta en desktop -->
+<button id="sidebar-toggle" aria-label="Abrir menú">
     <svg viewBox="0 0 24 24" width="22" height="22"
          fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <line class="sb-line sb-top"    x1="3" y1="7"  x2="21" y2="7"/>
@@ -17,16 +17,16 @@
 <!-- SIDEBAR -->
 <aside id="sidebar">
 
-    <!-- PESTAÑA DE ANCLAJE — sin hidden, el CSS la oculta en móvil -->
+    <!-- PESTAÑA DE ANCLAJE -->
     <div id="sidebar-tab">
         <i id="tab-icon" class="fas fa-chevron-right"></i>
     </div>
 
     <!-- NAV -->
-    <nav class="p-4 space-y-4 font-semibold">
+    <nav class="sb-nav">
 
         <!-- CATÁLOGO -->
-        <p class="sidebar-text text-xs text-gray-500 px-2 uppercase tracking-wider">Catálogo</p>
+        <p class="sb-section-label sidebar-text">Catálogo</p>
 
         <a href="{% url 'inventario:categorias' %}" class="sidebar-link">
             <i class="fas fa-tags"></i>
@@ -43,7 +43,12 @@
             <span class="sidebar-text">Atributos</span>
         </a>
 
-        <hr class="border-gray-200 my-2">
+        <a href="{% url 'ventas:promociones' %}" class="sidebar-link">
+            <i class="fa-solid fa-gift"></i>
+            <span class="sidebar-text">Promociones</span>
+        </a>
+
+        <hr class="sb-divider">
 
         <!-- CENTRO DE INVENTARIO -->
         <a href="{% url 'inventario:dashboard_inventario' %}" class="sidebar-link">
@@ -51,19 +56,19 @@
             <span class="sidebar-text">Centro de Inventario</span>
         </a>
 
-        <hr class="border-gray-200 my-2">
+        <hr class="sb-divider">
 
         <!-- ALMACENES -->
-        <div class="space-y-1">
-            <button id="btn-inventario" class="sidebar-link w-full flex items-center justify-between">
-                <span class="flex items-center gap-2">
+        <div class="sb-group">
+            <button id="btn-inventario" class="sidebar-link sb-expandable">
+                <span class="sb-btn-inner">
                     <i class="fas fa-warehouse"></i>
                     <span class="sidebar-text">Almacenes</span>
                 </span>
-                <i id="flecha-inventario" class="fas fa-chevron-down text-xs transition-transform"></i>
+                <i id="flecha-inventario" class="fas fa-chevron-down sb-chevron"></i>
             </button>
 
-            <div id="submenu-inventario" class="submenu-transition space-y-1 pl-6">
+            <div id="submenu-inventario" class="submenu-transition sb-submenu">
                 {% for u in ubicaciones_sidebar %}
                 <a href="{% url 'inventario:productos_por_ubicacion' u.id %}"
                    class="sidebar-link"
@@ -72,38 +77,38 @@
                     <span class="sidebar-text">{{ u.nombre }}</span>
                 </a>
                 {% empty %}
-                <p class="sidebar-text text-gray-400 text-xs pl-2">Sin almacenes globales.</p>
+                <p class="sb-empty sidebar-text">Sin almacenes globales.</p>
                 {% endfor %}
             </div>
         </div>
 
-        <hr class="border-gray-200 my-2">
+        <hr class="sb-divider">
 
         <!-- SUCURSALES -->
-        <div class="space-y-1">
-            <button id="btn-sucursales" class="sidebar-link w-full flex items-center justify-between">
-                <span class="flex items-center gap-2">
+        <div class="sb-group">
+            <button id="btn-sucursales" class="sidebar-link sb-expandable">
+                <span class="sb-btn-inner">
                     <i class="fa-solid fa-store"></i>
                     <span class="sidebar-text">Sucursales</span>
                 </span>
-                <i id="flecha-sucursales" class="fas fa-chevron-down text-xs transition-transform"></i>
+                <i id="flecha-sucursales" class="fas fa-chevron-down sb-chevron"></i>
             </button>
 
-            <div id="submenu-sucursales" class="submenu-transition space-y-2 pl-6">
+            <div id="submenu-sucursales" class="submenu-transition sb-submenu">
                 {% for s in sucursales_sidebar %}
-                <div class="space-y-1">
+                <div class="sb-group">
 
-                    <button class="sidebar-link w-full flex items-center justify-between sucursal-btn"
+                    <button class="sidebar-link sb-expandable sucursal-btn"
                             data-sucursal-id="{{ s.id }}"
                             style="--color-base: {{ s.color }}; --color-hover: {{ s.color }}33;">
-                        <span class="flex items-center gap-2">
+                        <span class="sb-btn-inner">
                             <i class="fa-solid fa-shop" style="color: var(--color-base);"></i>
                             <span class="sidebar-text">{{ s.nombre }}</span>
                         </span>
-                        <i class="fas fa-chevron-down text-xs transition-transform sucursal-flecha"></i>
+                        <i class="fas fa-chevron-down sb-chevron sucursal-flecha"></i>
                     </button>
 
-                    <div class="submenu-transition space-y-1 pl-6 sucursal-submenu">
+                    <div class="submenu-transition sb-submenu sucursal-submenu">
 
                         <a href="{% url 'sucursales:dashboard_sucursal' s.id %}" class="sidebar-link">
                             <i class="fa-solid fa-chart-line"></i>
@@ -128,6 +133,13 @@
                         </a>
                         {% endif %}
 
+                        {% if request.user.is_superuser or request.user.empleado.rol == 'cajero' or request.user.empleado.rol == 'dueño' %}
+                        {% if s.cajas.all %}
+                        <div class="sb-caja-sep sidebar-text">
+                            <i class="fa-solid fa-cash-register"></i>
+                            <span>Cajas</span>
+                        </div>
+                        {% endif %}
                         {% for caja in s.cajas.all %}
                         <div>
                             <button class="sidebar-link btn-entrar-caja"
@@ -137,9 +149,10 @@
                                 <i class="fa-solid fa-cash-register" style="color: var(--color-base);"></i>
                                 <span class="sidebar-text">{{ caja.nombre }}</span>
                             </button>
-                            <div class="msg-caja hidden text-red-600 text-xs font-semibold mt-1 pl-2"></div>
+                            <div class="msg-caja hidden"></div>
                         </div>
                         {% endfor %}
+                        {% endif %}
 
                     </div>
                 </div>
@@ -147,7 +160,7 @@
             </div>
         </div>
 
-        <hr class="border-gray-200 my-2">
+        <hr class="sb-divider">
 
         <a href="{% url 'inventario:reportes' %}" class="sidebar-link">
             <i class="fas fa-chart-line"></i>

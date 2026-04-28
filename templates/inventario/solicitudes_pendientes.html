@@ -21,7 +21,7 @@
   <!-- MENSAJES DJANGO -->
   {% if messages %}
     {% for message in messages %}
-    <div class="border-4 border-black shadow-[4px_4px_0_0_black] font-black px-6 py-3 uppercase tracking-widest text-sm
+    <div class="message-item border-4 border-black shadow-[4px_4px_0_0_black] font-black px-6 py-3 uppercase tracking-widest text-sm
                 {% if message.tags == 'success' %}bg-[#06D6A0] text-black{% else %}bg-[#FF006E] text-white{% endif %}">
       {{ message }}
     </div>

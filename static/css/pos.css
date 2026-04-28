@@ -83,7 +83,7 @@
 }
 
 .pos-panel--carrito   { background: var(--pos-panel-carrito); }
-.pos-panel--productos { background: var(--pos-panel-productos); width: 100%; }
+.pos-panel--productos { background: var(--pos-panel-productos); width: 100%; gap: 0.5rem; padding: 0.75rem; }
 
 @media (min-width: 1024px) {
   .pos-panel--carrito {
@@ -95,8 +95,7 @@
     width: 480px;
     flex: 0 0 480px;
     min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
   }
 }
 
@@ -122,7 +121,7 @@
   letter-spacing: 0.08em;
   text-align: center;
   padding: 0.4rem 0.75rem;
-  background: var(--pos-rosa);
+  background: var(--pos-naranja);
   color: var(--pos-blanco);
   border: var(--pos-borde);
   box-shadow: var(--pos-sombra-sm);
@@ -141,7 +140,31 @@
 }
 .pos-alerta--ok     { background: var(--pos-amarillo); color: var(--pos-negro); }
 .pos-alerta--error  { background: var(--pos-rosa);     color: var(--pos-blanco); }
+.pos-alerta--promo  { background: var(--pos-verde);    color: var(--pos-negro); }
 .pos-alerta--hidden { display: none; }
+
+/* ============================
+   ATAJOS DE TECLADO
+   ============================ */
+.pos-atajos {
+  border: 2px solid #d1d5db;
+  background: #f9fafb;
+  padding: .4rem .75rem;
+  margin-bottom: .5rem;
+}
+.pos-atajos table { border-collapse: collapse; width: 100%; }
+.pos-atajos td { padding: .1rem .4rem; font-size: .72rem; font-weight: 600; color: #374151; }
+.pos-atajos td:first-child { width: 2rem; }
+.pos-atajos kbd {
+  background: #111;
+  color: #fff;
+  font-family: monospace;
+  font-size: .68rem;
+  font-weight: 900;
+  padding: .1rem .35rem;
+  border-radius: 2px;
+  letter-spacing: .05em;
+}
 
 /* ============================
    INPUTS
@@ -188,8 +211,11 @@
 .pos-productos-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  align-content: start;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0.4rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ============================
@@ -248,14 +274,16 @@
 .pos-producto-card {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.4rem;
+  gap: 0.25rem;
+  padding: 0.35rem;
   border: 3px solid var(--pos-negro);
   box-shadow: 3px 3px 0 0 var(--pos-negro);
   cursor: pointer;
   user-select: none;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
-  min-width: 0; /* permite que grid recorte el contenido en vez de expandirse */
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Candy cycling */
@@ -275,7 +303,8 @@
 
 .pos-producto-img {
   width: 100%;
-  height: 5rem;
+  flex: 1;
+  min-height: 0;
   background: rgba(255,255,255,0.55);
   overflow: hidden;
   display: flex;
@@ -296,17 +325,15 @@
   color: var(--pos-negro);
 }
 
-/* Precios — coinciden con MEN/MAY del carrito */
-.pos-producto-precio {
-  font-weight: var(--pos-font-bold);
-  font-size: 0.85rem;
-  color: var(--pos-rosa);     /* MEN → hot pink */
-}
+/* Precios — mismo tamaño, colores MEN/MAY */
+.pos-producto-precio,
 .pos-producto-precio-may {
   font-weight: var(--pos-font-bold);
-  font-size: 0.72rem;
-  color: var(--pos-azul);    /* MAY → electric blue */
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
+.pos-producto-precio     { color: var(--pos-rosa); }
+.pos-producto-precio-may { color: var(--pos-azul); }
 .pos-producto-sub {
   font-size: 0.65rem;
   font-weight: 700;
@@ -359,7 +386,7 @@
 }
 
 .pos-carrito-item-btn-eliminar {
-  background: var(--pos-rosa);
+  background: #DC2626;
   color: var(--pos-blanco);
   border: 3px solid var(--pos-negro);
   box-shadow: 2px 2px 0 0 var(--pos-negro);
@@ -397,7 +424,7 @@
 .pos-cantidad-btn:hover  { transform: translate(-2px,-2px); box-shadow: 4px 4px 0 0 var(--pos-negro); }
 .pos-cantidad-btn:active { transform: translate(2px,2px);   box-shadow: 0px 0px 0 0 var(--pos-negro); }
 
-.pos-cantidad-btn--menos { background: var(--pos-rosa);    }
+.pos-cantidad-btn--menos { background: #DC2626;             }
 .pos-cantidad-btn--mas   { background: var(--pos-naranja); }
 
 .pos-cantidad-input {
@@ -429,7 +456,26 @@
 }
 .pos-stock-badge--piso      { background: var(--pos-verde);    color: var(--pos-blanco); }
 .pos-stock-badge--bodega    { background: var(--pos-amarillo); color: var(--pos-negro);  }
-.pos-stock-badge--sin-stock { background: var(--pos-rosa);     color: var(--pos-blanco); }
+.pos-stock-badge--split     { background: #FB5607;             color: var(--pos-blanco); }
+.pos-stock-badge--sin-stock { background: #DC2626;              color: var(--pos-blanco); }
+
+.pos-btn-regalo-pendiente {
+  display: block;
+  width: 100%;
+  margin-top: .35rem;
+  border: 2px dashed black;
+  background: #FFF9C4;
+  color: #111;
+  font-weight: 900;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .3rem .6rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s;
+}
+.pos-btn-regalo-pendiente:hover { background: #CCFF00; }
 
 /* ============================
    BOTONES MODO PRECIO
@@ -516,6 +562,32 @@
 .pos-total-titulo span { color: var(--pos-negro); }
 
 /* COBRAR — naranja, no verde */
+.pos-btn-servicio {
+  width: 100%;
+  padding: .5rem 1rem;
+  font-size: .8rem;
+  font-weight: var(--pos-font-bold);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  background: var(--pos-morado);
+  color: var(--pos-blanco);
+  border: var(--pos-borde);
+  box-shadow: var(--pos-sombra-sm);
+  cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease;
+  margin-bottom: .5rem;
+}
+.pos-btn-servicio kbd {
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 3px;
+  padding: 0 .3rem;
+  font-size: .7rem;
+  font-family: monospace;
+}
+.pos-btn-servicio:hover  { transform: translate(-2px,-2px); box-shadow: var(--pos-sombra); }
+.pos-btn-servicio:active { transform: translate(2px,2px);   box-shadow: 2px 2px 0 0 var(--pos-negro); }
+
 .pos-btn-cobrar {
   width: 100%;
   padding: 1rem;
@@ -590,7 +662,7 @@
 }
 .pos-btn-header:hover  { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 0 var(--pos-negro); }
 .pos-btn-header:active { transform: translate(2px,2px);   box-shadow: 1px 1px 0 0 var(--pos-negro); }
-.pos-btn-header--salir  { background: var(--pos-rosa);   color: var(--pos-blanco); }
+.pos-btn-header--salir  { background: #DC2626;            color: var(--pos-blanco); }
 .pos-btn-header--corte  { background: var(--pos-morado); color: var(--pos-blanco); }
 
 .pos-footer-modal { display: flex; justify-content: flex-end; margin-top: 1rem; }
@@ -799,7 +871,7 @@
   position: relative;
   overflow: hidden;
   padding: 0.75rem 1rem;
-  background: var(--pos-rosa);
+  background: #111;
   border: var(--pos-borde);
   box-shadow: var(--pos-sombra);
   margin: 0.75rem 0.75rem 0 0.75rem;

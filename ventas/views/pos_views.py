@@ -1,4 +1,5 @@
 
+from django.db import models
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
@@ -8,7 +9,9 @@ from django.db.models import Sum, Case, When, IntegerField
 from django.db.models.functions import Coalesce
 from django.views.decorators.http import require_POST
 import json
+from django.core.serializers.json import DjangoJSONEncoder
 from ventas.services.pos_service import POSService
+from ventas.models import Promocion, Oferta
 from sucursales.models import Sucursal
 from django.http import JsonResponse
 
@@ -21,7 +24,7 @@ def pos_view(request):
     # 0) Validar rol
     if empleado.rol not in ["cajero", "dueño"]:
         messages.error(request, "No tienes permiso para usar el POS.")
-        return redirect("sucursales:crear_sucursal")  # ruta segura
+        return redirect("tienda_temp:dashboard_socio")
 
     # 1) Validar sucursal activa
     sucursal_id = request.session.get("sucursal_actual")
@@ -87,13 +90,47 @@ def pos_view(request):
     except Caja.DoesNotExist:
         pass
 
+    from datetime import date
+    hoy = date.today()
+
+    # Prefetch attribute values for POS offer filtering
+    productos_list = list(productos.prefetch_related('valores_atributo__atributo'))
+    for p in productos_list:
+        p.atributos_json = json.dumps(
+            {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
+            cls=DjangoJSONEncoder,
+        )
+
+    promociones_data = list(
+        Promocion.objects.filter(activo=True).values(
+            "id", "nombre", "tipo_condicion", "tipo_resultado",
+            "categoria_disparadora_id", "monto_minimo",
+            "producto_regalo_id", "categoria_regalo_id",
+            "filtros_atributos",
+        )
+    )
+
+    ofertas_qs = Oferta.objects.filter(activo=True).filter(
+        models.Q(fecha_inicio__isnull=True) | models.Q(fecha_inicio__lte=hoy)
+    ).filter(
+        models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=hoy)
+    )
+    ofertas_data = list(ofertas_qs.values(
+        "id", "nombre", "tipo", "aplica_a",
+        "producto_id", "categoria_id",
+        "valor", "cantidad_n",
+        "filtros_atributos",
+    ))
+
     return render(
         request,
         "ventas/pos.html",
         {
-            "productos": productos,
-            "ubicacion_pos": ubicacion_pos,
-            "caja_nombre": caja_nombre,
+            "productos":      productos_list,
+            "ubicacion_pos":  ubicacion_pos,
+            "caja_nombre":    caja_nombre,
+            "promociones_json": json.dumps(promociones_data, cls=DjangoJSONEncoder),
+            "ofertas_json":     json.dumps(ofertas_data,    cls=DjangoJSONEncoder),
         },
     )
 
