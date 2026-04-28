@@ -39,7 +39,6 @@ ALLOWED_HOSTS = [
     "10.111.122.37",
     "192.168.56.1",
     "192.168.41.33",
-    "5.78.193.50", 
 ]
 
 # ⭐ Render necesita esto
@@ -131,6 +130,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+ADMINS = [("Ivan", "ivan117058@gmail.com")]
+SERVER_EMAIL = os.getenv("EMAIL_HOST_USER")
+
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -175,10 +177,14 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+        },
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
+            "handlers": ["console", "mail_admins"],
             "level": "ERROR",
         },
     },
