@@ -174,14 +174,14 @@
 <!-- ========================================================= -->
 <!-- TESTIMONIOS                                               -->
 <!-- ========================================================= -->
-<section class="bg-[#111] border-b-4 border-black px-4 py-16">
+<section class="bg-white border-b-4 border-black px-4 py-16">
   <div class="max-w-7xl mx-auto">
 
     <div class="mb-12 text-center">
       <span class="inline-block bg-[#FFBE0B] text-black font-black uppercase text-xs tracking-[.2em] px-4 py-1 border-2 border-[#FFBE0B] mb-3">
         Clientes reales
       </span>
-      <h2 class="font-black text-white uppercase text-3xl sm:text-5xl leading-none" style="letter-spacing:-0.02em;">
+      <h2 class="font-black text-black uppercase text-3xl sm:text-5xl leading-none" style="letter-spacing:-0.02em;">
         Lo que dicen de nosotros.
       </h2>
     </div>
@@ -234,41 +234,6 @@
   </div>
 </section>
 
-<!-- ========================================================= -->
-<!-- CTA FINAL                                                 -->
-<!-- ========================================================= -->
-{% if not user.is_authenticated %}
-<section class="bg-[#dc2626] border-b-4 border-black px-4 py-20 text-center relative overflow-hidden">
-  <div class="absolute inset-0 pointer-events-none"
-       style="background:repeating-linear-gradient(-45deg,transparent,transparent 35px,rgba(0,0,0,0.06) 35px,rgba(0,0,0,0.06) 36px);"></div>
-  <div class="relative z-10 max-w-3xl mx-auto gsap-cta">
-    <h2 class="font-black text-white uppercase leading-none mb-4 text-4xl sm:text-6xl" style="letter-spacing:-0.02em;">
-      ¿Listo para<br>
-      <span class="text-[#FFBE0B]">dejar de perder</span><br>
-      el control?
-    </h2>
-    <p class="text-white/85 font-bold mb-10 max-w-xl mx-auto text-base sm:text-lg">
-      Únete a Comercializadora Modelo y deja que el sistema haga el trabajo duro.
-    </p>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <a href="{% url 'tienda_temp:login' %}"
-         class="bg-white border-4 border-black shadow-[5px_5px_0_0_black]
-                text-[#dc2626] font-black uppercase px-10 py-4 text-sm tracking-widest
-                hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0_0_black]
-                transition-all duration-100">
-        Iniciar sesión →
-      </a>
-      <a href="{% url 'tienda_temp:registro_cliente' %}"
-         class="bg-transparent border-4 border-white shadow-[5px_5px_0_0_rgba(0,0,0,0.3)]
-                text-white font-black uppercase px-10 py-4 text-sm tracking-widest
-                hover:-translate-x-1 hover:-translate-y-1 hover:bg-white/10
-                transition-all duration-100">
-        Crear cuenta
-      </a>
-    </div>
-  </div>
-</section>
-{% endif %}
 
 <style>
   @keyframes marquee {
@@ -293,9 +258,10 @@ tl.from("#hero-badge", { y: -30, opacity: 0, duration: 0.5, ease: "back.out(1.7)
   .from("#hero-btns",  { y: 20,  opacity: 0, duration: 0.4, ease: "power2.out"    }, "-=0.25")
   .from("#hero-hint",  { opacity: 0, duration: 0.6 }, "-=0.1");
 
-/* ── Burst de partículas al hacer clic en el hero ── */
+/* ── Burst de partículas al hacer clic en todo el landing ── */
 const COLORS = ["#FFBE0B","#dc2626","#ffffff","#3A86FF","#06D6A0","#FF006E","#8338EC","#FB5607"];
-document.getElementById("hero-section").addEventListener("click", function(e) {
+document.addEventListener("click", function(e) {
+  if (e.target.closest("a") || e.target.closest("button")) return;
   const count = 18;
   for (let i = 0; i < count; i++) {
     const el  = document.createElement("div");
