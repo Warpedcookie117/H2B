@@ -8,12 +8,16 @@ from inventario.models import Producto, Ubicacion
 from django.db.models import Sum, Case, When, IntegerField
 from django.db.models.functions import Coalesce
 from django.views.decorators.http import require_POST
+from django.core.cache import cache
 import json
+import logging
 from django.core.serializers.json import DjangoJSONEncoder
 from ventas.services.pos_service import POSService
 from ventas.models import Promocion, Oferta
 from sucursales.models import Sucursal
 from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -140,141 +144,105 @@ def pos_view(request):
 @require_POST
 def procesar_venta(request):
 
-    print("\n\n================= DEBUG POS =================")
-    print("Método:", request.method)
-    print("URL:", request.path)
-
     # 0) Validar rol
     empleado = request.user.empleado
-    print("Empleado:", empleado.id, empleado.rol)
 
     if empleado.rol not in ["cajero", "dueno", "dueño"]:
-        print("ERROR: Rol inválido")
         return JsonResponse({"status": "error", "message": "No tienes permiso"}, status=403)
 
-    # 1) Validar caja activa
-    sucursal_id = request.session.get("sucursal_actual")
-    caja_id = request.session.get("caja_actual")
-
-    print("Sucursal en sesión:", sucursal_id)
-    print("Caja en sesión:", caja_id)
-
-    if not sucursal_id or not caja_id:
-        print("ERROR: No hay sucursal o caja en sesión")
-        return JsonResponse({"status": "error", "message": "Debes autenticarte en una caja."}, status=400)
-
-    # 2) Obtener sucursal
-    try:
-        sucursal = Sucursal.objects.get(id=sucursal_id)
-        print("Sucursal OK:", sucursal)
-    except Sucursal.DoesNotExist:
-        print("ERROR: Sucursal inválida")
-        return JsonResponse({"status": "error", "message": "Sucursal inválida."}, status=400)
-
-    # 3) Parsear JSON
-    print("Raw body:", request.body)
+    # Guard contra doble envío: un solo request activo por empleado
+    lock_key = f"pos_lock_{empleado.id}"
+    if cache.get(lock_key):
+        return JsonResponse({"status": "error", "message": "Venta en proceso, espera un momento."}, status=409)
+    cache.set(lock_key, True, timeout=15)
 
     try:
-        data = json.loads(request.body)
-        print("JSON recibido:")
-        print(json.dumps(data, indent=4))
-    except Exception as e:
-        print("ERROR PARSEANDO JSON:", str(e))
-        return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+        # 1) Validar caja activa
+        sucursal_id = request.session.get("sucursal_actual")
+        caja_id = request.session.get("caja_actual")
 
-    carrito = data.get("carrito", [])
-    pagado_efectivo = data.get("pagado_efectivo")
-    pagado_tarjeta = data.get("pagado_tarjeta")
-    descuento_10 = data.get("descuento_10")
+        if not sucursal_id or not caja_id:
+            return JsonResponse({"status": "error", "message": "Debes autenticarte en una caja."}, status=400)
 
-    print("\n--- CAMPOS RECIBIDOS ---")
-    print("carrito:", carrito)
-    print("pagado_efectivo:", pagado_efectivo)
-    print("pagado_tarjeta:", pagado_tarjeta)
-    print("descuento_10:", descuento_10)
-
-    # 4) Validación básica
-    if not carrito:
-        print("ERROR: Carrito vacío")
-        return JsonResponse({"status": "error", "message": "Carrito vacío."}, status=400)
-
-    # 5) Convertir carrito
-    carrito_real = []
-    print("\n--- PROCESANDO CARRITO ---")
-    for item in carrito:
-        print("Item recibido:", item)
-
+        # 2) Obtener sucursal
         try:
-            producto_id = item.get("producto_id")
-            cantidad = int(item.get("cantidad"))
-            precio_aplicado = float(item.get("precio_aplicado"))
+            sucursal = Sucursal.objects.get(id=sucursal_id)
+        except Sucursal.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Sucursal inválida."}, status=400)
 
-            print("[OK] producto_id:", producto_id,
-                  "cantidad:", cantidad,
-                  "precio:", precio_aplicado)
+        # Verificar que la caja pertenece a esta sucursal
+        from sucursales.models import Caja
+        if not Caja.objects.filter(id=caja_id, sucursal_id=sucursal_id).exists():
+            return JsonResponse({"status": "error", "message": "Caja no válida para esta sucursal."}, status=403)
 
-            carrito_real.append({
-                "producto_id": producto_id,
-                "cantidad": cantidad,
-                "precio_aplicado": precio_aplicado,
+        # 3) Parsear JSON
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+
+        carrito = data.get("carrito", [])
+        pagado_efectivo = data.get("pagado_efectivo")
+        pagado_tarjeta = data.get("pagado_tarjeta")
+        descuento_10 = data.get("descuento_10")
+
+        # 4) Validación básica
+        if not carrito:
+            return JsonResponse({"status": "error", "message": "Carrito vacío."}, status=400)
+
+        # 5) Convertir carrito
+        carrito_real = []
+        for item in carrito:
+            try:
+                carrito_real.append({
+                    "producto_id":    item.get("producto_id"),
+                    "cantidad":       int(item.get("cantidad")),
+                    "precio_aplicado": float(item.get("precio_aplicado")),
+                    "es_servicio":    item.get("es_servicio", False),
+                    "es_regalo":      item.get("es_regalo", False),
+                    "nombre_servicio": item.get("nombre_servicio", ""),
+                    "promo_id":       item.get("promo_id"),
+                    "promo_nombre":   item.get("promo_nombre", ""),
+                })
+            except Exception:
+                return JsonResponse({"status": "error", "message": "Error en item del carrito."}, status=400)
+
+        # 6) Crear venta con POSService
+        try:
+            resultado = POSService.crear_venta(
+                empleado=empleado,
+                sucursal=sucursal,
+                caja_id=caja_id,
+                carrito=carrito_real,
+                pagado_efectivo=float(pagado_efectivo),
+                pagado_tarjeta=float(pagado_tarjeta),
+                descuento_10=bool(descuento_10)
+            )
+
+            venta = resultado["venta"]
+            ticket_texto = resultado["ticket_texto"]
+
+            return JsonResponse({
+                "status": "ok",
+                "venta_id": venta.id,
+                "total_venta": float(venta.total),
+                "pagado_efectivo": float(pagado_efectivo),
+                "pagado_tarjeta": float(pagado_tarjeta),
+                "cambio": float(venta.cambio),
+                "impresion_ok": False,
+                "descuento": float(venta.descuento),
+                "url_html": reverse("ventas:ticket_venta", args=[venta.id]),
+                "url_pdf": reverse("ventas:ticket_venta_pdf", args=[venta.id]),
+                "url_termico": reverse("ventas:ticket_venta_termico", args=[venta.id]),
+                "ticket_texto": ticket_texto,
             })
 
         except Exception as e:
-            print("ERROR EN ITEM:", str(e))
-            return JsonResponse({
-                "status": "error",
-                "message": f"Error en item del carrito: {str(e)}"
-            }, status=400)
+            logger.error("Error en POSService.crear_venta: %s", e, exc_info=True)
+            return JsonResponse({"status": "error", "message": "Error al procesar la venta."}, status=400)
 
-    # 6) Crear venta con POSService
-    print("\n--- LLAMANDO POSService.crear_venta ---")
-    try:
-        resultado = POSService.crear_venta(
-            empleado=empleado,
-            sucursal=sucursal,
-            caja_id=caja_id,
-            carrito=carrito_real,
-            pagado_efectivo=float(pagado_efectivo),
-            pagado_tarjeta=float(pagado_tarjeta),
-            descuento_10=bool(descuento_10)
-        )
-
-        venta = resultado["venta"]
-        ticket_texto = resultado["ticket_texto"]
-
-        print("VENTA CREADA OK:", venta.id)
-
-        return JsonResponse({
-            "status": "ok",
-            "venta_id": venta.id,
-
-            # 🔥 Datos que el modal necesita
-            "total_venta": float(venta.total),
-            "pagado_efectivo": float(pagado_efectivo),
-            "pagado_tarjeta": float(pagado_tarjeta),
-            "cambio": float(venta.cambio),
-
-            # 🔥 Si tienes impresión automática, cámbialo a True
-            "impresion_ok": False,
-
-            # Opcional: si quieres seguir mandando esto
-            "descuento": float(venta.descuento),
-
-            # URLs para ver ticket
-            "url_html": reverse("ventas:ticket_venta", args=[venta.id]),
-            "url_pdf": reverse("ventas:ticket_venta_pdf", args=[venta.id]),
-            "url_termico": reverse("ventas:ticket_venta_termico", args=[venta.id]),
-
-            # Ticket ESC/POS para impresión automática
-            "ticket_texto": ticket_texto,
-        })
-
-    except Exception as e:
-        print("ERROR EN POSService:", str(e))
-        return JsonResponse({
-            "status": "error",
-            "message": str(e)
-        }, status=400)
+    finally:
+        cache.delete(lock_key)
 
 
 @login_required

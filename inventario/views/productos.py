@@ -477,7 +477,9 @@ def buscar_producto_por_codigo(request):
 
 
     
-import traceback   
+import logging
+_logger = logging.getLogger(__name__)
+
 #VISTA API PARA VER LOS CODIGOS EN EL FRONT DE MANERA FLUIDA
 @login_required
 def codigo_base64(request, producto_id):
@@ -485,7 +487,7 @@ def codigo_base64(request, producto_id):
 
     try:
         imagen = BarcodeRenderService.generar(
-            codigo=producto.codigo_barras,          # ← ESTE ES EL CAMBIO
+            codigo=producto.codigo_barras,
             tipo=producto.tipo_codigo,
             tamaño=producto.tamano_etiqueta,
         )
@@ -493,15 +495,8 @@ def codigo_base64(request, producto_id):
         return JsonResponse({'imagen': imagen})
 
     except Exception as e:
-        print("\n\n🔥 ERROR GENERANDO CÓDIGO DE BARRAS 🔥")
-        print(f"Producto ID: {producto.id}")
-        print(f"Codigo: {producto.codigo_barras}")
-        print(f"Tipo: {producto.tipo_codigo}")
-        print(f"Tamaño: {producto.tamaño_etiqueta}")
-        traceback.print_exc()
-        print("🔥 FIN DEL ERROR 🔥\n\n")
-
-        return JsonResponse({'error': str(e)}, status=500)
+        _logger.error("Error generando código de barras para producto %s: %s", producto_id, e, exc_info=True)
+        return JsonResponse({'error': 'No se pudo generar el código de barras.'}, status=500)
 
 
 

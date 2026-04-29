@@ -83,6 +83,7 @@ def reporte_pdf(request):
 
 
 #INFORMACION GENERAL DE INVENTARIOS en la vista dashboardInventario.
+@login_required
 def exportar_criticos(request):
     usuario = request.user.get_full_name() or request.user.username
 

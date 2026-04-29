@@ -55,6 +55,10 @@ def guardar_categoria_view(request, categoria_id=None):
     if request.method != "POST":
         return JsonResponse({"ok": False, "msg": "Método no permitido"})
 
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"ok": False, "msg": "Sin permiso."}, status=403)
+
     categoria = Categoria.objects.filter(id=categoria_id, padre__isnull=True).first()
 
     form = CategoriaPadreForm(request.POST, instance=categoria)
@@ -70,6 +74,10 @@ def guardar_categoria_view(request, categoria_id=None):
 def eliminar_categoria_view(request, categoria_id):
     if request.method != "POST":
         return JsonResponse({"ok": False, "msg": "Método no permitido"})
+
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"ok": False, "msg": "Sin permiso."}, status=403)
 
     categoria = get_object_or_404(Categoria, id=categoria_id, padre__isnull=True)
 
@@ -102,6 +110,10 @@ def guardar_subcategoria_view(request, padre_id, sub_id=None):
     if request.method != "POST":
         return JsonResponse({"ok": False, "msg": "Método no permitido"})
 
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"ok": False, "msg": "Sin permiso."}, status=403)
+
     padre = get_object_or_404(Categoria, id=padre_id, padre__isnull=True)
 
     subcategoria = Categoria.objects.filter(id=sub_id, padre=padre).first()
@@ -123,6 +135,10 @@ def guardar_subcategoria_view(request, padre_id, sub_id=None):
 def eliminar_subcategoria_view(request, sub_id):
     if request.method != "POST":
         return JsonResponse({"ok": False, "msg": "Método no permitido"})
+
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"ok": False, "msg": "Sin permiso."}, status=403)
 
     sub = get_object_or_404(Categoria, id=sub_id, padre__isnull=False)
 
@@ -312,6 +328,7 @@ def eliminar_atributo(request, subcat_id, atributo_id):
     
     
     
+@login_required
 def fuzzy_atributo(request, atributo_id):
     import re
     from rapidfuzz import process, fuzz

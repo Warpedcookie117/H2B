@@ -468,6 +468,8 @@ function initModalPago() {
         inputTarjeta.value  = "";
         infoBox.textContent = "";
         infoBox.className   = "pos-pago-info";
+        btnConfirmar.disabled     = false;
+        btnConfirmar.textContent  = "Confirmar";
         modal.classList.remove("pos-modal--hidden");
         inputEfectivo.focus();
         actualizarInfoPago();
@@ -484,10 +486,12 @@ function initModalPago() {
         const error = validarPago(efectivo, tarjeta);
         if (error) return mostrarAlertaUI(error, "error");
 
+        btnConfirmar.disabled    = true;
+        btnConfirmar.textContent = "Procesando...";
+
         const data = await procesarPago(efectivo, tarjeta);
 
         if (String(data?.status).toLowerCase() === "ok") {
-            // Pasa todos los datos al modal de resultado
             document.dispatchEvent(new CustomEvent("pago-exito", {
                 detail: {
                     total:            data.total_venta,
@@ -502,6 +506,8 @@ function initModalPago() {
             modal.classList.add("pos-modal--hidden");
         } else {
             mostrarAlertaUI(data?.message || "Error al procesar la venta", "error");
+            btnConfirmar.disabled    = false;
+            btnConfirmar.textContent = "Confirmar";
         }
     };
 }

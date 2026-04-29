@@ -21,6 +21,7 @@ from main import settings
 
 
 
+@login_required
 def dashboard_inventario(request):
  
     # KPI 1 — Total productos activos
@@ -341,7 +342,7 @@ def ajustar_inventario(request, producto_id, ubicacion_id):
 def aprobar_solicitud(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudAjuste, id=solicitud_id)
 
-    if request.user != solicitud.producto.dueño:
+    if request.user != solicitud.producto.dueño.user:
         return render(request, "inventario/solicitudajuste/error_permiso.html")
 
     if solicitud.estado != "pendiente":
@@ -362,7 +363,7 @@ def aprobar_solicitud(request, solicitud_id):
 def rechazar_solicitud(request, solicitud_id):
     solicitud = get_object_or_404(SolicitudAjuste, id=solicitud_id)
 
-    if request.user != solicitud.producto.dueño:
+    if request.user != solicitud.producto.dueño.user:
         return render(request, "inventario/solicitudajuste/error_permiso.html", {
             "mensaje": "No tienes permiso para rechazar esta solicitud."
         })
