@@ -38,6 +38,8 @@ def modal_oferta_view(request, oferta_id=None):
 
 @login_required
 def buscar_producto_view(request):
+    if not _es_dueno(request.user):
+        raise PermissionDenied
     q = request.GET.get("q", "").strip()
     if len(q) < 2:
         return JsonResponse([], safe=False)

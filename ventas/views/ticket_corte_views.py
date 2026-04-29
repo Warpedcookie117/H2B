@@ -72,6 +72,10 @@ def ticket_corte(request, corte_id):
 
 @login_required
 def tickets_cortes_caja(request, sucursal_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     sucursal = get_object_or_404(Sucursal, id=sucursal_id)
 
     cortes = CorteCaja.objects.filter(
@@ -94,8 +98,13 @@ def tickets_cortes_caja(request, sucursal_id):
     })
 
 
+@login_required
 def ticket_corte_pdf(request, corte_id):
-    corte = CorteCaja.objects.get(id=corte_id)
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    corte = get_object_or_404(CorteCaja, id=corte_id)
     texto = generar_texto_ticket(corte)
 
     response = HttpResponse(content_type="application/pdf")
@@ -114,7 +123,12 @@ def ticket_corte_pdf(request, corte_id):
     return response
 
 
+@login_required
 def ticket_corte_termico(request, corte_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     corte = get_object_or_404(CorteCaja, id=corte_id)
     imprimir_silencioso(generar_texto_ticket(corte))
     return redirect("ventas:ticket_corte", corte_id)
@@ -123,6 +137,11 @@ def ticket_corte_termico(request, corte_id):
 
 @login_required
 def corte_del_dia(request):
+    empleado_rol = getattr(getattr(request.user, "empleado", None), "rol", None)
+    if empleado_rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+
     # 1. Verificar caja activa
     caja_id = request.session.get("caja_actual")
     if not caja_id:

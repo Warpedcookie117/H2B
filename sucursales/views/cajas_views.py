@@ -22,6 +22,9 @@ from ventas.services.corte_service import generar_corte_para_fecha
 @login_required
 @require_POST
 def crear_caja_ajax(request, sucursal_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"error": "Sin permiso."}, status=403)
 
     sucursal = get_object_or_404(Sucursal, id=sucursal_id)
 
@@ -58,6 +61,10 @@ def modal_crear_caja(request, sucursal_id):
 @login_required
 @require_POST
 def entrar_caja_ajax(request):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        return JsonResponse({"error": "Sin permiso."}, status=403)
+
     caja_id = request.POST.get("caja_id")
     password = request.POST.get("password")
 

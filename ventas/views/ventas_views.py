@@ -1,3 +1,5 @@
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.utils import timezone
 from ventas.models import CorteCaja, Venta
@@ -6,7 +8,7 @@ from django.db.models import Sum, F
 from django.utils.timezone import now
 
 
-
+@login_required
 def ventas_por_cajero(request):
     hoy = timezone.now().date()
 
@@ -29,7 +31,11 @@ def ventas_por_cajero(request):
     return render(request, "reportes/ventas_por_cajero.html", {"resumen": resumen})
 
 
+@login_required
 def api_ventas_hoy(request):
+    empleado = getattr(request.user, "empleado", None)
+    if not request.user.is_superuser and (not empleado or empleado.rol != "dueño"):
+        raise PermissionDenied
     from sucursales.models import Sucursal
     hoy = now().date()
 

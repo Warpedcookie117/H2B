@@ -35,6 +35,10 @@ def ticket_venta(request, venta_id):
 
 @login_required
 def tickets_ventas(request, sucursal_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
     sucursal = get_object_or_404(Sucursal, id=sucursal_id)
 
     ventas = Venta.objects.filter(
@@ -63,8 +67,9 @@ def tickets_ventas(request, sucursal_id):
 
 
 
+@login_required
 def ticket_venta_pdf(request, venta_id):
-    venta = Venta.objects.get(id=venta_id)
+    venta = get_object_or_404(Venta, id=venta_id)
     texto = generar_texto_ticket(venta)
 
     response = HttpResponse(content_type="application/pdf")
@@ -79,11 +84,16 @@ def ticket_venta_pdf(request, venta_id):
 
     p.showPage()
     p.save()
-    
+
     return response
-    
-    
+
+
+@login_required
 def ticket_venta_termico(request, venta_id):
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("Sin permiso.")
     venta = get_object_or_404(Venta, id=venta_id)
     imprimir_silencioso(generar_texto_ticket(venta))
     return redirect("ventas:ticket_venta", venta_id)
