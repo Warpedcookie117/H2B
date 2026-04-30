@@ -6,7 +6,6 @@ export function initBotonInventario({
     ubicacionSelect,
     codigoInput,
     nombreInput,
-    descripcionInput,
     mayoreoInput,
     menudeoInput,
     docenaInput,
@@ -96,7 +95,7 @@ export function initBotonInventario({
             let errores = false;
 
             const obligatorios = [
-                nombreInput, descripcionInput, mayoreoInput, menudeoInput,
+                nombreInput, mayoreoInput, menudeoInput,
                 duenioSelect, categoriaPadreSelect, subcategoriaSelect, ubicacionSelect
             ];
 
@@ -132,7 +131,7 @@ export function initBotonInventario({
         let erroresRojo = false;
 
         const obligatoriosRojo = [
-            nombreInput, descripcionInput, mayoreoInput, menudeoInput,
+            nombreInput, mayoreoInput, menudeoInput,
             duenioSelect, categoriaPadreSelect, subcategoriaSelect, ubicacionSelect
         ];
         obligatoriosRojo.forEach(el => {

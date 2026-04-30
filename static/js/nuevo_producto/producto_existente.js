@@ -7,7 +7,6 @@ export function initProductoExistente({
     codigoInput,
     submitBtn,
     nombreInput,
-    descripcionInput,
     mayoreoInput,
     menudeoInput,
     docenaInput,
@@ -63,13 +62,12 @@ export function initProductoExistente({
         document.getElementById("id_producto_id")?.remove();
 
         nombreInput.value      = "";
-        descripcionInput.value = "";
         mayoreoInput.value     = "";
         menudeoInput.value     = "";
         docenaInput.value      = "";
         tipoCodigoInput.value  = "";
 
-        [nombreInput, descripcionInput, mayoreoInput,
+        [nombreInput, mayoreoInput,
          menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
             el.removeAttribute("readonly");
             el.classList.remove("bg-gray-100");
@@ -170,7 +168,6 @@ export function initProductoExistente({
             }
 
             nombreInput.value      = data.nombre        || "";
-            descripcionInput.value = data.descripcion   || "";
             mayoreoInput.value     = data.precio_mayoreo ?? "";
             menudeoInput.value     = data.precio_menudeo ?? "";
             docenaInput.value      = data.precio_docena  ?? "";

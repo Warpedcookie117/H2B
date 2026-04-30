@@ -10,7 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const codigoInput        = document.getElementById("id_codigo_barras");
     const nombreInput        = document.getElementById("id_nombre");
-    const descripcionInput   = document.getElementById("id_descripcion");
     const mayoreoInput       = document.getElementById("id_precio_mayoreo");
     const menudeoInput       = document.getElementById("id_precio_menudeo");
     const docenaInput        = document.getElementById("id_precio_docena");
@@ -88,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ============================
     const botonInventario = initBotonInventario({
         form, submitBtn, ubicacionSelect,
-        codigoInput, nombreInput, descripcionInput,
+        codigoInput, nombreInput,
         mayoreoInput, menudeoInput, docenaInput,
         tipoCodigoInput, duenioSelect,
         categoriaPadreSelect, subcategoriaSelect
@@ -99,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ============================
     initProductoExistente({
         form, submitBtn, codigoInput,
-        nombreInput, descripcionInput,
+        nombreInput,
         mayoreoInput, menudeoInput, docenaInput,
         tipoCodigoInput, duenioSelect,
         categoriaPadreSelect, subcategoriaSelect,
@@ -110,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
             atributos.renderAtributosReadOnly(data.atributos);
 
             setReadOnlyTrue([
-                nombreInput, descripcionInput, mayoreoInput, menudeoInput,
+                nombreInput, mayoreoInput, menudeoInput,
                 docenaInput, duenioSelect, categoriaPadreSelect,
                 subcategoriaSelect, tipoCodigoInput
             ]);
