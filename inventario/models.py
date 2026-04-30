@@ -90,7 +90,8 @@ class Ubicacion(models.Model):
 
 class Producto(models.Model):
     nombre = models.CharField(max_length=150)
-    descripcion = models.TextField()
+    # Descripción del producto para mostrar al cliente en el front (carrito, catálogo, etc.) — no se usa en el formulario de registro aún
+    descripcion = models.TextField(blank=True)
     phash = models.CharField(max_length=16, null=True, blank=True)
 
     precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=1)

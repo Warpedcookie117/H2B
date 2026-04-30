@@ -227,7 +227,7 @@ class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
         fields = [
-            'nombre', 'descripcion',
+            'nombre',
             'precio_mayoreo', 'precio_menudeo', 'precio_docena',
             'foto_url', 'temporada', 'dueño',
             'codigo_barras',
@@ -236,7 +236,6 @@ class ProductoForm(forms.ModelForm):
         ]
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
             'precio_mayoreo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'precio_menudeo': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'foto_url': forms.FileInput(attrs={

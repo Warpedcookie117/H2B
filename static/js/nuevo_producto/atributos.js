@@ -7,6 +7,7 @@
 // - Usa clases propias (atributo-input, atributo-wrapper)
 //   en lugar de form-control para no depender de forms.css
 // - Muestra/oculta el banner de atributos
+// - Autocomplete custom (contains, no prefix-only) para iOS
 // ============================================
 
 export function initAtributos({ atributosContainer }) {
@@ -28,6 +29,79 @@ export function initAtributos({ atributosContainer }) {
     function mostrarBanner(visible) {
         if (!banner) return;
         banner.style.display = visible ? "block" : "none";
+    }
+
+    // ============================================
+    // AUTOCOMPLETE CUSTOM (contains, cross-browser)
+    // ============================================
+    function attachAutocomplete(input, wrapper, valores) {
+        if (!valores || valores.length === 0) return;
+
+        // Dropdown container
+        const dropdown = document.createElement("div");
+        dropdown.className = "atributo-dropdown";
+        dropdown.style.cssText = [
+            "position:absolute",
+            "z-index:9999",
+            "background:#fff",
+            "border:3px solid #000",
+            "box-shadow:4px 4px 0 #000",
+            "max-height:180px",
+            "overflow-y:auto",
+            "display:none",
+            "left:0",
+            "right:0",
+            "top:100%",
+        ].join(";");
+
+        wrapper.style.position = "relative";
+        wrapper.appendChild(dropdown);
+
+        function renderOpciones(filtro) {
+            while (dropdown.firstChild) dropdown.removeChild(dropdown.firstChild);
+
+            const q = (filtro || "").toLowerCase().trim();
+            const matches = q
+                ? valores.filter(v => v.toLowerCase().includes(q))
+                : valores;
+
+            if (matches.length === 0) {
+                dropdown.style.display = "none";
+                return;
+            }
+
+            matches.forEach(v => {
+                const item = document.createElement("div");
+                item.textContent = v;
+                item.style.cssText = [
+                    "padding:8px 12px",
+                    "cursor:pointer",
+                    "font-weight:600",
+                    "font-size:0.85rem",
+                    "border-bottom:1px solid #e5e7eb",
+                ].join(";");
+                item.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    input.value = v;
+                    dropdown.style.display = "none";
+                });
+                item.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    input.value = v;
+                    dropdown.style.display = "none";
+                    input.blur();
+                });
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = "block";
+        }
+
+        input.addEventListener("focus", () => renderOpciones(input.value));
+        input.addEventListener("input", () => renderOpciones(input.value));
+        input.addEventListener("blur", () => {
+            setTimeout(() => { dropdown.style.display = "none"; }, 150);
+        });
     }
 
     // ============================================
@@ -72,7 +146,7 @@ export function initAtributos({ atributosContainer }) {
             input.id            = fieldName;
             input.className     = "atributo-input";
             input.dataset.atributoId = attrId;
-            input.autocomplete  = "new-password";
+            input.setAttribute("autocomplete", "off");
             input.placeholder   = "Dejar vacío si no aplica";
 
             // Validación numérica
@@ -83,24 +157,14 @@ export function initAtributos({ atributosContainer }) {
                 });
             }
 
-            // Datalist si hay valores sugeridos
-            if (valores.length > 0) {
-                const datalist = document.createElement("datalist");
-                datalist.id = `${fieldName}_datalist`;
-                valores.forEach(v => {
-                    const opt = document.createElement("option");
-                    opt.value = v;
-                    datalist.appendChild(opt);
-                });
-                input.setAttribute("list", datalist.id);
-                wrapper.appendChild(datalist);
-            }
-
             // Valor previo si Django recargó con errores
             const oldValue = document.querySelector(`[name="${fieldName}"]`)?.value;
             if (oldValue) input.value = oldValue;
 
             wrapper.appendChild(input);
+
+            // Autocomplete custom — debe ir DESPUÉS de appendChild para que wrapper sea el padre
+            attachAutocomplete(input, wrapper, valores);
             outer.appendChild(label);
             outer.appendChild(wrapper);
 
