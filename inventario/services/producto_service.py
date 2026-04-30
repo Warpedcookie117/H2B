@@ -62,18 +62,16 @@ class ProductService:
         if not producto.tipo_codigo:
             raise ValueError("Error crítico: no se asignó tipo_codigo.")
 
-        # Guardar producto (sin firma)
-        try:
-            producto.save()
-        except IntegrityError:
-            from inventario.models import Producto as Prod
-            existente = Prod.objects.filter(codigo_barras=producto.codigo_barras).first()
-            if existente:
-                raise ValidationError(
-                    f"Este código de barras ya está registrado. "
-                    f"Busca el ID {existente.id} en el inventario global."
-                )
-            raise ValidationError("Este producto ya existe. Verifica el inventario global.")
+        # Verificar duplicado ANTES de guardar (evita IntegrityError dentro de atomic)
+        from inventario.models import Producto as Prod
+        existente = Prod.objects.filter(codigo_barras=producto.codigo_barras).first()
+        if existente:
+            raise ValidationError(
+                f"Este código de barras ya está registrado. "
+                f"Busca el ID {existente.id} en el inventario global."
+            )
+
+        producto.save()
 
         # Guardar M2M
         form.save_m2m()
@@ -85,17 +83,14 @@ class ProductService:
         firma = ProductService._generar_firma(producto)
         producto.firma_unica = firma
 
-        try:
-            producto.save(update_fields=["firma_unica"])
-        except IntegrityError:
-            from inventario.models import Producto as Prod
-            existente = Prod.objects.filter(firma_unica=firma).first()
-            if existente:
-                raise ValidationError(
-                    f"Este producto ya existe (firma única). "
-                    f"Busca el ID {existente.id} en el inventario global."
-                )
-            raise ValidationError("Este producto ya existe (firma única). Verifica el inventario global.")
+        existente_firma = Prod.objects.filter(firma_unica=firma).exclude(pk=producto.pk).first()
+        if existente_firma:
+            raise ValidationError(
+                f"Este producto ya existe (firma única). "
+                f"Busca el ID {existente_firma.id} en el inventario global."
+            )
+
+        producto.save(update_fields=["firma_unica"])
 
         # Inventario inicial
         cantidad = cleaned.get("cantidad_inicial")

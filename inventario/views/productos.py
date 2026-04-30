@@ -368,6 +368,11 @@ def nuevo_producto(request):
                 return JsonResponse({"success": False, "errors": e.messages})
             messages.error(request, str(e))
             return render(request, "inventario/nuevo_producto.html", contexto(form))
+        except Exception:
+            if is_ajax:
+                return JsonResponse({"success": False, "errors": ["El servidor encontró un error interno. Intenta de nuevo."]})
+            messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
+            return render(request, "inventario/nuevo_producto.html", contexto(form))
 
         url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
         redirect_url = f"{url}?highlight={producto.id}&new=1"
@@ -407,6 +412,11 @@ def nuevo_producto(request):
         if is_ajax:
             return JsonResponse({"success": False, "errors": e.messages})
         messages.error(request, str(e))
+        return render(request, "inventario/nuevo_producto.html", contexto(form))
+    except Exception:
+        if is_ajax:
+            return JsonResponse({"success": False, "errors": ["El servidor encontró un error interno. Intenta de nuevo."]})
+        messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
     url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
