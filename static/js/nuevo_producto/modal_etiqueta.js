@@ -48,8 +48,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const submitBtn = document.getElementById("submit-btn");
             if (submitBtn) {
                 submitBtn.textContent = "Registrar producto";
-                submitBtn.classList.remove("bg-[#3A86FF]", "bg-[#06D6A0]");
-                submitBtn.classList.add("bg-[#FF006E]");
+                submitBtn.style.backgroundColor = "#FF006E";
+                submitBtn.dataset.estado = "rojo";
             }
 
             // *** IMPORTANTE ***

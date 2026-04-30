@@ -212,25 +212,27 @@
    ATRIBUTOS GENERADOS POR JS
    ============================ */
 #atributos-container .atributo-wrapper {
-  border: 4px solid black;
-  box-shadow: 4px 4px 0 0 black;
-  background: white;
+  border: 4px solid black !important;
+  box-shadow: 4px 4px 0 0 black !important;
+  background: white !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 #atributos-container .atributo-wrapper:focus-within {
-  border-color: #FFBE0B;
-  box-shadow: 6px 6px 0 0 #FFBE0B;
+  border-color: #FFBE0B !important;
+  box-shadow: 6px 6px 0 0 #FFBE0B !important;
   transform: translate(-1px, -1px);
 }
 #atributos-container .atributo-input {
-  border: none;
-  outline: none;
-  background: white;
-  width: 100%;
-  padding: 0.85rem 1rem;
-  font-weight: 600;
-  color: #111;
-  font-size: 0.95rem;
+  border: none !important;
+  outline: none !important;
+  background: white !important;
+  width: 100% !important;
+  padding: 0.85rem 1rem !important;
+  font-weight: 600 !important;
+  color: #111 !important;
+  font-size: 0.95rem !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 #atributos-container .atributo-label {
   display: block;

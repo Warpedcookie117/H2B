@@ -27,11 +27,7 @@ export function initAtributos({ atributosContainer }) {
     // ============================================
     function mostrarBanner(visible) {
         if (!banner) return;
-        if (visible) {
-            banner.classList.add("visible");
-        } else {
-            banner.classList.remove("visible");
-        }
+        banner.style.display = visible ? "block" : "none";
     }
 
     // ============================================
@@ -57,7 +53,7 @@ export function initAtributos({ atributosContainer }) {
 
             // WRAPPER EXTERNO
             const outer = document.createElement("div");
-            outer.className = "space-y-1";
+            outer.style.marginBottom = "0.25rem";
 
             // LABEL
             const label = document.createElement("label");

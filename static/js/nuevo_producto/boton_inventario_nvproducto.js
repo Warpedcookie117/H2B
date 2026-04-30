@@ -46,16 +46,30 @@ export function initBotonInventario({
     // ============================
     // BOTÓN SEGÚN SI HAY CÓDIGO
     // ============================
+    function setBotonAzul() {
+        submitBtn.textContent = "Continuar para seleccionar etiqueta";
+        submitBtn.style.backgroundColor = "#3A86FF";
+        submitBtn.dataset.estado = "azul";
+    }
+
+    function setBotonRojo() {
+        submitBtn.textContent = "Registrar producto";
+        submitBtn.style.backgroundColor = "#FF006E";
+        submitBtn.dataset.estado = "rojo";
+    }
+
+    function setBotonVerde(texto) {
+        submitBtn.textContent = texto;
+        submitBtn.style.backgroundColor = "#06D6A0";
+        submitBtn.dataset.estado = "verde";
+    }
+
     function actualizarBotonSegunCodigo() {
         const codigo = codigoInput.value.trim();
         if (!codigo) {
-            submitBtn.textContent = "Continuar para seleccionar etiqueta";
-            submitBtn.classList.remove("bg-[#FF006E]");
-            submitBtn.classList.add("bg-[#3A86FF]");
+            setBotonAzul();
         } else {
-            submitBtn.textContent = "Registrar producto";
-            submitBtn.classList.remove("bg-[#3A86FF]");
-            submitBtn.classList.add("bg-[#FF006E]");
+            setBotonRojo();
         }
     }
 
@@ -73,7 +87,7 @@ export function initBotonInventario({
             return;
         }
 
-        const botonEsAzul = submitBtn.classList.contains("bg-[#3A86FF]");
+        const botonEsAzul = submitBtn.dataset.estado === "azul";
 
         if (botonEsAzul) {
             e.preventDefault();
@@ -196,9 +210,7 @@ export function initBotonInventario({
 
             if (!producto_existe) {
                 form.action = `/inventario/nuevo_producto/`;
-                submitBtn.textContent = "Registrar producto";
-                submitBtn.classList.remove("bg-[#06D6A0]");
-                submitBtn.classList.add("bg-[#FF006E]");
+                setBotonRojo();
                 return;
             }
 
@@ -206,13 +218,10 @@ export function initBotonInventario({
             form.method = "post";
 
             if (!inventario_existe) {
-                submitBtn.textContent = "Crear inventario en esta ubicación";
+                setBotonVerde("Crear inventario en esta ubicación");
             } else {
-                submitBtn.textContent = "Agregar inventario";
+                setBotonVerde("Agregar inventario");
             }
-
-            submitBtn.classList.remove("bg-[#FF006E]", "bg-[#3A86FF]");
-            submitBtn.classList.add("bg-[#06D6A0]");
 
         } catch (err) {
             console.error("Error verificando inventario:", err);
