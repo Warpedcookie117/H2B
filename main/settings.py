@@ -65,6 +65,7 @@ INSTALLED_APPS = [
 ]
 
 AUTH_USER_MODEL = 'tienda_temp.Usuario'
+LOGIN_URL = '/tienda_temp/login/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
