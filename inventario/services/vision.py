@@ -1,5 +1,7 @@
 import imagehash
-from PIL import Image
+from PIL import Image, ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def generar_phash(file):
     if hasattr(file, 'seek'):

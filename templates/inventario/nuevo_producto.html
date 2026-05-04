@@ -68,7 +68,7 @@
     <!-- FOTO -->
     <div class="flex flex-col items-center gap-3">
       <span class="label-90s">📷 Foto del producto</span>
-      <div onclick="document.getElementById('id_foto_url').click()" class="cursor-pointer">
+      <div onclick="abrirMenuFoto()" class="cursor-pointer">
         <img id="foto-circle" src="" alt="Preview">
         <div id="foto-placeholder">
           <span class="text-4xl">📷</span>
@@ -79,7 +79,31 @@
       </div>
       <input type="file" id="id_foto_url" name="foto_url" accept="image/*"
              class="hidden" onchange="previewFoto(this)">
+      <input type="file" id="id_foto_camara" name="foto_url" accept="image/*" capture="environment"
+             class="hidden" onchange="previewFoto(this)">
       <p class="text-xs text-gray-400 font-semibold">Pícale al círculo para cambiarla después</p>
+    </div>
+
+    <!-- MENÚ FOTO -->
+    <div id="menu-foto" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+         onclick="cerrarMenuFoto(event)">
+      <div class="bg-[#f0e6ff] border-4 border-black shadow-[6px_6px_0_#000] w-full max-w-sm mx-4">
+        <p class="font-black uppercase text-center text-sm tracking-widest border-b-4 border-black py-2 px-4">
+          Foto del producto
+        </p>
+        <button type="button" onclick="document.getElementById('id_foto_camara').click(); cerrarMenuFoto()"
+                class="w-full py-3 font-black uppercase tracking-wide text-sm border-b-2 border-black bg-[#FFBE0B] hover:bg-yellow-400 active:brightness-90">
+          📷 Tomar foto
+        </button>
+        <button type="button" onclick="document.getElementById('id_foto_url').click(); cerrarMenuFoto()"
+                class="w-full py-3 font-black uppercase tracking-wide text-sm border-b-2 border-black bg-white hover:bg-gray-100 active:brightness-90">
+          🖼️ Elegir de galería
+        </button>
+        <button type="button" onclick="cerrarMenuFoto()"
+                class="w-full py-3 font-black uppercase tracking-wide text-sm text-gray-500">
+          Cancelar
+        </button>
+      </div>
     </div>
 
     <!-- CÓDIGO DE BARRAS -->
@@ -271,10 +295,31 @@
 </dialog>
 
 <script>
+function abrirMenuFoto() {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    document.getElementById("id_foto_url").click();
+    return;
+  }
+  document.getElementById("menu-foto").classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+function cerrarMenuFoto(e) {
+  if (!e || e.target === document.getElementById("menu-foto")) {
+    document.getElementById("menu-foto").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+}
+
 function previewFoto(input) {
   const circle = document.getElementById("foto-circle");
   const placeholder = document.getElementById("foto-placeholder");
   const MAX_MB = 15;
+
+  // Limpia el otro input para evitar enviar dos archivos
+  const otro = input.id === "id_foto_url" ? "id_foto_camara" : "id_foto_url";
+  document.getElementById(otro).value = "";
 
   if (input.files && input.files[0]) {
     if (input.files[0].size > MAX_MB * 1024 * 1024) {
