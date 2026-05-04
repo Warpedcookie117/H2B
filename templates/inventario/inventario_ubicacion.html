@@ -62,7 +62,8 @@
   <div class="flex flex-col sm:flex-row gap-3 w-full">
     <div class="border-4 border-black shadow-[4px_4px_0_0_black] flex-1 flex items-stretch">
       <input type="text" id="buscadorProductos"
-             placeholder="Busca por nombre, categoría o código..."
+             placeholder="Busca por nombre, código, atributo o ID..."
+             value="{{ q }}"
              class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
       <button type="button" id="btn-escanear-camara"
               class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-3 font-black text-xl flex items-center justify-center"
@@ -85,12 +86,14 @@
     </a>
   </div>
 
-  <!-- ANUNCIO SIN RESULTADOS (oculto por defecto, JS lo muestra/oculta) -->
-  <div id="sinResultados" class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 text-center">
+  <!-- ANUNCIO SIN RESULTADOS -->
+  {% if q and not page_obj %}
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 text-center">
     <p class="font-black text-black uppercase tracking-widest text-base">
-      😬 No encontré nada aquí con ese nombre o código, checa otras ubicaciones padrino.
+      😬 No encontré nada con "{{ q }}" en esta ubicación, checa otras ubicaciones padrino.
     </p>
   </div>
+  {% endif %}
 
   <!-- GRID DE PRODUCTOS -->
   <div id="gridProductos"

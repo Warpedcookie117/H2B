@@ -1,5 +1,6 @@
 import json
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden, JsonResponse
@@ -33,6 +34,7 @@ from django.views.decorators.http import require_POST
 @login_required
 def productos_por_ubicacion(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
+    q = request.GET.get("q", "").strip()
 
     productos = (
         Inventario.objects
@@ -40,6 +42,18 @@ def productos_por_ubicacion(request, ubicacion_id):
         .select_related("producto", "producto__categoria", "producto__categoria_padre")
         .order_by("producto__nombre")
     )
+
+    if q:
+        filtro = (
+            Q(producto__nombre__icontains=q) |
+            Q(producto__codigo_barras__icontains=q) |
+            Q(producto__valores_atributo__valor__icontains=q)
+        )
+        try:
+            filtro |= Q(producto__id=int(q))
+        except ValueError:
+            pass
+        productos = productos.filter(filtro).distinct()
 
     inventario_todas = (
         Inventario.objects
@@ -68,6 +82,7 @@ def productos_por_ubicacion(request, ubicacion_id):
         "inventario_todas_json": inventario_todas_json,
         "ubicaciones": ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
+        "q": q,
     })
 
 

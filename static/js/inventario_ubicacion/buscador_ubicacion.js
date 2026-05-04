@@ -9,20 +9,36 @@ if (!buscador) {
     console.warn("⚠️ No existe #buscadorProductos en inventario_ubicacion.");
 } else {
 
+    // Restaurar valor desde URL al cargar la página
+    const params = new URLSearchParams(window.location.search);
+    const qActual = params.get("q") || "";
+    if (qActual) buscador.value = qActual;
+
     buscador.focus();
 
     let esperandoNuevoEscaneo = false;
+    let debounceTimer = null;
+
+    function buscarEnServidor(q) {
+        const p = new URLSearchParams(window.location.search);
+        if (q) {
+            p.set("q", q);
+        } else {
+            p.delete("q");
+        }
+        p.delete("page");
+        window.location.search = p.toString();
+    }
 
     // ============================
-    // KEYDOWN — detección de escáner
+    // KEYDOWN — Enter dispara búsqueda inmediata
     // ============================
     buscador.addEventListener("keydown", function (e) {
 
         if (e.key === "Enter") {
             e.preventDefault();
-            const codigo = buscador.value.trim();
-            if (!codigo) return;
-            filtrarCards(codigo);
+            clearTimeout(debounceTimer);
+            buscarEnServidor(buscador.value.trim());
             esperandoNuevoEscaneo = true;
             return;
         }
@@ -31,8 +47,6 @@ if (!buscador) {
         if (esperandoNuevoEscaneo) {
             buscador.value = "";
             esperandoNuevoEscaneo = false;
-            // Asignar value programáticamente no dispara "input" → restaurar manualmente
-            filtrarCards("");
         }
     });
 
@@ -51,15 +65,17 @@ if (!buscador) {
         buscador.value = "";
         esperandoNuevoEscaneo = false;
         buscador.focus();
-        // Asignar value programáticamente no dispara "input" → restaurar manualmente
-        filtrarCards("");
     });
 
     // ============================
-    // INPUT — búsqueda manual mientras escribe
+    // INPUT — debounce 400ms → búsqueda en servidor
     // ============================
     buscador.addEventListener("input", function () {
-        filtrarCards(this.value.toLowerCase().trim());
+        clearTimeout(debounceTimer);
+        const texto = this.value.trim();
+        debounceTimer = setTimeout(() => {
+            buscarEnServidor(texto);
+        }, 400);
     });
 
     // ============================
@@ -68,64 +84,9 @@ if (!buscador) {
     if (typeof initEscanerCamara === "function") {
         initEscanerCamara((codigo) => {
             buscador.value = codigo;
-            filtrarCards(codigo);
+            clearTimeout(debounceTimer);
+            buscarEnServidor(codigo);
         });
-    }
-
-    // ============================
-    // FILTRAR CARDS + ANUNCIO
-    // ============================
-    function filtrarCards(texto) {
-        texto = texto.toLowerCase().trim();
-        const cards = Array.from(document.querySelectorAll("#gridProductos .producto-card"));
-
-        // Sin texto → restaurar todo y ocultar anuncio
-        if (!texto) {
-            cards.forEach(card => {
-                card.style.display   = "";
-                card.style.opacity   = "1";
-                card.style.transform = "scale(1)";
-            });
-            if (sinResultados) sinResultados.classList.add("hidden");
-            return;
-        }
-
-        // Dividir en palabras — cada palabra debe aparecer en algún campo (AND)
-        const palabras = texto.split(/\s+/).filter(Boolean);
-        let hayCoincidencias = false;
-
-        cards.forEach(card => {
-            const campos = [
-                card.dataset.producto     || "",   // ID del producto
-                card.dataset.nombre       || "",
-                card.dataset.descripcion  || "",
-                card.dataset.categoria    || "",
-                card.dataset.subcategoria || "",
-                card.dataset.codigo       || "",
-            ].map(c => c.toLowerCase());
-
-            // Toda palabra del buscador debe existir en al menos un campo
-            const coincide = palabras.every(p => campos.some(c => c.includes(p)));
-
-            if (coincide) {
-                card.style.display   = "";
-                card.style.opacity   = "1";
-                card.style.transform = "scale(1)";
-                hayCoincidencias = true;
-            } else {
-                card.style.opacity   = "0";
-                card.style.transform = "scale(0.95)";
-                // Ocultar del flujo solo si todavía hay texto (evita que el timer
-                // tape cards recién restauradas si el usuario borró muy rápido)
-                setTimeout(() => {
-                    if (buscador.value.trim()) card.style.display = "none";
-                }, 150);
-            }
-        });
-
-        if (sinResultados) {
-            sinResultados.classList.toggle("hidden", hayCoincidencias);
-        }
     }
 
 }
