@@ -9,25 +9,44 @@ if (!buscador) {
     console.warn("⚠️ No existe #buscadorProductos en inventario_ubicacion.");
 } else {
 
-    // Restaurar valor desde URL al cargar la página
-    const params = new URLSearchParams(window.location.search);
-    const qActual = params.get("q") || "";
-    if (qActual) buscador.value = qActual;
-
     buscador.focus();
 
     let esperandoNuevoEscaneo = false;
-    let debounceTimer = null;
+    let debounceTimer         = null;
+    let fetchActivo           = null; // AbortController del fetch en curso
 
-    function buscarEnServidor(q) {
-        const p = new URLSearchParams(window.location.search);
-        if (q) {
-            p.set("q", q);
-        } else {
-            p.delete("q");
+    // ============================
+    // FETCH sin race condition ni parpadeo de colores
+    // ============================
+    async function fetchYActualizarGrid(q) {
+        // Cancela el fetch anterior si todavía está corriendo
+        if (fetchActivo) fetchActivo.abort();
+        fetchActivo = new AbortController();
+
+        const url = new URL(window.location.href);
+        if (q) url.searchParams.set("q", q);
+        else    url.searchParams.delete("q");
+        url.searchParams.delete("page");
+
+        const grid = document.getElementById("gridProductos");
+
+        try {
+            const res  = await fetch(url.toString(), {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                signal:  fetchActivo.signal,
+            });
+            const html       = await res.text();
+            const doc        = new DOMParser().parseFromString(html, "text/html");
+            const nuevoGrid  = doc.getElementById("gridProductos");
+            if (nuevoGrid) {
+                grid.innerHTML = nuevoGrid.innerHTML;
+                if (typeof window.aplicarColoresCards === "function") {
+                    window.aplicarColoresCards();
+                }
+            }
+        } catch (e) {
+            if (e.name !== "AbortError") console.error("Error buscando productos:", e);
         }
-        p.delete("page");
-        window.location.search = p.toString();
     }
 
     // ============================
@@ -38,12 +57,11 @@ if (!buscador) {
         if (e.key === "Enter") {
             e.preventDefault();
             clearTimeout(debounceTimer);
-            buscarEnServidor(buscador.value.trim());
+            fetchYActualizarGrid(buscador.value.trim());
             esperandoNuevoEscaneo = true;
             return;
         }
 
-        // Primer carácter después de Enter → limpiar para nuevo escaneo
         if (esperandoNuevoEscaneo) {
             buscador.value = "";
             esperandoNuevoEscaneo = false;
@@ -57,8 +75,8 @@ if (!buscador) {
         const tag = document.activeElement.tagName.toLowerCase();
         if (tag === "input" || tag === "textarea" || tag === "select") return;
         if (e.ctrlKey || e.altKey || e.metaKey) return;
-        if (["Tab", "Escape", "Enter",
-             "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+        if (["Tab","Escape","Enter",
+             "ArrowUp","ArrowDown","ArrowLeft","ArrowRight",
              "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
         ].includes(e.key)) return;
 
@@ -68,24 +86,22 @@ if (!buscador) {
     });
 
     // ============================
-    // INPUT — debounce 400ms → búsqueda en servidor
+    // INPUT — debounce 350ms → fetch
     // ============================
     buscador.addEventListener("input", function () {
         clearTimeout(debounceTimer);
         const texto = this.value.trim();
-        debounceTimer = setTimeout(() => {
-            buscarEnServidor(texto);
-        }, 400);
+        debounceTimer = setTimeout(() => fetchYActualizarGrid(texto), 350);
     });
 
     // ============================
-    // ESCÁNER DE CÁMARA
+    // ESCÁNER DE CÁMARA → búsqueda inmediata
     // ============================
     if (typeof initEscanerCamara === "function") {
         initEscanerCamara((codigo) => {
             buscador.value = codigo;
             clearTimeout(debounceTimer);
-            buscarEnServidor(codigo);
+            fetchYActualizarGrid(codigo);
         });
     }
 

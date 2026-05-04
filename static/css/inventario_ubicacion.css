@@ -50,6 +50,17 @@
 }
 
 /* ============================
+   COLORES DE CARDS — definidos aquí para sobrevivir inyección AJAX
+   (Tailwind CDN purga su CSS al mutar el DOM, esto es el fallback permanente)
+   ============================ */
+.bg-\[\#06D6A0\] { background-color: #06D6A0; }
+.bg-\[\#FFBE0B\] { background-color: #FFBE0B; }
+.bg-\[\#8338EC\] { background-color: #8338EC; }
+.bg-\[\#FF006E\] { background-color: #FF006E; }
+.bg-\[\#3A86FF\] { background-color: #3A86FF; }
+.opacity-60      { opacity: 0.6; }
+
+/* ============================
    SHAPES ANIMADAS
    ============================ */
 @keyframes floatShape {

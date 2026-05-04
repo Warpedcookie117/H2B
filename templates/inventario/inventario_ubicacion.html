@@ -64,7 +64,8 @@
       <input type="text" id="buscadorProductos"
              placeholder="Busca por nombre, código, atributo o ID..."
              value="{{ q }}"
-             class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white text-sm">
+             style="font-size: 16px;"
+             class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white">
       <button type="button" id="btn-escanear-camara"
               class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-3 font-black text-xl flex items-center justify-center"
               title="Escanear con cámara">
@@ -293,35 +294,33 @@
 <script src="{% static 'js/inventario_ubicacion/buscador_ubicacion.js' %}"></script>
 
 <script>
+const _COLORES_CARDS = [
+  "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
+  "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
+];
+
+window.aplicarColoresCards = function () {
+  const cards = document.querySelectorAll("#gridProductos .cardProducto");
+  cards.forEach((card, i) => {
+    card.style.order = parseInt(card.dataset.cantidad) === 0 ? 9999 : 0;
+    if (parseInt(card.dataset.cantidad) > 0) {
+      const color = _COLORES_CARDS[i % _COLORES_CARDS.length];
+      card.style.backgroundColor = color;
+      card.dataset.color = color;
+    }
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
-  // Scroll al highlight
   const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
   if (highlighted) {
     highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
-    // Quitar la clase al terminar la animación para que el color Austin Powers vuelva
     highlighted.addEventListener("animationend", () => {
       highlighted.classList.remove("highlight-yellow", "highlight-green");
     }, { once: true });
   }
 
-  // Ordenar cards — cantidad 0 al final
-  const cards = document.querySelectorAll("#gridProductos .cardProducto");
-  cards.forEach(card => {
-    card.style.order = parseInt(card.dataset.cantidad) === 0 ? 9999 : 0;
-  });
-
-  // Colores Austin Powers por card
-  const colores = [
-    "#FFF176", "#F48FB1", "#80DEEA", "#CE93D8",
-    "#A5D6A7", "#FFCC80", "#EF9A9A", "#90CAF9"
-  ];
-  cards.forEach((card, i) => {
-    if (parseInt(card.dataset.cantidad) > 0) {
-      const color = colores[i % colores.length];
-      card.style.backgroundColor = color;
-      card.dataset.color = color;
-    }
-  });
+  window.aplicarColoresCards();
 });
 </script>
 {% endblock %}

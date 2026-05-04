@@ -19,10 +19,7 @@
   .accordion-body {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.35s ease;
-  }
-  .accordion-body.open {
-    max-height: 2000px;
+    transition: max-height 0.4s ease;
   }
 
   .chevron {
@@ -284,7 +281,13 @@
 function toggleAccordion(bodyId, chevId) {
   const body = document.getElementById(bodyId);
   const chev = document.getElementById(chevId);
-  body.classList.toggle("open");
+  if (body.classList.contains("open")) {
+    body.style.maxHeight = "0";
+    body.classList.remove("open");
+  } else {
+    body.style.maxHeight = body.scrollHeight + "px";
+    body.classList.add("open");
+  }
   chev.classList.toggle("open");
 }
 </script>

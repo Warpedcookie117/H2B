@@ -72,12 +72,19 @@ def productos_por_ubicacion(request, ubicacion_id):
 
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
-    paginator = Paginator(productos, 20)
-    page_obj  = paginator.get_page(request.GET.get("page", 1))
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    if is_ajax:
+        lista_productos = productos[:200]
+        page_obj = None
+    else:
+        paginator = Paginator(productos, 20)
+        page_obj  = paginator.get_page(request.GET.get("page", 1))
+        lista_productos = page_obj
 
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,
-        "productos": page_obj,
+        "productos": lista_productos,
         "page_obj":  page_obj,
         "inventario_todas_json": inventario_todas_json,
         "ubicaciones": ubicaciones,
