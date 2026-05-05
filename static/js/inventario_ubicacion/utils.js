@@ -81,6 +81,21 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
 
     card.dataset.cantidad = nuevaCantidad;
 
+    // Sync inventarioTodas so totals stay accurate across all modal operations
+    if (window.inventarioTodas) {
+        const pid = parseInt(productoId);
+        const uid = parseInt(ubicacionId);
+        const qty = parseInt(nuevaCantidad);
+        const entry = window.inventarioTodas.find(
+            i => i.producto_id === pid && i.ubicacion_id === uid
+        );
+        if (entry) {
+            entry.cantidad_actual = qty;
+        } else {
+            window.inventarioTodas.push({ producto_id: pid, ubicacion_id: uid, cantidad_actual: qty });
+        }
+    }
+
     if (parseInt(nuevaCantidad) === 0) {
         card.style.backgroundColor = "#f3f4f6";
         card.style.borderColor     = "#9ca3af";

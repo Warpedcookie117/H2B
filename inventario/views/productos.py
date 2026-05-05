@@ -162,10 +162,22 @@ def detalle_producto(request, producto_id):
         conflicto = Producto.objects.filter(firma_unica=nueva_firma).exclude(pk=producto.pk).first()
         if conflicto:
             messages.error(request, f"Los atributos coinciden con un producto existente: {conflicto.nombre} (ID {conflicto.id}).")
-        else:
-            producto.firma_unica = nueva_firma
-            producto.save(update_fields=["firma_unica"])
-            messages.success(request, "Cambios guardados correctamente.")
+            return redirect("inventario:detalle_producto", producto_id=producto.id)
+
+        producto.firma_unica = nueva_firma
+        producto.save(update_fields=["firma_unica"])
+        messages.success(request, "Cambios guardados correctamente.")
+
+        max_inv = (
+            Inventario.objects
+            .filter(producto=producto)
+            .order_by("-cantidad_actual")
+            .select_related("ubicacion")
+            .first()
+        )
+        if max_inv:
+            url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": max_inv.ubicacion.id})
+            return redirect(f"{url}?highlight={producto.id}")
         return redirect("inventario:detalle_producto", producto_id=producto.id)
 
     atributos = []

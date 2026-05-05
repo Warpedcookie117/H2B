@@ -68,13 +68,20 @@ function abrirModalAgregarDesdeCard(productoId, ubicacionId) {
     document.querySelector(`#${modalId} input[name="producto_id"]`).value = productoId;
     document.querySelector(`#${modalId} input[name="ubicacion_id"]`).value = ubicacionId;
 
-    // ⭐ LEER CANTIDAD ACTUAL DESDE LA CARD
+    // Read quantity from card (always up-to-date)
     const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
     const cantidadActual = card.dataset.cantidad;
 
-    // ⭐ ACTUALIZAR TEXTO DEL MODAL
     const spanCantidad = document.querySelector(`#${modalId} .cantidad-actual`);
     if (spanCantidad) spanCantidad.textContent = cantidadActual;
+
+    // Recalculate total from inventarioTodas (updated on every operation)
+    const pid = parseInt(productoId);
+    const total = (window.inventarioTodas || [])
+        .filter(i => i.producto_id === pid)
+        .reduce((sum, i) => sum + i.cantidad_actual, 0);
+    const spanTotal = document.querySelector(`#${modalId} .cantidad-total`);
+    if (spanTotal) spanTotal.textContent = total;
 }
 
 

@@ -305,8 +305,11 @@ window.aplicarColoresCards = function () {
     card.style.order = parseInt(card.dataset.cantidad) === 0 ? 9999 : 0;
     if (parseInt(card.dataset.cantidad) > 0) {
       const color = _COLORES_CARDS[i % _COLORES_CARDS.length];
-      card.style.backgroundColor = color;
       card.dataset.color = color;
+      // Don't override the CSS animation on highlighted cards
+      if (!card.classList.contains("highlight-yellow") && !card.classList.contains("highlight-green")) {
+        card.style.backgroundColor = color;
+      }
     }
   });
 };
@@ -317,6 +320,10 @@ document.addEventListener("DOMContentLoaded", () => {
     highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
     highlighted.addEventListener("animationend", () => {
       highlighted.classList.remove("highlight-yellow", "highlight-green");
+      // Restore the card's assigned color after animation ends
+      if (highlighted.dataset.color) {
+        highlighted.style.backgroundColor = highlighted.dataset.color;
+      }
     }, { once: true });
   }
 
