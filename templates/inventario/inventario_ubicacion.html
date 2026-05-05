@@ -96,6 +96,36 @@
   </div>
   {% endif %}
 
+  <!-- PANEL FALTANTES -->
+  {% if paired_ubicacion or piso_ubicaciones %}
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#8338EC] p-3 flex flex-wrap items-center gap-3">
+    <span class="text-white font-black text-xs uppercase tracking-widest whitespace-nowrap">
+      {% if paired_ubicacion %}
+        🏪 Faltantes en {{ paired_ubicacion.nombre }}
+      {% else %}
+        🏪 ¿Qué falta?
+      {% endif %}
+    </span>
+    {% if piso_ubicaciones %}
+    <select id="select-piso-cmp"
+            class="border-4 border-black font-black text-xs px-3 py-2 bg-white text-black uppercase flex-1 min-w-[160px]">
+      <option value="">— Selecciona ubicación —</option>
+      {% for p in piso_ubicaciones %}
+      <option value="{{ p.id }}">{{ p.nombre }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <button id="btn-faltan-piso" {% if not paired_ubicacion %}disabled{% endif %}
+            class="btn-90s border-4 border-black bg-[#FF006E] text-white font-black text-xs uppercase tracking-widest px-4 py-2 disabled:opacity-40 whitespace-nowrap">
+      Ver faltantes (<span id="cnt-faltan-piso">0</span>)
+    </button>
+    <button id="btn-todos-piso"
+            class="hidden btn-90s border-4 border-black bg-white text-black font-black text-xs uppercase tracking-widest px-4 py-2 whitespace-nowrap">
+      Mostrar todos
+    </button>
+  </div>
+  {% endif %}
+
   <!-- GRID DE PRODUCTOS -->
   <div id="gridProductos"
        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -142,8 +172,8 @@
       <!-- CANTIDAD -->
       <div class="flex items-center justify-center gap-2 border-4 border-black p-2 mb-2"
            style="background-color: {{ color_header }}40;">
-        <span class="text-[10px] font-black uppercase text-black">Piezas:</span>
         <span class="cantidad-ubicacion font-black text-2xl text-black leading-none">{{ inv.cantidad_actual }}</span>
+        <span class="text-[10px] font-black uppercase text-black leading-tight">piezas<br>en {{ ubicacion.nombre }}</span>
       </div>
 
       <!-- PRECIOS -->
@@ -260,7 +290,14 @@
 
 {{ inventario_todas_json|json_script:"inventarioTodas" }}
 <script>
-  window.inventarioTodas = JSON.parse(document.getElementById("inventarioTodas").textContent);
+  window.inventarioTodas    = JSON.parse(document.getElementById("inventarioTodas").textContent);
+  window.ubicacionActualId  = {{ ubicacion.id }};
+  window.pairedUbicacionId  = {% if paired_ubicacion %}{{ paired_ubicacion.id }}{% else %}null{% endif %};
+  window.todasUbicaciones   = [
+    {% for u in ubicaciones %}
+    { id: {{ u.id }}, nombre: "{{ u.nombre }}", tipo: "{{ u.tipo }}" }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
 </script>
 
 {% endblock %}
@@ -292,6 +329,7 @@
 <script src="{% static 'js/inventario_ubicacion/transferir_multiple.js' %}"></script>
 <script src="{% static 'js/inventario_ubicacion/eliminar.js' %}"></script>
 <script src="{% static 'js/inventario_ubicacion/buscador_ubicacion.js' %}"></script>
+<script src="{% static 'js/inventario_ubicacion/comparar_piso.js' %}"></script>
 
 <script>
 const _COLORES_CARDS = [
@@ -315,18 +353,27 @@ window.aplicarColoresCards = function () {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  const params      = new URLSearchParams(window.location.search);
   const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
+
   if (highlighted) {
-    // Remove inline background so the CSS animation can override it
     highlighted.style.removeProperty("background-color");
     highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
     highlighted.addEventListener("animationend", () => {
       highlighted.classList.remove("highlight-yellow", "highlight-green");
-      // Restore the card's assigned color after animation ends
       if (highlighted.dataset.color) {
         highlighted.style.backgroundColor = highlighted.dataset.color;
       }
     }, { once: true });
+
+    const toastMsg = params.get("toast");
+    if (toastMsg) {
+      mostrarToastEnCard(
+        highlighted.dataset.producto,
+        highlighted.dataset.ubicacion,
+        decodeURIComponent(toastMsg)
+      );
+    }
   }
 
   window.aplicarColoresCards();

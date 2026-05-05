@@ -72,6 +72,35 @@ def productos_por_ubicacion(request, ubicacion_id):
 
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
+    # Paired location: bodega ↔ piso within the same sucursal (auto-compare, no select)
+    paired_ubicacion = None
+    piso_ubicaciones = []
+
+    if ubicacion.sucursal:
+        if ubicacion.tipo == "bodega":
+            paired_ubicacion = (
+                Ubicacion.objects
+                .filter(tipo="piso", sucursal=ubicacion.sucursal, activa=True)
+                .values("id", "nombre")
+                .first()
+            )
+        elif ubicacion.tipo == "piso":
+            paired_ubicacion = (
+                Ubicacion.objects
+                .filter(tipo="bodega", sucursal=ubicacion.sucursal, activa=True)
+                .values("id", "nombre")
+                .first()
+            )
+
+    if not paired_ubicacion:
+        piso_ubicaciones = list(
+            Ubicacion.objects
+            .filter(activa=True)
+            .exclude(id=ubicacion_id)
+            .values("id", "nombre")
+            .order_by("nombre")
+        )
+
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     if is_ajax:
@@ -88,6 +117,8 @@ def productos_por_ubicacion(request, ubicacion_id):
         "page_obj":  page_obj,
         "inventario_todas_json": inventario_todas_json,
         "ubicaciones": ubicaciones,
+        "paired_ubicacion": paired_ubicacion,
+        "piso_ubicaciones": piso_ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
         "q": q,
     })
@@ -186,7 +217,7 @@ def detalle_producto(request, producto_id):
             pos = ids.index(producto.id) if producto.id in ids else 0
             page = (pos // 20) + 1
             url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": ubicacion_id})
-            return redirect(f"{url}?page={page}&highlight={producto.id}")
+            return redirect(f"{url}?page={page}&highlight={producto.id}&toast=Cambios+guardados+%E2%9C%93")
         return redirect("inventario:detalle_producto", producto_id=producto.id)
 
     atributos = []

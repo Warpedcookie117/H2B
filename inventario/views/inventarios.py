@@ -216,6 +216,9 @@ def transferir_inventario(request):
     return JsonResponse({
         "success": True,
         "mensaje": f"Transferidos {cantidad} de {producto.nombre} hacia {destino.nombre}.",
+        "cantidad_transferida": int(cantidad),
+        "destino_nombre": destino.nombre,
+        "origen_nombre": origen.nombre,
         **resultado
     })
 

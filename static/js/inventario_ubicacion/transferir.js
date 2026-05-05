@@ -107,18 +107,15 @@ async function confirmarTransferir(event) {
         mostrarMensaje(result.mensaje);
 
         console.log("🔄 Actualizando card ORIGEN...");
-        actualizarCard(
+        actualizarCard(result.producto_id, result.origen_id, result.cantidad_origen);
+        mostrarToastEnCard(
             result.producto_id,
             result.origen_id,
-            result.cantidad_origen
+            `↗ Transferiste ${result.cantidad_transferida} hacia ${result.destino_nombre}`
         );
 
         console.log("🔄 Actualizando card DESTINO...");
-        actualizarCard(
-            result.producto_id,
-            result.destino_id,
-            result.cantidad_destino
-        );
+        actualizarCard(result.producto_id, result.destino_id, result.cantidad_destino);
 
         console.log("✔ Cerrando modal...");
         cerrarModal("modalTransferir");

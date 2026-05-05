@@ -45,6 +45,9 @@ async function confirmarAgregar(event) {
         // ⭐ Cerrar modal
         cerrarModal(modalId);
 
+        // ⭐ Toast en la card + scroll
+        mostrarToastEnCard(productoId, ubicacionId, `➕ Agregaste ${cantidad} de este`);
+
         // ⭐ Mostrar mensaje de éxito
         mostrarMensaje("Cantidad agregada correctamente.");
 

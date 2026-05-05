@@ -73,15 +73,8 @@ function getCSRFToken() {
    ============================================================ */
 
 function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
-    const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
-    if (!card) return;
-
-    const cantidadSpan = card.querySelector(".cantidad-ubicacion");
-    if (cantidadSpan) cantidadSpan.textContent = nuevaCantidad;
-
-    card.dataset.cantidad = nuevaCantidad;
-
-    // Sync inventarioTodas so totals stay accurate across all modal operations
+    // Always sync inventarioTodas first — even when the card is not in the DOM
+    // (e.g. destination location in a transfer is never rendered on this page)
     if (window.inventarioTodas) {
         const pid = parseInt(productoId);
         const uid = parseInt(ubicacionId);
@@ -95,6 +88,18 @@ function actualizarCard(productoId, ubicacionId, nuevaCantidad) {
             window.inventarioTodas.push({ producto_id: pid, ubicacion_id: uid, cantidad_actual: qty });
         }
     }
+
+    // Refresh comparison panel count + always-visible location summary
+    window.refrescarComparacionPiso?.();
+    window.refrescarResumenUbicaciones?.(productoId);
+
+    const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
+    if (!card) return;
+
+    const cantidadSpan = card.querySelector(".cantidad-ubicacion");
+    if (cantidadSpan) cantidadSpan.textContent = nuevaCantidad;
+
+    card.dataset.cantidad = nuevaCantidad;
 
     if (parseInt(nuevaCantidad) === 0) {
         card.style.backgroundColor = "#f3f4f6";
@@ -177,6 +182,39 @@ function mostrarError(texto) {
         </div>
     `;
     setTimeout(() => cont.innerHTML = "", 5000);
+}
+
+function mostrarToastEnCard(productoId, ubicacionId, mensaje) {
+    const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
+    if (!card) return;
+
+    const old = card.querySelector(".card-toast");
+    if (old) old.remove();
+
+    const toast = document.createElement("div");
+    toast.className = "card-toast";
+    toast.style.cssText = [
+        "border:2px solid black",
+        "background:#CCFF00",
+        "color:black",
+        "font-weight:900",
+        "font-size:0.65rem",
+        "text-transform:uppercase",
+        "letter-spacing:0.07em",
+        "padding:0.3rem 0.5rem",
+        "display:flex",
+        "align-items:flex-start",
+        "justify-content:space-between",
+        "gap:0.25rem",
+        "margin-top:0.375rem",
+        "line-height:1.3",
+    ].join(";");
+    toast.innerHTML = `<span style="flex:1">${mensaje}</span><button onclick="this.parentElement.remove()" style="flex-shrink:0;font-weight:900;font-size:0.85rem;line-height:1;cursor:pointer;background:none;border:none;color:black;padding:0">✕</button>`;
+    card.appendChild(toast);
+
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    setTimeout(() => { if (toast.parentElement) toast.remove(); }, 6000);
 }
 
 function mostrarErrorEnModal(modalId, mensaje) {

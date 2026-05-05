@@ -68,6 +68,10 @@ function abrirModalAgregarDesdeCard(productoId, ubicacionId) {
     document.querySelector(`#${modalId} input[name="producto_id"]`).value = productoId;
     document.querySelector(`#${modalId} input[name="ubicacion_id"]`).value = ubicacionId;
 
+    // Reset quantity input
+    const inputCantidad = document.querySelector(`#${modalId} input[name="cantidad"]`);
+    if (inputCantidad) inputCantidad.value = "";
+
     // Read quantity from card (always up-to-date)
     const card = document.getElementById(`card_${productoId}_${ubicacionId}`);
     const cantidadActual = card.dataset.cantidad;

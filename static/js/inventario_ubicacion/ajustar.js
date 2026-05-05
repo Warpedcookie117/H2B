@@ -33,11 +33,24 @@ function submitAjuste(productoId, esDueno) {
         }
 
         // ⭐ CASO 2: AJUSTE DIRECTO (dueño)
+        const cardAntes = document.getElementById(`card_${data.producto_id}_${data.ubicacion_id}`);
+        const cantAntes = cardAntes ? parseInt(cardAntes.dataset.cantidad) : null;
+
         actualizarCard(
             data.producto_id,
             data.ubicacion_id,
             data.cantidad_actual
         );
+
+        if (cantAntes !== null) {
+            const diff = data.cantidad_actual - cantAntes;
+            const signo = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : "sin cambio";
+            mostrarToastEnCard(
+                data.producto_id,
+                data.ubicacion_id,
+                `✏ Ajustado a ${data.cantidad_actual} pzas (${signo})`
+            );
+        }
 
         cerrarModal(modalId);
 
