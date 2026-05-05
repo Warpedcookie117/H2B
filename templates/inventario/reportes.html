@@ -2,178 +2,339 @@
 {% load static %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-  <h2 class="text-3xl font-bold mb-8 text-center text-gray-800">📊 Reportes de Inventario</h2>
 
-  <!-- Formulario de filtros -->
+<link rel="stylesheet" href="{% static 'css/reportes.css' %}">
+
+<div class="max-w-7xl mx-auto px-4 py-10 space-y-8">
+
+  <!-- ENCABEZADO -->
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#FFBE0B] p-8">
+    <h1 class="text-3xl sm:text-5xl font-black text-black uppercase tracking-tight leading-none">
+      📊 Reportes
+    </h1>
+    <p class="text-black font-bold text-lg mt-3">
+      Números, movimientos y realidades. Aquí no hay pretextos. 🗂️
+    </p>
+  </div>
+
+  <!-- TOAST — notificación de filtro aplicado -->
+  <div id="reportes-toast"
+       class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#CCFF00]
+              text-black font-black text-sm uppercase tracking-widest px-6 py-3">
+  </div>
+
+  <!-- FORMULARIO DE FILTROS -->
   <form method="get"
         id="form-reportes"
         data-api-url="{% url 'inventario:api_categorias' %}"
-        class="mb-8 max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
+        class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#EFF6FF] p-6">
 
-    <!-- Tipo de reporte -->
-    <div>
-      <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo de reporte</label>
-      <select name="tipo" id="tipo" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Selecciona tipo</option>
-        <option value="general" {% if tipo_reporte == 'general' %}selected{% endif %}>Inventario general</option>
-        <option value="movimientos" {% if tipo_reporte == 'movimientos' %}selected{% endif %}>Movimientos</option>
-        <option value="resumen_movimientos" {% if tipo_reporte == 'resumen_movimientos' %}selected{% endif %}>Resumen de movimientos</option>
-      </select>
+    <p class="font-black text-black text-xs uppercase tracking-widest mb-5">Filtros</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Tipo de reporte</label>
+        <select name="tipo" id="tipo" class="select-90s">
+          <option value="general" {% if tipo_reporte == 'general' %}selected{% endif %}>Inventario general</option>
+          <option value="movimientos" {% if tipo_reporte == 'movimientos' %}selected{% endif %}>Movimientos</option>
+          <option value="resumen_movimientos" {% if tipo_reporte == 'resumen_movimientos' %}selected{% endif %}>Resumen de movimientos</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Categoría</label>
+        <select name="categoria" id="categoria" class="select-90s">
+          <option value="">Todas</option>
+          {% for cat in categorias_padre %}
+            <option value="{{ cat.id }}" {% if filtro_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
+              {{ cat.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Subcategoría</label>
+        <select name="subcategoria" id="subcategoria" class="select-90s"
+                data-selected="{{ filtro_subcategoria|default:'' }}">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Temporada</label>
+        <select name="temporada" id="temporada" class="select-90s">
+          <option value="">Todas</option>
+          {% for temporada in temporadas %}
+            <option value="{{ temporada.id }}" {% if filtro_temporada == temporada.id|stringformat:"s" %}selected{% endif %}>
+              {{ temporada.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Ubicación</label>
+        <select name="ubicacion" id="ubicacion" class="select-90s">
+          <option value="">Todas</option>
+          {% for ub in ubicaciones %}
+            <option value="{{ ub.id }}" {% if filtro_ubicacion == ub.id|stringformat:"s" %}selected{% endif %}>
+              {{ ub.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Dueño</label>
+        <select name="dueño" id="dueño" class="select-90s">
+          <option value="">Todos</option>
+          {% for emp in dueños %}
+            <option value="{{ emp.id }}" {% if filtro_dueno == emp.id|stringformat:"s" %}selected{% endif %}>
+              {{ emp.user.get_full_name|default:emp.user.username }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Tipo de movimiento</label>
+        <select name="movimiento" id="movimiento" class="select-90s">
+          <option value="">Todos</option>
+          <option value="entrada" {% if filtro_movimiento == 'entrada' %}selected{% endif %}>Entrada</option>
+          <option value="salida" {% if filtro_movimiento == 'salida' %}selected{% endif %}>Salida</option>
+          <option value="transferencia" {% if filtro_movimiento == 'transferencia' %}selected{% endif %}>Transferencia</option>
+          <option value="ajuste" {% if filtro_movimiento == 'ajuste' %}selected{% endif %}>Ajuste</option>
+        </select>
+      </div>
+
     </div>
 
-    <!-- Categoría padre -->
-    <div>
-      <label for="categoria" class="block text-sm font-medium text-gray-700 mb-1">Categoría padre</label>
-      <select name="categoria" id="categoria" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Todas</option>
-        {% for cat in categorias_padre %}
-          <option value="{{ cat.id }}" {% if filtro_categoria == cat.id|stringformat:"s" %}selected{% endif %}>
-            {{ cat.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Subcategoría -->
-    <div>
-      <label for="subcategoria" class="block text-sm font-medium text-gray-700 mb-1">Subcategoría</label>
-      <select name="subcategoria" id="subcategoria"
-              class="form-control w-full px-3 py-2 border rounded-md"
-              data-selected="{{ filtro_subcategoria|default:'' }}">
-        <option value="">Todas</option>
-      </select>
-    </div>
-
-    <!-- Temporada -->
-    <div>
-      <label for="temporada" class="block text-sm font-medium text-gray-700 mb-1">Temporada</label>
-      <select name="temporada" id="temporada" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Todas</option>
-        {% for temporada in temporadas %}
-          <option value="{{ temporada.id }}" {% if filtro_temporada == temporada.id|stringformat:"s" %}selected{% endif %}>
-            {{ temporada.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Ubicación -->
-    <div>
-      <label for="ubicacion" class="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
-      <select name="ubicacion" id="ubicacion" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Todas</option>
-        {% for ubicacion in ubicaciones %}
-          <option value="{{ ubicacion.id }}" {% if filtro_ubicacion == ubicacion.id|stringformat:"s" %}selected{% endif %}>
-            {{ ubicacion.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Dueño -->
-    <div>
-      <label for="dueño" class="block text-sm font-medium text-gray-700 mb-1">Dueño</label>
-      <select name="dueño" id="dueño" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Todos</option>
-        {% for emp in dueños %}
-          <option value="{{ emp.id }}" {% if filtro_dueno == emp.id|stringformat:"s" %}selected{% endif %}>
-            {{ emp.user.get_full_name|default:emp.user.username }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <!-- Movimiento -->
-    <div>
-      <label for="movimiento" class="block text-sm font-medium text-gray-700 mb-1">Tipo de movimiento</label>
-      <select name="movimiento" id="movimiento" class="form-control w-full px-3 py-2 border rounded-md">
-        <option value="">Todos</option>
-        <option value="entrada" {% if filtro_movimiento == 'entrada' %}selected{% endif %}>Entrada</option>
-        <option value="salida" {% if filtro_movimiento == 'salida' %}selected{% endif %}>Salida</option>
-        <option value="transferencia" {% if filtro_movimiento == 'transferencia' %}selected{% endif %}>Transferencia</option>
-        <option value="ajuste" {% if filtro_movimiento == 'ajuste' %}selected{% endif %}>Ajuste</option>
-      </select>
-    </div>
-
-    <!-- Botones -->
-    <div class="sm:col-span-2 flex flex-col gap-4">
-      <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
-        Generar reporte
+    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+      <button type="submit"
+              class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_black]
+                     text-white font-black text-sm uppercase tracking-widest px-6 py-3">
+        🔍 Generar reporte
       </button>
-
-      <!-- PDF con TODOS los filtros -->
-      <a href="{% url 'inventario:reporte_pdf' %}?tipo={{ tipo_reporte }}
-          &categoria={{ filtro_categoria|default_if_none:'' }}
-          &subcategoria={{ filtro_subcategoria|default_if_none:'' }}
-          &temporada={{ filtro_temporada|default_if_none:'' }}
-          &ubicacion={{ filtro_ubicacion|default_if_none:'' }}
-          &dueño={{ filtro_dueno|default_if_none:'' }}
-          &movimiento={{ filtro_movimiento|default_if_none:'' }}"
+      <a id="link-pdf"
+         href="{% url 'inventario:reporte_pdf' %}"
+         data-base="{% url 'inventario:reporte_pdf' %}"
          target="_blank"
-         class="w-full bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 transition text-center">
-        Descargar PDF del reporte
+         class="btn-90s bg-[#FF006E] border-4 border-black shadow-[4px_4px_0_0_black]
+                text-white font-black text-sm uppercase tracking-widest px-6 py-3 text-center">
+        📄 Descargar PDF
       </a>
     </div>
+
   </form>
 
-{% if datos %}
-  <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {% for item in datos %}
-      <div class="card opacity-0 translate-y-4 bg-white rounded-md shadow-sm p-4 border border-gray-200 hover:shadow-md transition duration-700 ease-out">
-        <h3 class="text-base font-semibold text-red-600 mb-2">{{ item.producto_nombre }}</h3>
+  <!-- ============================
+       RESULTADOS — bloque reemplazable por AJAX
+       ============================ -->
+  <div id="reportes-resultado" class="space-y-6">
 
-        {% if item.ubicacion_nombre %}
-          <p class="text-sm text-gray-700">Ubicación: <strong>{{ item.ubicacion_nombre }}</strong></p>
+    <!-- MENSAJE HUMANO -->
+    {% if tipo_reporte %}
+    <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#00F5D4] px-6 py-5">
+      <p class="font-black text-black text-xs uppercase tracking-widest mb-2">🔎 Estás viendo:</p>
+      <p class="font-bold text-black text-base sm:text-lg leading-relaxed">
+
+        {% if tipo_reporte == 'general' %}
+          El <span class="font-black underline decoration-4 decoration-black">inventario general</span>
+        {% elif tipo_reporte == 'movimientos' %}
+          Los <span class="font-black underline decoration-4 decoration-black">movimientos de inventario</span>
+        {% elif tipo_reporte == 'resumen_movimientos' %}
+          El <span class="font-black underline decoration-4 decoration-black">resumen de movimientos</span>
         {% endif %}
 
-        {% if item.dueño_nombre %}
-          <p class="text-sm text-gray-700">Dueño: <strong>{{ item.dueño_nombre }}</strong></p>
+        {% if filtros_legibles.subcategoria %}
+          de <span class="font-black">{{ filtros_legibles.subcategoria }}</span>{% if filtros_legibles.categoria %} (subcategoría de <span class="font-black">{{ filtros_legibles.categoria }}</span>){% endif %}
+        {% elif filtros_legibles.categoria %}
+          de la categoría <span class="font-black">{{ filtros_legibles.categoria }}</span> y todas sus subcategorías
+        {% else %}
+          de <span class="font-black">todos los productos</span>
         {% endif %}
 
-        <p class="text-sm text-gray-700">Cantidad: <strong>{{ item.total }}</strong></p>
+        {% if filtros_legibles.ubicacion %}
+          , ubicados en <span class="font-black">{{ filtros_legibles.ubicacion }}</span>
+        {% endif %}
+
+        {% if filtros_legibles.temporada %}
+          , de la temporada <span class="font-black">{{ filtros_legibles.temporada }}</span>
+        {% endif %}
+
+        {% if filtros_legibles.dueño %}
+          , que le pertenecen a <span class="font-black">{{ filtros_legibles.dueño }}</span>
+        {% endif %}
+
+        {% if filtros.movimiento %}
+          — solo movimientos de tipo <span class="font-black uppercase">{{ filtros.movimiento }}</span>
+        {% endif %}
+
+        .
+      </p>
+    </div>
+    {% endif %}
+
+    {% if datos %}
+
+    <!-- CONTEO -->
+    <div>
+      <div class="inline-block border-4 border-black shadow-[3px_3px_0_0_black] bg-[#CCFF00] px-5 py-2">
+        <span class="font-black text-black text-sm uppercase tracking-widest">
+          {{ datos|length }} resultado{{ datos|length|pluralize:"s" }}
+        </span>
       </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="text-center text-gray-500 mt-8">No se encontraron resultados para los filtros seleccionados.</p>
-{% endif %}
+    </div>
 
-  <!-- Movimientos -->
-  {% if movimientos %}
-    <div class="mt-12">
-      <h3 class="text-xl font-semibold mb-4 text-center text-gray-800">📦 Movimientos registrados</h3>
+    <!-- INVENTARIO GENERAL -->
+    {% if tipo_reporte == 'general' %}
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
+      <div class="bg-[#00BBF9] border-b-4 border-black px-5 py-3">
+        <p class="font-black text-black text-sm uppercase tracking-widest">📦 Inventario general</p>
+      </div>
       <div class="overflow-x-auto">
-        <table class="min-w-full bg-white border border-gray-200 rounded-md">
-          <thead class="bg-gray-100 text-sm text-gray-700">
+        <table class="tabla-90s">
+          <thead>
             <tr>
-              <th class="px-4 py-2 text-left">Producto</th>
-              <th class="px-4 py-2 text-left">Tipo</th>
-              <th class="px-4 py-2 text-left">Cantidad</th>
-              <th class="px-4 py-2 text-left">Origen</th>
-              <th class="px-4 py-2 text-left">Destino</th>
-              <th class="px-4 py-2 text-left">Fecha</th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Subcategoría</th>
+              <th>Temporada</th>
+              <th>Dueño</th>
+              <th>Ubicación</th>
+              <th>Cantidad</th>
             </tr>
           </thead>
-          <tbody class="text-sm text-gray-600">
-            {% for mov in movimientos %}
-              <tr class="border-t"> 
-                <td class="px-4 py-2">{{ mov.producto_nombre }}</td>
-                <td class="px-4 py-2 capitalize">{{ mov.tipo_valor }}</td>
-                <td class="px-4 py-2">{{ mov.cantidad_valor }}</td>
-                <td class="px-4 py-2">{{ mov.origen_nombre|default:"-" }}</td>
-                <td class="px-4 py-2">{{ mov.destino_nombre|default:"-" }}</td>
-                <td class="px-4 py-2">{{ mov.fecha_valor|date:" d/m/Y H:i" }}</td>
-              </tr> 
+          <tbody>
+            {% for item in datos %}
+            <tr>
+              <td class="font-black">{{ item.producto_nombre }}</td>
+              <td>{{ item.categoria_nombre|default:"—" }}</td>
+              <td>{{ item.subcategoria_nombre|default:"—" }}</td>
+              <td>{{ item.temporada_nombres|default:"—" }}</td>
+              <td>{{ item.dueño_nombre|default:"—" }}</td>
+              <td>{{ item.ubicacion_nombre|default:"—" }}</td>
+              <td class="font-black text-center text-lg">{{ item.total }}</td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
-  {% else %}
-    <p class="text-center text-gray-500 mt-8">No se encontraron movimientos para los filtros seleccionados.</p>
-  {% endif %}
+    {% endif %}
+
+    <!-- MOVIMIENTOS -->
+    {% if tipo_reporte == 'movimientos' %}
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
+      <div class="bg-[#8338EC] border-b-4 border-black px-5 py-3">
+        <p class="font-black text-white text-sm uppercase tracking-widest">📋 Movimientos de inventario</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="tabla-90s">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Motivo</th>
+              <th>Cantidad</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in datos %}
+            <tr>
+              <td class="font-black">{{ item.producto_nombre }}</td>
+              <td>
+                <span class="badge-tipo
+                  {% if item.tipo == 'entrada' %}bg-[#00F5D4]
+                  {% elif item.tipo == 'salida' %}bg-[#FF006E] text-white
+                  {% elif item.tipo == 'transferencia' %}bg-[#00BBF9]
+                  {% else %}bg-[#FFBE0B]{% endif %}">
+                  {{ item.tipo }}
+                </span>
+              </td>
+              <td>{{ item.motivo|default:"—" }}</td>
+              <td class="font-black text-center">{{ item.cantidad }}</td>
+              <td>{{ item.origen_nombre|default:"—" }}</td>
+              <td>{{ item.destino_nombre|default:"—" }}</td>
+              <td class="text-xs whitespace-nowrap">{{ item.fecha|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- RESUMEN DE MOVIMIENTOS -->
+    {% if tipo_reporte == 'resumen_movimientos' %}
+    <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
+      <div class="bg-[#CCFF00] border-b-4 border-black px-5 py-3">
+        <p class="font-black text-black text-sm uppercase tracking-widest">📈 Resumen de movimientos</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="tabla-90s">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Producto</th>
+              <th>Categoría</th>
+              <th>Subcategoría</th>
+              <th>Dueño</th>
+              <th>Temporada</th>
+              <th>Total movido</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in datos %}
+            <tr>
+              <td>
+                <span class="badge-tipo
+                  {% if item.tipo == 'entrada' %}bg-[#00F5D4]
+                  {% elif item.tipo == 'salida' %}bg-[#FF006E] text-white
+                  {% elif item.tipo == 'transferencia' %}bg-[#00BBF9]
+                  {% else %}bg-[#FFBE0B]{% endif %}">
+                  {{ item.tipo }}
+                </span>
+              </td>
+              <td class="font-black">{{ item.producto__nombre|default:"—" }}</td>
+              <td>{{ item.producto__categoria_padre__nombre|default:"—" }}</td>
+              <td>{{ item.producto__categoria__nombre|default:"—" }}</td>
+              <td>{{ item.producto__dueño__user__username|default:"—" }}</td>
+              <td>{{ item.temporada_nombres|default:"—" }}</td>
+              <td class="font-black text-center text-lg">{{ item.total }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+
+    <!-- SIN DATOS -->
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-white p-14 text-center">
+      <p class="text-gray-300 font-black text-5xl uppercase mb-3">VACÍO</p>
+      <p class="text-gray-500 font-semibold text-base">
+        {% if tipo_reporte %}
+          No hay datos con esos filtros, padrino. Prueba con otros. 🤷
+        {% else %}
+          Selecciona los filtros y dale al botón para ver resultados. 👆
+        {% endif %}
+      </p>
+    </div>
+
+    {% endif %}
+
+  </div><!-- fin #reportes-resultado -->
+
 </div>
+
 {% endblock %}
 
 {% block scripts %}

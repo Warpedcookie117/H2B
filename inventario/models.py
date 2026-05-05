@@ -292,28 +292,6 @@ class Producto(models.Model):
         if self.precio_mayoreo > self.precio_menudeo:
             raise ValidationError({'precio_mayoreo': 'El precio de mayoreo no puede ser mayor que el precio de menudeo.'})
 
-        if self.foto_url and not self.phash:
-            from .services.vision import generar_phash
-            from .services.similaridad import buscar_producto_similar_phash
-
-            phash_nuevo = generar_phash(self.foto_url)
-            similares = buscar_producto_similar_phash(phash_nuevo)
-
-            if similares:
-                producto, _ = similares[0]
-
-                if not producto.activo:
-                    raise ValidationError(
-                        f"La imagen coincide con un producto desactivado: {producto.nombre}. "
-                        f"Busca el ID {producto.id} en el inventario global."
-                    )
-                else:
-                    raise ValidationError(
-                        f"La imagen coincide con un producto existente: {producto.nombre}. "
-                        f"Busca el ID {producto.id} en el inventario global."
-                    )
-
-            self.phash = phash_nuevo
 
     # ============================================================
     # META

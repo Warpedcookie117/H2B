@@ -86,8 +86,8 @@ class ProductService:
         existente_firma = Prod.objects.filter(firma_unica=firma).exclude(pk=producto.pk).first()
         if existente_firma:
             raise ValidationError(
-                f"Este producto ya existe (firma única). "
-                f"Busca el ID {existente_firma.id} en el inventario global."
+                f"Los atributos coinciden con un producto existente: {existente_firma.nombre} "
+                f"(ID {existente_firma.id}). Búscalo en el inventario global."
             )
 
         producto.save(update_fields=["firma_unica"])
@@ -113,11 +113,9 @@ class ProductService:
     # ============================================================
     @staticmethod
     def _generar_firma(producto):
-        partes = []
+        partes = [f"nombre={producto.nombre.lower().strip()}"]
 
-        valores = producto.valores_atributo.all()
-
-        for valor in valores:
+        for valor in producto.valores_atributo.all():
             nombre = valor.atributo.nombre.lower().strip()
             val = str(valor.valor).lower().strip()
             partes.append(f"{nombre}={val}")

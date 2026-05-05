@@ -158,7 +158,14 @@ def detalle_producto(request, producto_id):
                         valor=nuevo_valor
                     )
 
-        messages.success(request, "Cambios guardados correctamente.")
+        nueva_firma = ProductService._generar_firma(producto)
+        conflicto = Producto.objects.filter(firma_unica=nueva_firma).exclude(pk=producto.pk).first()
+        if conflicto:
+            messages.error(request, f"Los atributos coinciden con un producto existente: {conflicto.nombre} (ID {conflicto.id}).")
+        else:
+            producto.firma_unica = nueva_firma
+            producto.save(update_fields=["firma_unica"])
+            messages.success(request, "Cambios guardados correctamente.")
         return redirect("inventario:detalle_producto", producto_id=producto.id)
 
     atributos = []

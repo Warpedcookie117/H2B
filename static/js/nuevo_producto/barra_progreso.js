@@ -47,11 +47,11 @@ export function iniciarBarraProgreso(fetchPromise) {
     log("🚀", "Enviando información del producto...", "info");
 
     const pasos = [
-        { pct: 15, txt: "Revisando que todo esté completo...",     icono: "🔍" },
+        { pct: 15, txt: "Revisando que todo esté completo...",      icono: "🔍" },
         { pct: 35, txt: "Guardando características del producto...", icono: "💾" },
         { pct: 55, txt: "Verificando que no exista un duplicado...", icono: "🕵️" },
-        { pct: 72, txt: "Analizando la imagen...",                  icono: "🖼️" },
-        { pct: 88, txt: "Registrando en el sistema...",             icono: "📦" },
+        { pct: 72, txt: "Configurando inventario inicial...",        icono: "📦" },
+        { pct: 88, txt: "Registrando en el sistema...",              icono: "✅" },
     ];
 
     let i = 0;
