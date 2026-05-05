@@ -176,8 +176,17 @@ def detalle_producto(request, producto_id):
             .first()
         )
         if max_inv:
-            url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": max_inv.ubicacion.id})
-            return redirect(f"{url}?highlight={producto.id}")
+            ubicacion_id = max_inv.ubicacion.id
+            ids = list(
+                Inventario.objects
+                .filter(ubicacion_id=ubicacion_id, producto__activo=True)
+                .order_by("producto__nombre")
+                .values_list("producto_id", flat=True)
+            )
+            pos = ids.index(producto.id) if producto.id in ids else 0
+            page = (pos // 20) + 1
+            url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": ubicacion_id})
+            return redirect(f"{url}?page={page}&highlight={producto.id}")
         return redirect("inventario:detalle_producto", producto_id=producto.id)
 
     atributos = []

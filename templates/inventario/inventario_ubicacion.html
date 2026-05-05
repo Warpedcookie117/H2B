@@ -317,6 +317,8 @@ window.aplicarColoresCards = function () {
 document.addEventListener("DOMContentLoaded", () => {
   const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
   if (highlighted) {
+    // Remove inline background so the CSS animation can override it
+    highlighted.style.removeProperty("background-color");
     highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
     highlighted.addEventListener("animationend", () => {
       highlighted.classList.remove("highlight-yellow", "highlight-green");
