@@ -350,25 +350,28 @@ window.addEventListener("pageshow", function (e) {
   if (e.persisted) window.location.reload();
 });
 
-// Actualizar cantidades en vivo
-document.addEventListener("DOMContentLoaded", function () {
+// Cantidades en vivo — polling cada 3 segundos
+(function () {
   const spans = document.querySelectorAll("[data-stock-pid]");
   if (!spans.length) return;
 
   const ids = [...new Set([...spans].map(s => s.dataset.stockPid))].join(",");
+  const url  = "{% url 'inventario:api_stock_global' %}?ids=" + ids;
 
-  fetch("{% url 'inventario:api_stock_global' %}?ids=" + ids)
-    .then(r => r.json())
-    .then(data => {
-      spans.forEach(span => {
-        const pid = span.dataset.stockPid;
-        const uid = span.dataset.stockUid;
-        if (data[pid] && data[pid][uid] !== undefined) {
-          span.textContent = data[pid][uid];
-        }
-      });
-    })
-    .catch(() => {});
-});
+  function actualizarCantidades() {
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        spans.forEach(span => {
+          const qty = data[span.dataset.stockPid]?.[span.dataset.stockUid];
+          if (qty !== undefined) span.textContent = qty;
+        });
+      })
+      .catch(() => {});
+  }
+
+  document.addEventListener("DOMContentLoaded", actualizarCantidades);
+  setInterval(actualizarCantidades, 3000);
+})();
 </script>
 {% endblock %}

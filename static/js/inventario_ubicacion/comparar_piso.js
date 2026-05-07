@@ -102,20 +102,37 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
 
     function recalcularPanel() {
         const cards = document.querySelectorAll("#gridProductos .cardProducto");
-        let faltantes = 0;
 
-        cards.forEach(card => {
-            if (activoPisoId) {
+        if (activoPisoId) {
+            // Count across ALL products in current location (global, not just current page)
+            const enActual = new Set(
+                (window.inventarioTodas || [])
+                    .filter(i => i.ubicacion_id === _currId)
+                    .map(i => i.producto_id)
+            );
+            const enPaired = new Map(
+                (window.inventarioTodas || [])
+                    .filter(i => i.ubicacion_id === activoPisoId)
+                    .map(i => [i.producto_id, i.cantidad_actual])
+            );
+            let faltantes = 0;
+            enActual.forEach(pid => {
+                if ((enPaired.get(pid) || 0) === 0) faltantes++;
+            });
+
+            if (countEl)   countEl.textContent = faltantes;
+            if (btnFaltan) btnFaltan.disabled   = false;
+
+            // Show/hide cards on the current page
+            cards.forEach(card => {
                 const qty = _cantOtraUbic(parseInt(card.dataset.producto), activoPisoId);
-                if (qty === 0) faltantes++;
                 card.style.display = soloFaltantes && qty !== 0 ? "none" : "";
-            } else {
-                card.style.display = "";
-            }
-        });
-
-        if (countEl)   countEl.textContent = faltantes;
-        if (btnFaltan) btnFaltan.disabled   = !activoPisoId;
+            });
+        } else {
+            if (countEl)   countEl.textContent = 0;
+            if (btnFaltan) btnFaltan.disabled   = true;
+            cards.forEach(card => { card.style.display = ""; });
+        }
     }
 
     window.refrescarComparacionPiso = recalcularPanel;

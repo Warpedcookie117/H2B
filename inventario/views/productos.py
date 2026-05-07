@@ -55,19 +55,17 @@ def productos_por_ubicacion(request, ubicacion_id):
             pass
         productos = productos.filter(filtro).distinct()
 
-    inventario_todas = (
+    # Solo productos que existen en esta ubicación — evita cargar inventario global
+    ids_en_ubicacion = list(
         Inventario.objects
-        .filter(producto__activo=True)
-        .select_related("producto", "ubicacion")
-        .order_by("producto__nombre")
+        .filter(ubicacion=ubicacion, producto__activo=True)
+        .values_list("producto_id", flat=True)
     )
 
     inventario_todas_json = list(
-        inventario_todas.values(
-            "producto_id",
-            "ubicacion_id",
-            "cantidad_actual"
-        )
+        Inventario.objects
+        .filter(producto_id__in=ids_en_ubicacion)
+        .values("producto_id", "ubicacion_id", "cantidad_actual")
     )
 
     ubicaciones = Ubicacion.objects.all().order_by("nombre")

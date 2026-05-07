@@ -146,9 +146,9 @@
             >
                 <div class="pos-producto-img">
                     {% if p.foto_url %}
-                        <img src="{{ p.foto_url.url }}">
+                        <img src="{{ p.foto_url.url }}" loading="lazy">
                     {% else %}
-                        <img src="{% static 'img/no-image.png' %}" class="object-contain">
+                        <img src="{% static 'img/no-image.png' %}" loading="lazy" class="object-contain">
                     {% endif %}
                 </div>
 

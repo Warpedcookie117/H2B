@@ -101,7 +101,13 @@
   <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#8338EC] p-3 flex flex-wrap items-center gap-3">
     <span class="text-white font-black text-xs uppercase tracking-widest whitespace-nowrap">
       {% if paired_ubicacion %}
-        🏪 Faltantes en {{ paired_ubicacion.nombre }}
+        {% if ubicacion.tipo == 'piso' %}
+          📦 Picale aquí para saber qué tienes aquí, pero no en bodega interna
+        {% elif ubicacion.tipo == 'bodega' %}
+          🏪 Picale aquí para saber qué tienes aquí, pero no en piso
+        {% else %}
+          📦 Picale aquí para comparar con {{ paired_ubicacion.nombre }}
+        {% endif %}
       {% else %}
         🏪 ¿Qué falta?
       {% endif %}
@@ -117,7 +123,10 @@
     {% endif %}
     <button id="btn-faltan-piso" {% if not paired_ubicacion %}disabled{% endif %}
             class="btn-90s border-4 border-black bg-[#FF006E] text-white font-black text-xs uppercase tracking-widest px-4 py-2 disabled:opacity-40 whitespace-nowrap">
-      Ver faltantes (<span id="cnt-faltan-piso">0</span>)
+      {% if paired_ubicacion %}
+        {% if ubicacion.tipo == 'piso' %}¿Qué me falta en bodega?{% elif ubicacion.tipo == 'bodega' %}¿Qué me falta en piso?{% else %}¿Qué falta?{% endif %}
+      {% else %}¿Qué falta?{% endif %}
+      (<span id="cnt-faltan-piso">0</span>)
     </button>
     <button id="btn-todos-piso"
             class="hidden btn-90s border-4 border-black bg-white text-black font-black text-xs uppercase tracking-widest px-4 py-2 whitespace-nowrap">
@@ -150,9 +159,9 @@
       <!-- IMAGEN -->
       <div class="w-full h-32 bg-white border-4 border-black flex items-center justify-center overflow-hidden mb-3">
         {% if inv.producto.foto_url %}
-          <img src="{{ inv.producto.foto_url.url }}" class="object-contain h-full w-full">
+          <img src="{{ inv.producto.foto_url.url }}" loading="lazy" class="object-contain h-full w-full">
         {% else %}
-          <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+          <img src="{% static 'img/no-image.png' %}" loading="lazy" class="object-contain h-full w-full">
         {% endif %}
       </div>
 
@@ -353,6 +362,48 @@ window.aplicarColoresCards = function () {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Cantidades en vivo — reemplaza los números del HTML con datos frescos de BD
+  const cards = document.querySelectorAll("#gridProductos .cardProducto");
+  if (cards.length) {
+    const ids = [...new Set([...cards].map(c => c.dataset.producto))].join(",");
+    fetch("{% url 'inventario:api_stock_global' %}?ids=" + ids)
+      .then(r => r.json())
+      .then(data => {
+        // Actualizar window.inventarioTodas con datos frescos
+        Object.entries(data).forEach(([pid, locs]) => {
+          Object.entries(locs).forEach(([uid, qty]) => {
+            const rec = (window.inventarioTodas || []).find(
+              i => i.producto_id === parseInt(pid) && i.ubicacion_id === parseInt(uid)
+            );
+            if (rec) rec.cantidad_actual = qty;
+            else (window.inventarioTodas = window.inventarioTodas || []).push(
+              { producto_id: parseInt(pid), ubicacion_id: parseInt(uid), cantidad_actual: qty }
+            );
+          });
+        });
+
+        // Actualizar el número grande en cada card
+        cards.forEach(card => {
+          const qty = data[card.dataset.producto]?.[String(window.ubicacionActualId)];
+          if (qty === undefined) return;
+          const span = card.querySelector(".cantidad-ubicacion");
+          if (span) span.textContent = qty;
+          card.dataset.cantidad = qty;
+          if (qty === 0) card.classList.add("opacity-60");
+          else card.classList.remove("opacity-60");
+        });
+
+        // Refrescar resúmenes de otras ubicaciones y el panel de faltantes
+        cards.forEach(card => {
+          if (window.refrescarResumenUbicaciones)
+            window.refrescarResumenUbicaciones(parseInt(card.dataset.producto));
+        });
+        if (window.refrescarComparacionPiso) window.refrescarComparacionPiso();
+        if (window.aplicarColoresCards) window.aplicarColoresCards();
+      })
+      .catch(() => {});
+  }
+
   const params      = new URLSearchParams(window.location.search);
   const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
 
@@ -378,5 +429,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.aplicarColoresCards();
 });
+</script>
+
+<script>
+(function () {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url   = `${proto}//${window.location.host}/ws/inventario/{{ ubicacion.id }}/`;
+
+  function conectar() {
+    const ws = new WebSocket(url);
+
+    ws.onmessage = function (e) {
+      const { producto_id: pid, ubicacion_id: uid, cantidad_actual: qty } = JSON.parse(e.data);
+
+      // Actualizar inventarioTodas para que los resúmenes de otras ubicaciones sean frescos
+      const rec = (window.inventarioTodas || []).find(
+        i => i.producto_id === pid && i.ubicacion_id === uid
+      );
+      if (rec) rec.cantidad_actual = qty;
+      else (window.inventarioTodas = window.inventarioTodas || []).push(
+        { producto_id: pid, ubicacion_id: uid, cantidad_actual: qty }
+      );
+
+      // Si el cambio es en esta ubicación → actualizar número en la card
+      if (uid === window.ubicacionActualId) {
+        const card = document.querySelector(`#gridProductos [data-producto="${pid}"]`);
+        if (card) {
+          const span = card.querySelector(".cantidad-ubicacion");
+          if (span) span.textContent = qty;
+          card.dataset.cantidad = qty;
+          card.classList.toggle("opacity-60", qty === 0);
+        }
+      }
+
+      // Refrescar resúmenes de otras ubicaciones en la card y panel de faltantes
+      if (window.refrescarResumenUbicaciones) window.refrescarResumenUbicaciones(pid);
+      if (window.refrescarComparacionPiso)    window.refrescarComparacionPiso();
+      if (window.aplicarColoresCards)         window.aplicarColoresCards();
+    };
+
+    // Reconectar automáticamente si se cae la conexión
+    ws.onclose = () => setTimeout(conectar, 3000);
+  }
+
+  conectar();
+})();
 </script>
 {% endblock %}

@@ -98,7 +98,14 @@ def pos_view(request):
     hoy = date.today()
 
     # Prefetch attribute values for POS offer filtering
-    productos_list = list(productos.prefetch_related('valores_atributo__atributo'))
+    productos_list = list(
+        productos
+        .only(
+            'id', 'nombre', 'precio_menudeo', 'precio_mayoreo', 'precio_docena',
+            'foto_url', 'categoria_id', 'categoria_padre_id',
+        )
+        .prefetch_related('valores_atributo__atributo')
+    )
     for p in productos_list:
         p.atributos_json = json.dumps(
             {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
