@@ -43,6 +43,9 @@ if (!buscador) {
                 if (typeof window.aplicarColoresCards === "function") {
                     window.aplicarColoresCards();
                 }
+                // Precargar todas las imágenes del resultado para paginación instantánea
+                const imgs = grid.querySelectorAll("img");
+                if (imgs.length) window.precargarImagenesEnIdle?.(Array.from(imgs));
             }
         } catch (e) {
             if (e.name !== "AbortError") console.error("Error buscando productos:", e);

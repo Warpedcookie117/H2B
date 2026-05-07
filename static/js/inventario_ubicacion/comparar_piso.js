@@ -7,6 +7,35 @@ const _ubicMap = {};
 const _currId  = window.ubicacionActualId || 0;
 (window.todasUbicaciones || []).forEach(u => { _ubicMap[u.id] = u; });
 
+// ── Precarga de imágenes en idle, en chunks ───────────────────
+// Expuesta en window para que buscador_ubicacion.js también la use.
+window.precargarImagenesEnIdle = function (imgs) {
+    let i = 0;
+    const CHUNK = 8;
+    const cargarChunk = (deadline) => {
+        while (i < imgs.length && (!deadline || deadline.timeRemaining() > 0)) {
+            const tope = Math.min(i + CHUNK, imgs.length);
+            for (; i < tope; i++) {
+                const src = imgs[i].src || imgs[i].dataset?.src;
+                if (!src) continue;
+                const p = new Image();
+                p.src = src;
+            }
+        }
+        if (i < imgs.length) {
+            if ("requestIdleCallback" in window) requestIdleCallback(cargarChunk, { timeout: 500 });
+            else                                  setTimeout(() => cargarChunk(null), 50);
+        }
+    };
+    if ("requestIdleCallback" in window) requestIdleCallback(cargarChunk, { timeout: 1000 });
+    else                                  setTimeout(() => cargarChunk(null), 200);
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    const imgs = document.querySelectorAll("#gridProductos img");
+    if (imgs.length) window.precargarImagenesEnIdle(Array.from(imgs));
+});
+
 // ── RESUMEN SIEMPRE VISIBLE ───────────────────────────────────
 
 function _cantOtraUbic(productoId, ubicId) {
@@ -190,6 +219,11 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
             }
         }
         if (current) faltanteGroups.push(current);
+
+        // Precargar TODAS las imágenes de los faltantes (incluso las de páginas siguientes)
+        const allImgs = [];
+        faltanteGroups.forEach(g => g[0].querySelectorAll("img").forEach(img => allImgs.push(img)));
+        window.precargarImagenesEnIdle?.(allImgs);
 
         renderFaltantePage(1);
     }

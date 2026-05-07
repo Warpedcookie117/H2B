@@ -22,6 +22,9 @@ export function initPaginacion() {
     document.getElementById("pos-pag-next")?.addEventListener("click", () => {
         if (paginaActual < getTotalPaginas()) irAPagina(paginaActual + 1);
     });
+
+    // Precargar todas las imágenes en segundo plano para paginación instantánea
+    precargarRestantes();
 }
 
 // ============================================================
@@ -110,6 +113,33 @@ export function cargarImagenCard(card) {
     if (!img) return;
     img.src = img.dataset.src;
     img.removeAttribute("data-src");
+}
+
+// Precarga todas las imágenes restantes en idle, en chunks para no saturar la red
+function precargarRestantes() {
+    const items = getAllItems();
+    let i = 0;
+    const CHUNK = 8;
+
+    const cargarChunk = (deadline) => {
+        while (i < items.length && (!deadline || deadline.timeRemaining() > 0)) {
+            const tope = Math.min(i + CHUNK, items.length);
+            for (; i < tope; i++) cargarImagenCard(items[i]);
+        }
+        if (i < items.length) {
+            if ("requestIdleCallback" in window) {
+                requestIdleCallback(cargarChunk, { timeout: 500 });
+            } else {
+                setTimeout(() => cargarChunk(null), 50);
+            }
+        }
+    };
+
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(cargarChunk, { timeout: 1000 });
+    } else {
+        setTimeout(() => cargarChunk(null), 200);
+    }
 }
 
 // ============================================================
