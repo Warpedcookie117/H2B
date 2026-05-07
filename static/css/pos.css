@@ -303,8 +303,8 @@
 
 .pos-producto-img {
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  height: 3.5rem;
+  flex-shrink: 0;
   background: rgba(255,255,255,0.55);
   overflow: hidden;
   display: flex;
