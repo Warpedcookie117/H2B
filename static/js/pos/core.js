@@ -1,5 +1,7 @@
 // core.js — Estado global del POS
 
+console.log("[POS:core] Módulo cargado");
+
 // ============================================================
 // 1. Estado global del carrito
 // ============================================================
@@ -14,10 +16,12 @@ export let carrito = [];
 export let descuentoActivo = false;
 
 export function setDescuentoActivo(valor) {
+    console.log(`[POS:core] setDescuentoActivo: ${valor}`);
     descuentoActivo = valor;
 }
 
 export function resetDescuento() {
+    console.log("[POS:core] resetDescuento");
     descuentoActivo = false;
 }
 
@@ -26,12 +30,11 @@ export function resetDescuento() {
 // 3. Totales dinámicos (FUNCIONES REALES)
 // ============================================================
 
-// Total sin descuento
 export function totalSinDescuento() {
-    return carrito.reduce((acc, p) => acc + p.precio_aplicado * p.cantidad, 0);
+    const total = carrito.reduce((acc, p) => acc + p.precio_aplicado * p.cantidad, 0);
+    return total;
 }
 
-// Total con descuento
 export function totalConDescuento() {
     let total = totalSinDescuento();
     if (descuentoActivo) total *= 0.90;
@@ -47,7 +50,7 @@ export function normalizar(txt) {
     return txt
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+        .replace(/[̀-ͯ]/g, "");
 }
 
 
@@ -77,5 +80,6 @@ export function getCookie(name) {
 export let onCarritoActualizado = () => {};
 
 export function setOnCarritoActualizado(fn) {
+    console.log("[POS:core] setOnCarritoActualizado registrado");
     onCarritoActualizado = fn;
 }

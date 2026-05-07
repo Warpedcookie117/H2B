@@ -8,18 +8,26 @@ import { onCarritoActualizado } from "./core.js";
 // Estado global del carrito (viene de core.js)
 import { carrito } from "./core.js";
 
+console.log("[POS:carrito] Módulo cargado");
+
 
 // ============================================================
 // 1. Agregar producto
 // ============================================================
 
 export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, subcategoria_id = null, cat_padre_id = null, atributos = {}) {
-    if (!id || !precios?.men) return;
+    console.log(`[POS:carrito] agregarProducto → id=${id} nombre="${nombre}" precios=`, precios, `stock_piso=${stock_piso} stock_bodega=${stock_bodega}`);
+
+    if (!id || !precios?.men) {
+        console.warn("[POS:carrito] agregarProducto RECHAZADO — id o precio menudeo inválido", { id, precios });
+        return;
+    }
 
     const existente = carrito.find(p => p.id === id && !p.es_regalo);
 
     if (existente) {
         existente.cantidad++;
+        console.log(`[POS:carrito] producto existente, nueva cantidad: ${existente.cantidad}`);
     } else {
         carrito.push({
             id,
@@ -35,6 +43,7 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, s
             cat_padre_id,
             atributos,
         });
+        console.log(`[POS:carrito] producto nuevo agregado. Total items en carrito: ${carrito.length}`);
     }
 
     aplicarPreciosGlobales();
@@ -55,9 +64,9 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, s
 
 export function eliminarProducto(index) {
     const item = carrito[index];
+    console.log(`[POS:carrito] eliminarProducto → idx=${index} item="${item?.nombre}" es_regalo=${item?.es_regalo}`);
 
     if (item?.es_regalo && item.promo_id != null && item.parent_product_id != null) {
-        // Regalo eliminado → devolver su cantidad como pendiente al producto padre
         const padre = carrito.find(p => !p.es_regalo && !p.es_servicio && p.id === item.parent_product_id);
         if (padre) {
             if (!padre.promos_pendientes) padre.promos_pendientes = [];
@@ -67,9 +76,13 @@ export function eliminarProducto(index) {
             } else {
                 padre.promos_pendientes.push({ id: item.promo_id, nombre: item.promo_nombre, cantidad: item.cantidad });
             }
+            console.log(`[POS:carrito] regalo eliminado → pendiente devuelto al padre "${padre.nombre}"`);
         }
     } else if (item && !item.es_regalo && !item.es_servicio) {
-        // Producto padre eliminado → quitar sus regalos vinculados del carrito
+        const regalosEliminados = carrito.filter((r, i) => i !== index && r.es_regalo && r.parent_product_id === item.id);
+        if (regalosEliminados.length) {
+            console.log(`[POS:carrito] eliminando ${regalosEliminados.length} regalo(s) vinculado(s) a "${item.nombre}"`);
+        }
         for (let i = carrito.length - 1; i >= 0; i--) {
             if (i !== index && carrito[i].es_regalo && carrito[i].parent_product_id === item.id) {
                 carrito.splice(i, 1);
@@ -78,6 +91,7 @@ export function eliminarProducto(index) {
     }
 
     carrito.splice(index, 1);
+    console.log(`[POS:carrito] carrito tras eliminar: ${carrito.length} items`);
     aplicarPreciosGlobales();
     aplicarOfertas();
     actualizarTotales();
@@ -91,9 +105,14 @@ export function eliminarProducto(index) {
 // ============================================================
 
 export function cambiarCantidad(index, nuevaCantidad) {
-    if (!carrito[index]) return;
+    if (!carrito[index]) {
+        console.warn(`[POS:carrito] cambiarCantidad → idx=${index} NO EXISTE`);
+        return;
+    }
 
+    const anterior = carrito[index].cantidad;
     carrito[index].cantidad = Math.max(1, nuevaCantidad);
+    console.log(`[POS:carrito] cambiarCantidad → "${carrito[index].nombre}" idx=${index}: ${anterior} → ${carrito[index].cantidad}`);
 
     aplicarPreciosGlobales();
     aplicarOfertas();
@@ -108,9 +127,14 @@ export function cambiarCantidad(index, nuevaCantidad) {
 // ============================================================
 
 export function cambiarModoPrecio(index, modo) {
-    if (!carrito[index]) return;
+    if (!carrito[index]) {
+        console.warn(`[POS:carrito] cambiarModoPrecio → idx=${index} NO EXISTE`);
+        return;
+    }
 
+    const anterior = carrito[index].modo_precio;
     carrito[index].modo_precio = modo;
+    console.log(`[POS:carrito] cambiarModoPrecio → "${carrito[index].nombre}" idx=${index}: ${anterior} → ${modo}`);
 
     aplicarPreciosGlobales();
     aplicarOfertas();
@@ -125,6 +149,7 @@ export function cambiarModoPrecio(index, modo) {
 // ============================================================
 
 export function agregarServicio(nombre, precio) {
+    console.log(`[POS:carrito] agregarServicio → nombre="${nombre}" precio=${precio}`);
     carrito.push({
         id:             `srv_${Date.now()}`,
         es_servicio:    true,
@@ -134,6 +159,7 @@ export function agregarServicio(nombre, precio) {
         stock_piso:     Infinity,
         stock_bodega:   Infinity,
     });
+    console.log(`[POS:carrito] servicio agregado. Total items: ${carrito.length}`);
 
     actualizarTotales();
     onCarritoActualizado();
@@ -141,11 +167,12 @@ export function agregarServicio(nombre, precio) {
 
 
 // ============================================================
-// 6. Limpiar carrito
+// 6. Agregar regalo
 // ============================================================
 
 export function agregarRegalo(id, nombre, promo_nombre, promo_id = null, parent_product_id = null) {
-    // Agrupar solo si son del mismo padre y misma promo
+    console.log(`[POS:carrito] agregarRegalo → id=${id} nombre="${nombre}" promo="${promo_nombre}" promo_id=${promo_id} parent=${parent_product_id}`);
+
     const yaExiste = carrito.find(p =>
         p.id === id && p.es_regalo &&
         p.promo_id === promo_id &&
@@ -153,6 +180,7 @@ export function agregarRegalo(id, nombre, promo_nombre, promo_id = null, parent_
     );
     if (yaExiste) {
         yaExiste.cantidad++;
+        console.log(`[POS:carrito] regalo existente, nueva cantidad: ${yaExiste.cantidad}`);
         actualizarTotales();
         onCarritoActualizado();
         return;
@@ -170,6 +198,7 @@ export function agregarRegalo(id, nombre, promo_nombre, promo_id = null, parent_
         stock_piso: Infinity,
         stock_bodega: Infinity,
     });
+    console.log(`[POS:carrito] regalo nuevo agregado. Total items: ${carrito.length}`);
 
     actualizarTotales();
     onCarritoActualizado();
@@ -177,10 +206,12 @@ export function agregarRegalo(id, nombre, promo_nombre, promo_id = null, parent_
 
 
 export function limpiarCarrito() {
+    console.log(`[POS:carrito] limpiarCarrito — limpiando ${carrito.length} items`);
     carrito.length = 0;
     aplicarPreciosGlobales();
     aplicarOfertas();
     actualizarTotales();
     onCarritoActualizado();
     document.dispatchEvent(new CustomEvent("pos:carrito-limpiado"));
+    console.log("[POS:carrito] carrito limpiado ✓");
 }

@@ -1,5 +1,7 @@
 // ui.js — UI completa del POS (carrito, totales, pago, modales)
 
+console.log("[POS:ui] Módulo cargado");
+
 import {
     carrito,
     descuentoActivo,
@@ -11,7 +13,8 @@ import {
 import {
     cambiarCantidad,
     eliminarProducto,
-    cambiarModoPrecio
+    cambiarModoPrecio,
+    agregarServicio,
 } from "./carrito.js";
 
 import {
@@ -33,19 +36,85 @@ import { actualizarTotales } from "./totales.js";
 // ============================================================
 
 export function initUI() {
+    console.log("[POS:ui] initUI");
+
+    // Rastrear foco para saber siempre dónde está el cursor
+    document.addEventListener("focusin", (e) => {
+        const el = e.target;
+        const desc = el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}${el.className ? "." + el.className.split(" ")[0] : ""}`;
+        console.log(`[POS:ui] 🎯 FOCO → ${desc}`);
+    });
+
     setOnCarritoActualizado(() => {
+        console.log("[POS:ui] onCarritoActualizado → renderCarritoUI + actualizarTotales");
         renderCarritoUI();
         actualizarTotales();
     });
 
     // Redibuja el carrito cuando promociones.js actualiza promos_pendientes
-    document.addEventListener("pos:redraw-carrito", () => renderCarritoUI());
+    document.addEventListener("pos:redraw-carrito", () => {
+        console.log("[POS:ui] pos:redraw-carrito → renderCarritoUI");
+        renderCarritoUI();
+    });
 
     renderCarritoUI();
     initBotonCobrar();
     initDescuentoUI();
     initModalPago();
     initModalResultado();
+    initModalServicio();
+    console.log("[POS:ui] initUI completo ✓");
+}
+
+function initModalServicio() {
+    console.log("[POS:ui] initModalServicio");
+    function abrirModalServicio() {
+        console.log("[POS:ui] abrirModalServicio");
+        document.getElementById("srv-nombre").value = "";
+        document.getElementById("srv-precio").value = "";
+        document.getElementById("srv-error").style.display = "none";
+        const m = document.getElementById("modal-servicio");
+        if (m) { m.style.display = "flex"; setTimeout(() => document.getElementById("srv-nombre").focus(), 50); }
+    }
+
+    window.cerrarModalServicio = function () {
+        console.log("[POS:ui] cerrarModalServicio");
+        const m = document.getElementById("modal-servicio");
+        if (m) m.style.display = "none";
+        document.getElementById("scan-input")?.focus();
+    };
+
+    window.confirmarServicio = function () {
+        console.log("[POS:ui] confirmarServicio");
+        const nombre = document.getElementById("srv-nombre").value.trim() || "Servicio";
+        const precio = parseFloat(document.getElementById("srv-precio").value);
+        const err = document.getElementById("srv-error");
+        if (!precio || precio <= 0) {
+            err.textContent = "Escribe un precio mayor a $0";
+            err.style.display = "block";
+            return;
+        }
+        err.style.display = "none";
+        agregarServicio(nombre, precio);
+        window.cerrarModalServicio();
+    };
+
+    document.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        if (e.key === "s" || e.key === "S") { e.preventDefault(); abrirModalServicio(); }
+    });
+
+    document.getElementById("srv-precio")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") window.confirmarServicio();
+    });
+
+    document.getElementById("modal-servicio")?.addEventListener("click", function (e) {
+        if (e.target === this) window.cerrarModalServicio();
+    });
+
+    document.getElementById("modal-regalo")?.addEventListener("click", function (e) {
+        if (e.target === this) window.cerrarModalRegalo?.();
+    });
 }
 
 
@@ -56,6 +125,7 @@ export function initUI() {
 function renderCarritoUI() {
     const cont = document.getElementById("carrito-lista");
     if (!cont) return;
+    console.log(`[POS:ui] renderCarritoUI — ${carrito.length} items`);
 
     const scrollTop = cont.scrollTop;
     cont.innerHTML = "";
@@ -301,11 +371,13 @@ function cascadeRegalo(subcategoria_id, cat_padre_id, delta, itemIdx = -1) {
 // ============================================================
 
 function bindCarritoListeners() {
+    console.log("[POS:ui] bindCarritoListeners");
     // ✕ — eliminar ítem; si era disparador, borra también su regalo (badge ya no importa)
     document.querySelectorAll(".pos-carrito-item-btn-eliminar").forEach(btn => {
         btn.onclick = () => {
             const idx  = parseInt(btn.dataset.idx);
             const item = carrito[idx];
+            console.log(`[POS:ui] ✕ eliminar → idx=${idx} item="${item?.nombre}"`);
             if (!item) return;
             if (!item.es_regalo && !item.es_servicio) {
                 const { subcategoria_id, cat_padre_id } = item;
@@ -322,6 +394,7 @@ function bindCarritoListeners() {
         btn.onclick = () => {
             const idx  = parseInt(btn.dataset.idx);
             const item = carrito[idx];
+            console.log(`[POS:ui] + más → idx=${idx} item="${item?.nombre}" cantidad actual=${item?.cantidad}`);
             if (!item || item.es_regalo || item.es_servicio) return;
             cambiarCantidad(idx, item.cantidad + 1);
             _addPendienteItem(item, 1);
@@ -333,6 +406,7 @@ function bindCarritoListeners() {
         btn.onclick = () => {
             const idx  = parseInt(btn.dataset.idx);
             const item = carrito[idx];
+            console.log(`[POS:ui] − menos → idx=${idx} item="${item?.nombre}" cantidad actual=${item?.cantidad} es_regalo=${item?.es_regalo}`);
             if (!item) return;
             if (item.es_regalo) {
                 _addPendienteDesdeRegalo(item);   // siempre, antes de tocar el carrito
@@ -378,10 +452,12 @@ function bindCarritoListeners() {
 // ============================================================
 
 function initBotonCobrar() {
+    console.log("[POS:ui] initBotonCobrar");
     const btn = document.getElementById("btn-cobrar");
-    if (!btn) return;
+    if (!btn) { console.warn("[POS:ui] btn-cobrar NO encontrado"); return; }
 
     btn.onclick = () => {
+        console.log("[POS:ui] click COBRAR");
         const error = validarStock();
         if (error) return mostrarAlertaUI(error, "error");
 
@@ -396,10 +472,12 @@ function initBotonCobrar() {
 // ============================================================
 
 function initDescuentoUI() {
+    console.log("[POS:ui] initDescuentoUI");
     const btn = document.getElementById("btn-descuento");
     if (!btn) return;
 
     btn.onclick = () => {
+        console.log(`[POS:ui] click DESCUENTO — descuentoActivo actual: ${descuentoActivo}`);
         if (!descuentoActivo) {
             aplicarDescuento10();
             setDescuentoActivo(true);
@@ -427,6 +505,7 @@ function initDescuentoUI() {
 let abrirModalPago = () => {};
 
 function initModalPago() {
+    console.log("[POS:ui] initModalPago");
     const modal        = document.getElementById("modal-pago");
     const btnCerrar    = document.getElementById("cerrar-modal");
     const btnConfirmar = document.getElementById("confirmar-pago");
@@ -463,6 +542,7 @@ function initModalPago() {
     // Inicializa el modal con valores limpios cada vez que se abre
     abrirModalPago = () => {
         const total = totalConDescuento();
+        console.log(`[POS:ui] abrirModalPago → total=$${total.toFixed(2)}`);
         totalDisplay.textContent = total.toFixed(2);
         inputEfectivo.value = "";
         inputTarjeta.value  = "";
@@ -476,12 +556,16 @@ function initModalPago() {
     };
 
     // Cerrar sin procesar
-    btnCerrar.onclick = () => modal.classList.add("pos-modal--hidden");
+    btnCerrar.onclick = () => {
+        console.log("[POS:ui] cerrar modal pago");
+        modal.classList.add("pos-modal--hidden");
+    };
 
     // Confirmar y procesar la venta
     btnConfirmar.onclick = async () => {
         const efectivo = parseFloat(inputEfectivo.value || 0);
         const tarjeta  = parseFloat(inputTarjeta.value  || 0);
+        console.log(`[POS:ui] confirmar-pago → efectivo=${efectivo} tarjeta=${tarjeta}`);
 
         const error = validarPago(efectivo, tarjeta);
         if (error) return mostrarAlertaUI(error, "error");
@@ -518,6 +602,7 @@ function initModalPago() {
 // ============================================================
 
 function initModalResultado() {
+    console.log("[POS:ui] initModalResultado");
     const modal       = document.getElementById("modal-resultado");
     const btnCerrar   = document.getElementById("cerrar-resultado");
     const boxImpresion = document.getElementById("resultado-impresion");
@@ -525,6 +610,7 @@ function initModalResultado() {
     // Venta procesada correctamente → llenar y mostrar modal
     document.addEventListener("pago-exito", (e) => {
         const { total, cambio, pagado_efectivo, pagado_tarjeta } = e.detail;
+        console.log(`[POS:ui] pago-exito → total=${total} cambio=${cambio} efectivo=${pagado_efectivo} tarjeta=${pagado_tarjeta}`);
 
         document.getElementById("resultado-total-venta").textContent = total.toFixed(2);
         document.getElementById("resultado-recibido").textContent    = (pagado_efectivo + pagado_tarjeta).toFixed(2);
@@ -563,6 +649,7 @@ function initModalResultado() {
 // ============================================================
 
 export function mostrarAlertaUI(msg, tipo = "ok") {
+    console.log(`[POS:ui] mostrarAlertaUI [${tipo}]: "${msg}"`);
     const box = document.getElementById("pos-alerta");
     if (!box) return;
 

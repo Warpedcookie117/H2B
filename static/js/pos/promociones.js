@@ -4,11 +4,10 @@ import { carrito } from "./core.js";
 import { agregarRegalo } from "./carrito.js";
 import { mostrarAlertaUI } from "./ui.js";
 
-// Promos de monto: solo una vez por sesión
+console.log("[POS:promociones] Módulo cargado");
+
 const promosVistasGlobal = new Set();
 
-// Cola para mostrar modales uno a la vez
-// Cada entrada: { promo, itemIdx, pendingCount }
 let modalQueue   = [];
 let modalOcupado = false;
 
@@ -18,17 +17,22 @@ let modalOcupado = false;
 // ============================================================
 
 export function initPromociones() {
+    console.log(`[POS:promociones] initPromociones — promociones disponibles: ${(window.PROMOCIONES || []).length}`);
+
     document.addEventListener("pos:producto-agregado", (e) => {
         const { subcategoria_id, cat_padre_id } = e.detail;
+        console.log(`[POS:promociones] pos:producto-agregado → subcat=${subcategoria_id} catPadre=${cat_padre_id}`);
         checkPromocionesCategoria(subcategoria_id, cat_padre_id);
     });
 
     document.addEventListener("pos:total-actualizado", (e) => {
+        console.log(`[POS:promociones] pos:total-actualizado → total=$${e.detail.total.toFixed(2)}`);
         checkPromocionMonto(e.detail.total);
         checkPromocionMontoCat();
     });
 
     document.addEventListener("pos:carrito-limpiado", () => {
+        console.log("[POS:promociones] pos:carrito-limpiado → reseteando promos");
         promosVistasGlobal.clear();
         modalQueue   = [];
         modalOcupado = false;
@@ -38,7 +42,7 @@ export function initPromociones() {
 
 
 // ============================================================
-// Categoría — dispara SIEMPRE que se agrega un producto match
+// Categoría
 // ============================================================
 
 function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
@@ -51,7 +55,8 @@ function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
     );
     if (!promos.length) return;
 
-    // Índice del ítem recién agregado/incrementado
+    console.log(`[POS:promociones] checkPromocionesCategoria → ${promos.length} promo(s) de categoría disparadas`);
+
     let itemIdx = -1;
     for (let i = carrito.length - 1; i >= 0; i--) {
         const it = carrito[i];
@@ -62,13 +67,16 @@ function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
         }
     }
 
-    // pendingCount = 0 → trigger fresco, no viene del badge
-    promos.forEach(promo => encolarPromo(promo, itemIdx, 0));
+    console.log(`[POS:promociones] itemIdx disparador: ${itemIdx}`);
+    promos.forEach(promo => {
+        console.log(`[POS:promociones] encolar promo: "${promo.nombre}" (${promo.tipo_resultado})`);
+        encolarPromo(promo, itemIdx, 0);
+    });
 }
 
 
 // ============================================================
-// Monto por categoría — solo una vez por sesión
+// Monto por categoría
 // ============================================================
 
 function checkPromocionMontoCat() {
@@ -89,7 +97,9 @@ function checkPromocionMontoCat() {
                 subtotalCat += (Number(item.precio_aplicado) || 0) * (item.cantidad || 1);
             }
         }
+        console.log(`[POS:promociones] checkPromocionMontoCat "${promo.nombre}": subtotal=$${subtotalCat.toFixed(2)} mínimo=$${promo.monto_minimo}`);
         if (parseFloat(promo.monto_minimo) <= subtotalCat) {
+            console.log(`[POS:promociones] ✓ promo monto_categoria ACTIVADA: "${promo.nombre}"`);
             promosVistasGlobal.add(promo.id);
             encolarPromo(promo, -1, 0);
         }
@@ -98,7 +108,7 @@ function checkPromocionMontoCat() {
 
 
 // ============================================================
-// Monto — solo una vez por sesión
+// Monto
 // ============================================================
 
 function checkPromocionMonto(total) {
@@ -111,6 +121,7 @@ function checkPromocionMonto(total) {
     );
 
     promos.forEach(promo => {
+        console.log(`[POS:promociones] ✓ promo monto ACTIVADA: "${promo.nombre}" (mínimo=$${promo.monto_minimo} total=$${total.toFixed(2)})`);
         promosVistasGlobal.add(promo.id);
         encolarPromo(promo, -1, 0);
     });
@@ -122,17 +133,20 @@ function checkPromocionMonto(total) {
 // ============================================================
 
 function encolarPromo(promo, itemIdx, pendingCount) {
+    console.log(`[POS:promociones] encolarPromo: "${promo.nombre}" queue.length=${modalQueue.length} ocupado=${modalOcupado}`);
     modalQueue.push({ promo, itemIdx, pendingCount });
     if (!modalOcupado) procesarSiguiente();
 }
 
 async function procesarSiguiente() {
     if (!modalQueue.length) {
+        console.log("[POS:promociones] cola vacía — modalOcupado=false");
         modalOcupado = false;
         return;
     }
     modalOcupado = true;
     const { promo, itemIdx, pendingCount } = modalQueue.shift();
+    console.log(`[POS:promociones] procesando promo "${promo.nombre}" tipo_resultado=${promo.tipo_resultado} itemIdx=${itemIdx} pendingCount=${pendingCount}`);
     await procesarPromo(promo, itemIdx, pendingCount);
 }
 
@@ -142,7 +156,6 @@ async function procesarPromo(promo, itemIdx, pendingCount) {
         procesarSiguiente();
     } else {
         await mostrarModalRegalo(promo, itemIdx, pendingCount);
-        // procesarSiguiente() se llama desde selección o desde omitirRegalo
     }
 }
 
@@ -152,38 +165,44 @@ async function procesarPromo(promo, itemIdx, pendingCount) {
 // ============================================================
 
 async function autoAgregarRegalo(promo, itemIdx = -1) {
+    console.log(`[POS:promociones] autoAgregarRegalo → promo="${promo.nombre}" itemIdx=${itemIdx}`);
     try {
         const r    = await fetch(`/ventas/promociones/productos-regalo/${promo.id}/`);
         const data = await r.json();
+        console.log(`[POS:promociones] productos regalo recibidos: ${data.productos.length}`);
         if (data.productos.length) {
             const p = data.productos[0];
             const parentId = (itemIdx >= 0 && carrito[itemIdx]) ? carrito[itemIdx].id : null;
+            console.log(`[POS:promociones] auto-agregando regalo "${p.nombre}" parent=${parentId}`);
             agregarRegalo(p.id, p.nombre, promo.nombre, promo.id, parentId);
             mostrarAlertaUI(`🎁 ¡${p.nombre} de regalo con tu compra!`, "promo");
         }
-    } catch {
-        // silencioso
+    } catch (e) {
+        console.warn("[POS:promociones] autoAgregarRegalo ERROR:", e);
     }
 }
 
 
 // ============================================================
-// Regalo variante — modal con atributos, buscador y contador
+// Regalo variante — modal
 // ============================================================
 
 async function mostrarModalRegalo(promo, itemIdx, pendingCount) {
+    console.log(`[POS:promociones] mostrarModalRegalo → promo="${promo.nombre}" itemIdx=${itemIdx} pendingCount=${pendingCount}`);
     const modal     = document.getElementById("modal-regalo");
     const titulo    = document.getElementById("regalo-promo-nombre");
     const opciones  = document.getElementById("regalo-opciones");
     const buscar    = document.getElementById("regalo-buscar");
     const infoEl    = document.getElementById("regalo-pendientes-info");
-    if (!modal) return;
+    if (!modal) {
+        console.warn("[POS:promociones] modal-regalo NO ENCONTRADO en DOM");
+        return;
+    }
 
     titulo.textContent      = promo.nombre;
     opciones.innerHTML      = `<p style="color:#6b7280;font-size:.875rem;font-weight:600;">Cargando opciones…</p>`;
     if (buscar) buscar.value = "";
 
-    // Contador de pendientes (solo cuando viene del badge)
     if (infoEl) {
         if (pendingCount > 0) {
             infoEl.textContent = `${pendingCount} regalo${pendingCount > 1 ? "s" : ""} pendiente${pendingCount > 1 ? "s" : ""} por asignar`;
@@ -198,10 +217,12 @@ async function mostrarModalRegalo(promo, itemIdx, pendingCount) {
     modal.dataset.itemIdx      = itemIdx;
     modal.dataset.pendingCount = pendingCount;
     modal.style.display        = "flex";
+    console.log("[POS:promociones] modal-regalo abierto ✓");
 
     try {
         const r    = await fetch(`/ventas/promociones/productos-regalo/${promo.id}/`);
         const data = await r.json();
+        console.log(`[POS:promociones] opciones de regalo: ${data.productos.length}`);
 
         if (!data.productos.length) {
             opciones.innerHTML = `<p style="color:#ef4444;font-weight:700;font-size:.875rem;">Sin productos disponibles para este regalo.</p>`;
@@ -214,13 +235,14 @@ async function mostrarModalRegalo(promo, itemIdx, pendingCount) {
             buscar.oninput = () => _filtrarOpciones(buscar.value);
             setTimeout(() => buscar.focus(), 60);
         }
-    } catch {
+    } catch (e) {
+        console.error("[POS:promociones] error cargando opciones regalo:", e);
         opciones.innerHTML = `<p style="color:#ef4444;font-weight:700;font-size:.875rem;">Error al cargar las opciones.</p>`;
     }
 }
 
 function _normalizar(t) {
-    return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 function _filtrarOpciones(texto) {
@@ -267,9 +289,9 @@ function _renderOpciones(productos, promo, itemIdx, pendingCount) {
 
         btn.onclick = () => {
             const parentId = (itemIdx >= 0 && carrito[itemIdx]) ? carrito[itemIdx].id : null;
+            console.log(`[POS:promociones] regalo seleccionado: "${p.nombre}" parentId=${parentId}`);
             agregarRegalo(p.id, p.nombre, promo.nombre, promo.id, parentId);
 
-            // Si el modal vino del badge (pendingCount > 0), descontar uno del pendiente
             const pc = parseInt(modal?.dataset.pendingCount ?? "0");
             if (pc > 0) _decrementarPendiente(itemIdx, promo.id);
 
@@ -282,32 +304,25 @@ function _renderOpciones(productos, promo, itemIdx, pendingCount) {
     });
 }
 
-// Decrementa la cantidad de un regalo pendiente; lo elimina si llega a 0
 function _decrementarPendiente(itemIdx, promoId) {
     if (itemIdx < 0 || !carrito[itemIdx]?.promos_pendientes) return;
     const pp = carrito[itemIdx].promos_pendientes.find(p => p.id === promoId);
     if (!pp) return;
     pp.cantidad--;
+    console.log(`[POS:promociones] pendiente decrementado: promo=${promoId} restante=${pp.cantidad}`);
     if (pp.cantidad <= 0) {
         carrito[itemIdx].promos_pendientes = carrito[itemIdx].promos_pendientes.filter(p => p.id !== promoId);
     }
     document.dispatchEvent(new CustomEvent("pos:redraw-carrito"));
 }
 
-
-// ============================================================
-// Cerrar modal (interno)
-// ============================================================
-
 function _cerrarModal() {
     const modal = document.getElementById("modal-regalo");
-    if (modal) modal.style.display = "none";
+    if (modal) {
+        modal.style.display = "none";
+        console.log("[POS:promociones] modal-regalo cerrado");
+    }
 }
-
-
-// ============================================================
-// "Sin regalo" — marca promo pendiente en el ítem del carrito
-// ============================================================
 
 window.omitirRegalo = function () {
     const modal = document.getElementById("modal-regalo");
@@ -318,40 +333,40 @@ window.omitirRegalo = function () {
     const promoNombre = modal.dataset.promoNombre || "";
     const pendingCount = parseInt(modal.dataset.pendingCount ?? "0");
 
+    console.log(`[POS:promociones] omitirRegalo → itemIdx=${itemIdx} promoId=${promoId} pendingCount=${pendingCount}`);
+
     if (pendingCount === 0) {
-        // Trigger fresco: el cajero omite → registrar como pendiente
         if (itemIdx >= 0 && carrito[itemIdx] && promoId) {
             if (!carrito[itemIdx].promos_pendientes) carrito[itemIdx].promos_pendientes = [];
             const existing = carrito[itemIdx].promos_pendientes.find(pp => pp.id === promoId);
             if (existing) {
                 existing.cantidad++;
+                console.log(`[POS:promociones] pendiente incrementado: "${promoNombre}" → ${existing.cantidad}`);
             } else {
                 carrito[itemIdx].promos_pendientes.push({ id: promoId, nombre: promoNombre, cantidad: 1 });
+                console.log(`[POS:promociones] nuevo pendiente registrado: "${promoNombre}"`);
             }
             document.dispatchEvent(new CustomEvent("pos:redraw-carrito"));
         }
     }
-    // Si vino del badge (pendingCount > 0) y omite de nuevo → no cambiar la cantidad,
-    // el regalo sigue pendiente tal como estaba.
 
     _cerrarModal();
     procesarSiguiente();
 };
 
-// Click fuera también omite
 window.cerrarModalRegalo = window.omitirRegalo;
 
-
-// ============================================================
-// Apertura manual desde badge del carrito
-// ============================================================
-
 window.abrirRegaloManual = function (promoId, promoNombre, itemIdx) {
+    console.log(`[POS:promociones] abrirRegaloManual → promoId=${promoId} nombre="${promoNombre}" itemIdx=${itemIdx}`);
     const promo = window.PROMOCIONES?.find(p => p.id === promoId);
-    if (!promo) return;
+    if (!promo) {
+        console.warn(`[POS:promociones] promo id=${promoId} NO encontrada en window.PROMOCIONES`);
+        return;
+    }
 
     const pp           = carrito[itemIdx]?.promos_pendientes?.find(p => p.id === promoId);
     const pendingCount = pp?.cantidad || 0;
+    console.log(`[POS:promociones] abrirRegaloManual pendingCount=${pendingCount}`);
 
     encolarPromo(promo, itemIdx, pendingCount);
 };

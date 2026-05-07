@@ -1,5 +1,7 @@
 // paginacion.js — Paginación del grid de productos POS
 
+console.log("[POS:paginacion] Módulo cargado");
+
 const ITEMS_POR_PAGINA = 8; // 2 columnas × 4 filas
 
 let paginaActual = 1;
@@ -10,13 +12,16 @@ let busquedaActiva = false;
 // ============================================================
 
 export function initPaginacion() {
+    console.log("[POS:paginacion] initPaginacion");
     renderPagina(1);
 
     document.getElementById("pos-pag-prev")?.addEventListener("click", () => {
+        console.log(`[POS:paginacion] click ANT → página ${paginaActual - 1}`);
         if (paginaActual > 1) irAPagina(paginaActual - 1);
     });
 
     document.getElementById("pos-pag-next")?.addEventListener("click", () => {
+        console.log(`[POS:paginacion] click SIG → página ${paginaActual + 1}`);
         if (paginaActual < getTotalPaginas()) irAPagina(paginaActual + 1);
     });
 }
@@ -34,12 +39,17 @@ function getTotalPaginas() {
 }
 
 function irAPagina(n) {
+    const anterior = paginaActual;
     paginaActual = Math.max(1, Math.min(n, getTotalPaginas()));
+    console.log(`[POS:paginacion] irAPagina: ${anterior} → ${paginaActual} (total=${getTotalPaginas()})`);
     renderPagina(paginaActual);
 }
 
 function renderPagina(n) {
-    if (busquedaActiva) return;
+    if (busquedaActiva) {
+        console.log("[POS:paginacion] renderPagina omitido — búsqueda activa");
+        return;
+    }
 
     const items = getItems();
     const inicio = (n - 1) * ITEMS_POR_PAGINA;
@@ -49,6 +59,7 @@ function renderPagina(n) {
         item.style.display = (i >= inicio && i < fin) ? "flex" : "none";
     });
 
+    console.log(`[POS:paginacion] renderPagina ${n}: mostrando items ${inicio}–${fin - 1} de ${items.length}`);
     actualizarUI();
 }
 
@@ -68,11 +79,13 @@ function actualizarUI() {
 // ============================================================
 
 export function activarBusqueda() {
+    console.log("[POS:paginacion] activarBusqueda");
     busquedaActiva = true;
     document.getElementById("pos-paginacion")?.classList.add("pos-paginacion--hidden");
 }
 
 export function desactivarBusqueda() {
+    console.log("[POS:paginacion] desactivarBusqueda — restaurando página 1");
     busquedaActiva = false;
     paginaActual = 1;
     document.getElementById("pos-paginacion")?.classList.remove("pos-paginacion--hidden");

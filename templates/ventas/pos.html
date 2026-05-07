@@ -364,60 +364,6 @@
     </div>
 </div>
 
-<script type="module">
-import { agregarServicio } from "{% static 'js/pos/carrito.js' %}";
-
-function abrirModalServicio() {
-    document.getElementById("srv-nombre").value  = "";
-    document.getElementById("srv-precio").value  = "";
-    document.getElementById("srv-error").style.display = "none";
-    const m = document.getElementById("modal-servicio");
-    m.style.display = "flex";
-    setTimeout(() => document.getElementById("srv-nombre").focus(), 50);
-}
-
-window.cerrarModalServicio = function() {
-    document.getElementById("modal-servicio").style.display = "none";
-    document.getElementById("scan-input")?.focus();
-};
-
-window.confirmarServicio = function() {
-    const nombre = document.getElementById("srv-nombre").value.trim() || "Servicio";
-    const precio = parseFloat(document.getElementById("srv-precio").value);
-    const err    = document.getElementById("srv-error");
-
-    if (!precio || precio <= 0) {
-        err.textContent = "Escribe un precio mayor a $0";
-        err.style.display = "block";
-        return;
-    }
-    err.style.display = "none";
-    agregarServicio(nombre, precio);
-    window.cerrarModalServicio();
-};
-
-// Tecla S (solo cuando no hay un input activo)
-document.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-    if (e.key === "s" || e.key === "S") {
-        e.preventDefault();
-        abrirModalServicio();
-    }
-});
-
-// Cerrar con Enter en precio
-document.getElementById("srv-precio")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") window.confirmarServicio();
-});
-
-// Cerrar haciendo click fuera
-document.getElementById("modal-servicio")?.addEventListener("click", function(e) {
-    if (e.target === this) window.cerrarModalServicio();
-});
-document.getElementById("modal-regalo")?.addEventListener("click", function(e) {
-    if (e.target === this) window.cerrarModalRegalo?.();
-});
-</script>
 
 {% endblock %}
 {% block extra_head %}

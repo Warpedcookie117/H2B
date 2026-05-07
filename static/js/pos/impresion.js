@@ -1,15 +1,15 @@
 // impresion.js — Impresión via window.print() para impresora térmica con driver usbprint.sys
 
-// ============================================================
-// 1. Inicialización
-// ============================================================
+console.log("[POS:impresion] Módulo cargado");
 
 export function initImpresion() {
+    console.log("[POS:impresion] initImpresion — escuchando evento 'imprimir-ticket'");
     document.addEventListener("imprimir-ticket", async (e) => {
+        console.log("[POS:impresion] imprimir-ticket recibido:", e.detail);
         try {
             await imprimirTicket(e.detail);
         } catch (err) {
-            console.error("Error de impresión:", err);
+            console.error("[POS:impresion] Error de impresión:", err);
             document.dispatchEvent(new CustomEvent("impresion-fallo", {
                 detail: {
                     venta_id: e.detail.venta_id,
@@ -20,19 +20,13 @@ export function initImpresion() {
     });
 }
 
-
-// ============================================================
-// 2. Impresión vía window.print()
-//    La impresora usa usbprint.sys (driver estándar Windows),
-//    por lo que se imprime como cualquier impresora del sistema.
-// ============================================================
-
 async function imprimirTicket({ ticket_texto, venta_id }) {
+    console.log(`[POS:impresion] imprimirTicket → venta_id=${venta_id} texto_len=${ticket_texto?.length}`);
+
     if (!ticket_texto) {
         throw new Error("No se recibió el texto del ticket.");
     }
 
-    // Escapar caracteres especiales para HTML
     const textoEscapado = ticket_texto
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -79,18 +73,20 @@ async function imprimirTicket({ ticket_texto, venta_id }) {
 
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url  = URL.createObjectURL(blob);
+    console.log(`[POS:impresion] abriendo ventana de impresión...`);
     const popup = window.open(url, "_blank", "width=300,height=500,toolbar=0,menubar=0");
 
     if (!popup) {
         URL.revokeObjectURL(url);
+        console.error("[POS:impresion] VENTANA BLOQUEADA por el navegador");
         throw new Error(
             "El navegador bloqueó la ventana de impresión. " +
             "Permite popups para este sitio e intenta de nuevo."
         );
     }
 
-    // Limpiar el blob URL cuando la ventana se cierre
     popup.addEventListener("unload", () => URL.revokeObjectURL(url));
+    console.log("[POS:impresion] ventana de impresión abierta ✓");
 
     document.dispatchEvent(new CustomEvent("impresion-exito", {
         detail: { venta_id }

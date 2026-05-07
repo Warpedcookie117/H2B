@@ -2,48 +2,47 @@
 
 import { normalizar } from "./core.js";
 
-// Estado para restaurar el foco al cerrar
-let focoAnterior = null;
+console.log("[POS:consulta_precios] Módulo cargado");
 
-// ============================================================
-// INICIALIZACIÓN
-// ============================================================
+let focoAnterior = null;
 
 export function initConsultaPrecios() {
     const modal = document.getElementById("modal-consulta-precios");
     const input = document.getElementById("consulta-scan-input");
     const btnCerrar = document.getElementById("cerrar-consulta-precios");
 
+    console.log(`[POS:consulta_precios] initConsultaPrecios — modal=${!!modal} input=${!!input}`);
     if (!modal || !input) return;
 
-    // Tecla E para abrir (sin estar en input)
     document.addEventListener("keydown", (e) => {
         if (e.key === "e" || e.key === "E") {
-            // No abrir si está en un input, textarea, contenteditable, o modal ya abierto
             const active = document.activeElement;
             if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return;
             if (!modal.classList.contains("pos-modal--hidden")) return;
 
+            console.log("[POS:consulta_precios] tecla E → abriendo modal consulta precios");
             abrirModal();
         }
     });
 
-    // Cerrar con botón
-    btnCerrar.onclick = cerrarModal;
+    btnCerrar.onclick = () => {
+        console.log("[POS:consulta_precios] botón cerrar → cerrarModal");
+        cerrarModal();
+    };
 
-    // Cerrar con Escape
     modal.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             e.stopPropagation();
+            console.log("[POS:consulta_precios] Escape → cerrarModal");
             cerrarModal();
         }
     });
 
-    // Escaneo dentro del modal
     input.addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
 
         const texto = normalizar(input.value.trim());
+        console.log(`[POS:consulta_precios] Enter en consulta-scan-input → texto="${texto}"`);
         if (!texto) return;
 
         buscarYMostrar(texto);
@@ -51,41 +50,35 @@ export function initConsultaPrecios() {
     });
 }
 
-// ============================================================
-// ABRIR / CERRAR
-// ============================================================
-
 function abrirModal() {
     const modal = document.getElementById("modal-consulta-precios");
     const input = document.getElementById("consulta-scan-input");
 
     focoAnterior = document.activeElement;
+    console.log(`[POS:consulta_precios] abrirModal — foco anterior: ${focoAnterior?.id || focoAnterior?.tagName}`);
 
-    // Limpiar resultados previos
     document.getElementById("consulta-resultado").classList.add("pos-consulta-resultado--hidden");
     document.getElementById("consulta-no-encontrado").classList.add("pos-consulta-no-encontrado--hidden");
 
     modal.classList.remove("pos-modal--hidden");
-
     setTimeout(() => input.focus(), 100);
+    console.log("[POS:consulta_precios] modal abierto ✓");
 }
 
 function cerrarModal() {
     const modal = document.getElementById("modal-consulta-precios");
     modal.classList.add("pos-modal--hidden");
 
-    // Restaurar foco
     if (focoAnterior && focoAnterior.isConnected) {
+        console.log(`[POS:consulta_precios] restaurando foco a: ${focoAnterior?.id || focoAnterior?.tagName}`);
         focoAnterior.focus();
     }
     focoAnterior = null;
+    console.log("[POS:consulta_precios] modal cerrado ✓");
 }
 
-// ============================================================
-// BÚSQUEDA Y DISPLAY
-// ============================================================
-
 function buscarYMostrar(texto) {
+    console.log(`[POS:consulta_precios] buscarYMostrar → "${texto}"`);
     const producto = Array.from(document.querySelectorAll(".producto-item"))
         .find(p =>
             normalizar(p.dataset.codigo || "") === texto ||
@@ -97,11 +90,13 @@ function buscarYMostrar(texto) {
     const noEncontrado = document.getElementById("consulta-no-encontrado");
 
     if (!producto) {
+        console.warn(`[POS:consulta_precios] producto NO encontrado para "${texto}"`);
         resultado.classList.add("pos-consulta-resultado--hidden");
         noEncontrado.classList.remove("pos-consulta-no-encontrado--hidden");
         return;
     }
 
+    console.log(`[POS:consulta_precios] producto encontrado: "${producto.dataset.nombre}" men=$${producto.dataset.men} may=$${producto.dataset.may} doc=$${producto.dataset.doc}`);
     noEncontrado.classList.add("pos-consulta-no-encontrado--hidden");
 
     document.getElementById("consulta-nombre").textContent = producto.dataset.nombre;

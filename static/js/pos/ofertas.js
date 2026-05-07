@@ -2,34 +2,34 @@
 
 import { carrito } from "./core.js";
 
-// ============================================================
-// API pública
-// ============================================================
+console.log("[POS:ofertas] Módulo cargado");
 
 export function aplicarOfertas() {
     const ofertas = window.OFERTAS || [];
 
-    // Limpia estado de oferta anterior en cada ítem para evitar badges fantasma
     carrito.forEach(i => {
         if (_esElegible(i)) { i.oferta_activa = null; i.precio_sin_oferta = null; }
     });
 
     if (!ofertas.length) return;
 
+    let aplicadas = 0;
     for (const oferta of ofertas) {
         if (oferta.aplica_a === "producto") {
-            _aplicarAProducto(oferta);
+            if (_aplicarAProducto(oferta)) aplicadas++;
         } else if (oferta.aplica_a === "categoria") {
-            _aplicarACategoria(oferta);
+            if (_aplicarACategoria(oferta)) aplicadas++;
         }
+    }
+
+    if (aplicadas > 0) {
+        console.log(`[POS:ofertas] aplicarOfertas → ${aplicadas} oferta(s) aplicada(s)`);
     }
 }
 
-export function initOfertas() { /* se llama desde pos.js, sin setup propio */ }
-
-// ============================================================
-// Helpers de filtrado
-// ============================================================
+export function initOfertas() {
+    console.log(`[POS:ofertas] initOfertas — ofertas disponibles: ${(window.OFERTAS || []).length}`);
+}
 
 function _esElegible(item) {
     return !item.es_servicio && !item.es_regalo;
@@ -40,8 +40,6 @@ function _matchesCategoria(item, oferta) {
            item.cat_padre_id    == oferta.categoria_id;
 }
 
-// Devuelve true si el item cumple TODOS los filtros de atributo de la oferta.
-// Un array vacío significa sin restricción.
 function _matchesAtributos(item, oferta) {
     const filtros = oferta.filtros_atributos;
     if (!filtros || filtros.length === 0) return true;
@@ -52,49 +50,44 @@ function _matchesAtributos(item, oferta) {
     });
 }
 
-// ============================================================
-// Despacho por aplica_a
-// ============================================================
-
 function _aplicarAProducto(oferta) {
     const item = carrito.find(i => _esElegible(i) && i.id == oferta.producto_id);
-    if (!item) return;
+    if (!item) return false;
+    console.log(`[POS:ofertas] aplicando oferta "${oferta.nombre}" (${oferta.tipo}) a "${item.nombre}"`);
     _aplicarTipoItem(item, oferta);
+    return true;
 }
 
 function _aplicarACategoria(oferta) {
     const items = carrito.filter(
         i => _esElegible(i) && _matchesCategoria(i, oferta) && _matchesAtributos(i, oferta)
     );
-    if (!items.length) return;
+    if (!items.length) return false;
+
+    console.log(`[POS:ofertas] aplicando oferta "${oferta.nombre}" (${oferta.tipo}) a ${items.length} item(s) de categoría`);
 
     if (oferta.tipo === "nxprecio") {
-        // Agrupación N en N entre productos mezclados de la categoría
         _aplicarNxPrecioCategoria(oferta, items);
     } else {
-        // porcentaje, fijo, 2x1 → aplica a cada item de la categoría por separado
         items.forEach(i => _aplicarTipoItem(i, oferta));
     }
+    return true;
 }
-
-// ============================================================
-// Agrupación N × $X entre ítems de la misma categoría
-//
-// Regla: cada grupo completo de N unidades cuesta $X total.
-// Si sobran unidades sin completar grupo, van a precio normal.
-// Los productos más caros reciben el descuento primero (beneficio al cliente).
-// ============================================================
 
 function _aplicarNxPrecioCategoria(oferta, items) {
     const N         = parseInt(oferta.cantidad_n);
     const precioUnit = parseFloat(oferta.valor) / N;
 
     const totalQty = items.reduce((s, i) => s + i.cantidad, 0);
-    let quotaDesc  = Math.floor(totalQty / N) * N; // unidades que entran en grupos completos
+    let quotaDesc  = Math.floor(totalQty / N) * N;
 
-    if (quotaDesc === 0) return; // ni un grupo completo → sin descuento
+    if (quotaDesc === 0) {
+        console.log(`[POS:ofertas] nxprecio "${oferta.nombre}": sin grupos completos (qty=${totalQty} N=${N})`);
+        return;
+    }
 
-    // Los más caros primero para maximizar el ahorro del cliente
+    console.log(`[POS:ofertas] nxprecio "${oferta.nombre}": ${quotaDesc}/${totalQty} unidades con descuento`);
+
     const sorted = [...items].sort((a, b) => b.precio_aplicado - a.precio_aplicado);
 
     for (const item of sorted) {
@@ -104,11 +97,9 @@ function _aplicarNxPrecioCategoria(oferta, items) {
         item.precio_sin_oferta = item.precio_aplicado;
 
         if (quotaDesc >= item.cantidad) {
-            // Todas las unidades de este SKU entran al precio de oferta
             item.precio_aplicado = precioUnit;
             quotaDesc -= item.cantidad;
         } else {
-            // El ítem se parte: quotaDesc unidades al precio de oferta, el resto normal
             const normal = item.precio_sin_oferta;
             item.precio_aplicado =
                 (quotaDesc * precioUnit + (item.cantidad - quotaDesc) * normal) / item.cantidad;
@@ -116,10 +107,6 @@ function _aplicarNxPrecioCategoria(oferta, items) {
         }
     }
 }
-
-// ============================================================
-// Aplicar tipo de oferta a un solo ítem
-// ============================================================
 
 function _aplicarTipoItem(item, oferta) {
     const base = item.precio_aplicado;
@@ -132,21 +119,18 @@ function _aplicarTipoItem(item, oferta) {
         case "porcentaje":
             item.precio_aplicado = base * (1 - parseFloat(oferta.valor) / 100);
             break;
-
         case "fijo":
             item.precio_aplicado = Math.max(0, base - parseFloat(oferta.valor));
             break;
-
         case "2x1": {
-            // Cada 2 unidades paga 1. Si lleva 3: paga 2. Si lleva 4: paga 2, etc.
             const pagados = Math.ceil(q / 2);
             item.precio_aplicado = (pagados * base) / q;
             break;
         }
-
         case "nxprecio":
-            // Producto específico: precio plano por unidad = valor / N
             item.precio_aplicado = parseFloat(oferta.valor) / parseInt(oferta.cantidad_n);
             break;
     }
+
+    console.log(`[POS:ofertas]   "${item.nombre}" ${oferta.tipo}: $${base.toFixed(2)} → $${item.precio_aplicado.toFixed(2)}`);
 }

@@ -4,7 +4,8 @@ import { carrito, totalConDescuento, descuentoActivo } from "./core.js";
 import { getCookie } from "./core.js";
 import { limpiarCarrito } from "./carrito.js";
 
-// Callbacks que la UI registrará
+console.log("[POS:pago] Módulo cargado");
+
 export let onPagoError = () => {};
 export let onPagoExito = () => {};
 export let onPagoIniciado = () => {};
@@ -23,7 +24,10 @@ export function setPagoCallbacks({ error, exito, iniciado, procesado }) {
 // ============================================================
 
 export function validarStock() {
+    console.log(`[POS:pago] validarStock — ${carrito.length} items en carrito`);
+
     if (carrito.length === 0) {
+        console.warn("[POS:pago] validarStock FALLÓ — carrito vacío");
         return "No hay productos en el carrito";
     }
 
@@ -31,11 +35,13 @@ export function validarStock() {
         if (item.es_servicio || item.es_regalo) continue;
         const stockTotal = (item.stock_piso || 0) + (item.stock_bodega || 0);
         if (item.cantidad > stockTotal) {
+            console.warn(`[POS:pago] validarStock FALLÓ — "${item.nombre}" necesita ${item.cantidad} pero solo hay ${stockTotal} (piso=${item.stock_piso} bodega=${item.stock_bodega})`);
             return `"${item.nombre}" no tiene stock suficiente (piso: ${item.stock_piso}, bodega: ${item.stock_bodega})`;
         }
     }
 
-    return null; // OK
+    console.log("[POS:pago] validarStock OK ✓");
+    return null;
 }
 
 
@@ -44,13 +50,17 @@ export function validarStock() {
 // ============================================================
 
 export function validarPago(efectivo, tarjeta) {
-    const total = totalConDescuento();   // ← FIX: antes era la función sin ejecutar
+    const total = totalConDescuento();
+    const recibido = efectivo + tarjeta;
+    console.log(`[POS:pago] validarPago → efectivo=${efectivo} tarjeta=${tarjeta} total=${total.toFixed(2)} recibido=${recibido.toFixed(2)}`);
 
-    if (efectivo + tarjeta < total) {
+    if (recibido < total) {
+        console.warn(`[POS:pago] validarPago FALLÓ — faltan $${(total - recibido).toFixed(2)}`);
         return "Pago insuficiente";
     }
 
-    return null; // OK
+    console.log("[POS:pago] validarPago OK ✓");
+    return null;
 }
 
 
@@ -59,10 +69,10 @@ export function validarPago(efectivo, tarjeta) {
 // ============================================================
 
 export async function procesarPago(efectivo, tarjeta) {
+    console.log(`[POS:pago] procesarPago → efectivo=${efectivo} tarjeta=${tarjeta} descuento=${descuentoActivo}`);
 
     onPagoIniciado();
 
-    // Payload EXACTO que espera el backend
     const payload = {
         carrito: carrito.map(p => {
             if (p.es_servicio) return {
@@ -90,9 +100,12 @@ export async function procesarPago(efectivo, tarjeta) {
         descuento_10: Boolean(descuentoActivo)
     };
 
+    console.log("[POS:pago] payload a enviar:", payload);
+
     const csrftoken = getCookie("csrftoken");
 
     try {
+        console.log("[POS:pago] enviando POST a /ventas/procesar-venta/...");
         const resp = await fetch("/ventas/procesar-venta/", {
             method: "POST",
             headers: {
@@ -102,26 +115,26 @@ export async function procesarPago(efectivo, tarjeta) {
             body: JSON.stringify(payload)
         });
 
+        console.log(`[POS:pago] respuesta HTTP: ${resp.status} ${resp.statusText}`);
         const data = await resp.json();
+        console.log("[POS:pago] respuesta JSON:", data);
 
-        // Callback opcional
         onPagoProcesado(data);
 
-        // Lógica interna
         if (data.status === "ok") {
+            console.log(`[POS:pago] ✅ VENTA EXITOSA — venta_id=${data.venta_id} total=${data.total_venta} cambio=${data.cambio}`);
             limpiarCarrito();
             onPagoExito(data);
         } else {
+            console.warn(`[POS:pago] ❌ VENTA RECHAZADA — ${data.message}`);
             onPagoError(data.message || "Error al procesar la venta");
         }
 
-        // 🔥 FIX CRÍTICO: devolver data para ui.js
         return data;
 
     } catch (e) {
+        console.error("[POS:pago] ERROR DE RED:", e);
         onPagoError("Error de conexión con el servidor");
-
-        // También devolver algo para que ui.js no reciba undefined
         return { status: "error", message: "Error de conexión con el servidor" };
     }
 }

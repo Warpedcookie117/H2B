@@ -2,6 +2,8 @@
 
 import { carrito } from "./core.js";
 
+console.log("[POS:stock] Módulo cargado");
+
 const URL_STOCK = "/ventas/stock-productos/";
 const INTERVALO_MS = 60_000; // cada 60 segundos
 
@@ -10,10 +12,18 @@ const INTERVALO_MS = 60_000; // cada 60 segundos
 // ============================================================
 
 async function refrescarStock() {
+    console.log("[POS:stock] refrescarStock — iniciando fetch...");
     try {
         const resp = await fetch(URL_STOCK);
-        if (!resp.ok) return;
+        if (!resp.ok) {
+            console.warn(`[POS:stock] respuesta no OK: ${resp.status}`);
+            return;
+        }
         const data = await resp.json();
+        console.log(`[POS:stock] datos recibidos para ${Object.keys(data).length} productos`);
+
+        let removidos = 0;
+        let actualizados = 0;
 
         // 1) Actualizar cada card del grid
         document.querySelectorAll(".producto-item[data-id]").forEach(card => {
@@ -22,25 +32,33 @@ async function refrescarStock() {
 
             const { piso, bodega } = data[id];
 
-            // Sin stock en piso → quitar del POS
             if (piso <= 0) {
+                console.log(`[POS:stock] producto id=${id} sin stock en piso → removido del grid`);
                 card.remove();
+                removidos++;
                 return;
             }
 
             card.dataset.stockPiso   = piso;
             card.dataset.stockBodega = bodega;
+            actualizados++;
         });
 
         // 2) Actualizar items ya en el carrito
         carrito.forEach(item => {
             if (!data[item.id]) return;
+            const anterior = { piso: item.stock_piso, bodega: item.stock_bodega };
             item.stock_piso   = data[item.id].piso;
             item.stock_bodega = data[item.id].bodega;
+            if (anterior.piso !== item.stock_piso || anterior.bodega !== item.stock_bodega) {
+                console.log(`[POS:stock] carrito "${item.nombre}": piso ${anterior.piso}→${item.stock_piso} bodega ${anterior.bodega}→${item.stock_bodega}`);
+            }
         });
 
+        console.log(`[POS:stock] refrescarStock completo — actualizados=${actualizados} removidos=${removidos}`);
+
     } catch (e) {
-        console.warn("[stock] Error al refrescar stock:", e);
+        console.warn("[POS:stock] Error al refrescar stock:", e);
     }
 }
 
@@ -49,11 +67,12 @@ async function refrescarStock() {
 // ============================================================
 
 export function initStock() {
-    // Refrescar al volver de una venta exitosa
+    console.log(`[POS:stock] initStock — intervalo=${INTERVALO_MS}ms`);
+
     document.addEventListener("pago-exito", () => {
+        console.log("[POS:stock] pago-exito detectado → refrescando stock");
         refrescarStock();
     });
 
-    // Refrescar periódicamente
     setInterval(refrescarStock, INTERVALO_MS);
 }

@@ -1,5 +1,7 @@
 import { carrito, setDescuentoActivo } from "./core.js";
 
+console.log("[POS:precios] Módulo cargado");
+
 // ============================================================
 // REGLAS DE NEGOCIO
 // ============================================================
@@ -19,6 +21,8 @@ export function aplicarPreciosGlobales() {
     if (totalPiezas >= 6 && totalValor > 80) {
         modoGlobal = "MAY";
     }
+
+    console.log(`[POS:precios] aplicarPreciosGlobales → totalPiezas=${totalPiezas} totalValor=$${totalValor.toFixed(2)} modoGlobal=${modoGlobal}`);
 
     // --- Paso 2: Aplicar a cada item (saltar servicios y regalos) ---
     carrito.forEach(item => {
@@ -40,12 +44,17 @@ export function aplicarPreciosGlobales() {
             modoPrecio = "MAY";
         }
 
+        const precioAnterior = item.precio_aplicado;
         item.modo_resuelto = modoPrecio;
 
         if (modoPrecio === "MEN") item.precio_aplicado = item.precios.men;
         else if (modoPrecio === "MAY") item.precio_aplicado = item.precios.may;
         else if (modoPrecio === "DOC") item.precio_aplicado = item.precios.doc;
         else item.precio_aplicado = item.precios.men;
+
+        if (precioAnterior !== item.precio_aplicado) {
+            console.log(`[POS:precios]   "${item.nombre}" modo=${modoPrecio} precio: $${precioAnterior.toFixed(2)} → $${item.precio_aplicado.toFixed(2)}`);
+        }
     });
 }
 
@@ -54,9 +63,11 @@ export function aplicarPreciosGlobales() {
 // ============================================================
 
 export function aplicarDescuento10() {
+    console.log("[POS:precios] aplicarDescuento10");
     setDescuentoActivo(true);
 }
 
 export function quitarDescuento10() {
+    console.log("[POS:precios] quitarDescuento10");
     setDescuentoActivo(false);
 }

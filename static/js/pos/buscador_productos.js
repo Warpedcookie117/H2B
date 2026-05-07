@@ -4,74 +4,84 @@ import { normalizar } from "./core.js";
 import { agregarProducto } from "./carrito.js";
 import { activarBusqueda, desactivarBusqueda } from "./paginacion.js";
 
+console.log("[POS:buscador] Módulo cargado");
+
 // ============================================================
 // 1. BUSCADOR POR TEXTO
 // ============================================================
 
 export function initBuscador() {
     const buscarInput = document.getElementById("buscar-producto");
+    console.log(`[POS:buscador] initBuscador — input encontrado: ${!!buscarInput}`);
 
     if (!buscarInput) return;
 
-    // Filtrar cards — también usado al limpiar
     function filtrarProductos(texto) {
         texto = normalizar(texto);
         const items = document.querySelectorAll(".producto-item");
 
         if (!texto) {
-            // Sin texto → restaurar paginación
+            console.log("[POS:buscador] filtrar: texto vacío → desactivarBusqueda");
             desactivarBusqueda();
             return;
         }
 
-        // Con texto → mostrar todos los que coincidan (sin paginación)
         activarBusqueda();
+        let coincidencias = 0;
         items.forEach(item => {
             const nombre = normalizar(item.dataset.nombre);
             const codigo = normalizar(item.dataset.codigo || "");
             const sku    = normalizar(item.dataset.sku    || "");
             const coincide = nombre.includes(texto) || codigo.includes(texto) || sku.includes(texto);
             item.style.display = coincide ? "flex" : "none";
+            if (coincide) coincidencias++;
         });
+        console.log(`[POS:buscador] filtrar "${texto}" → ${coincidencias} coincidencias de ${items.length}`);
     }
 
-    // Búsqueda al escribir
     buscarInput.addEventListener("input", () => {
+        console.log(`[POS:buscador] input en buscar-producto: "${buscarInput.value}"`);
         filtrarProductos(buscarInput.value);
     });
 
-    // Enter en el buscador → si hay exactamente 1 resultado, agregar al carrito
     buscarInput.addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
         e.preventDefault();
         const texto = normalizar(buscarInput.value.trim());
+        console.log(`[POS:buscador] Enter en buscar-producto, texto="${texto}"`);
         if (!texto) return;
 
         const visibles = Array.from(document.querySelectorAll(".producto-item"))
             .filter(item => item.style.display !== "none");
 
+        console.log(`[POS:buscador] Enter — visibles: ${visibles.length}`);
+
         if (visibles.length === 1) {
+            console.log(`[POS:buscador] 1 resultado exacto — agregando "${visibles[0].dataset.nombre}"`);
             agregarDesdeCard(visibles[0]);
             buscarInput.value = "";
             filtrarProductos("");
         } else {
-            // Buscar coincidencia exacta de código de barras
             const exacto = buscarProductoPorTextoExacto(texto);
             if (exacto) {
+                console.log(`[POS:buscador] coincidencia exacta por código/sku — "${exacto.dataset.nombre}"`);
                 agregarDesdeCard(exacto);
                 buscarInput.value = "";
                 filtrarProductos("");
+            } else {
+                console.log(`[POS:buscador] sin coincidencia exacta — no se agrega`);
             }
         }
     });
 
-    // ============================================================
-    // CLICK EN CARD → AGREGAR AL CARRITO
-    // ============================================================
-
     document.querySelectorAll(".producto-item").forEach(card => {
-        card.onclick = () => agregarDesdeCard(card);
+        card.onclick = () => {
+            console.log(`[POS:buscador] click en card → id=${card.dataset.id} nombre="${card.dataset.nombre}"`);
+            agregarDesdeCard(card);
+        };
     });
+
+    console.log(`[POS:buscador] initBuscador completo — ${document.querySelectorAll(".producto-item").length} cards`);
 }
 
 
@@ -83,6 +93,7 @@ export function initBuscador() {
 export function initDragDrop() {
     const listaProductos = document.getElementById("lista-productos");
     const carritoLista = document.getElementById("carrito-lista");
+    console.log(`[POS:buscador] initDragDrop — lista=${!!listaProductos} carritoLista=${!!carritoLista}`);
 
     if (!listaProductos || !carritoLista) return;
 
@@ -90,6 +101,7 @@ export function initDragDrop() {
         item.setAttribute("draggable", "true");
 
         item.addEventListener("dragstart", (e) => {
+            console.log(`[POS:buscador] dragstart → "${item.dataset.nombre}"`);
             e.dataTransfer.setData("producto_id", item.dataset.id);
             e.dataTransfer.setData("producto_nombre", item.dataset.nombre);
 
@@ -111,6 +123,7 @@ export function initDragDrop() {
     carritoLista.addEventListener("drop", (e) => {
         const id = parseInt(e.dataTransfer.getData("producto_id"));
         const nombre = e.dataTransfer.getData("producto_nombre");
+        console.log(`[POS:buscador] drop en carrito → id=${id} nombre="${nombre}"`);
         const precios = JSON.parse(e.dataTransfer.getData("precios"));
 
         agregarProducto(
@@ -131,20 +144,24 @@ export function initDragDrop() {
 
 export function initEscaneo() {
     const scanInput = document.getElementById("scan-input");
+    console.log(`[POS:buscador] initEscaneo — scan-input encontrado: ${!!scanInput}`);
 
     if (scanInput) {
         scanInput.addEventListener("keydown", (e) => {
             if (e.key !== "Enter") return;
 
             const texto = normalizar(scanInput.value.trim());
+            console.log(`[POS:buscador] scan-input Enter → texto="${texto}"`);
             if (!texto) return;
 
             const producto = buscarProductoPorTexto(texto);
 
             if (producto) {
+                console.log(`[POS:buscador] scan-input: encontrado "${producto.dataset.nombre}"`);
                 agregarDesdeCard(producto);
                 scanInput.value = "";
             } else {
+                console.warn(`[POS:buscador] scan-input: PRODUCTO NO ENCONTRADO para "${texto}"`);
                 alert("Producto no encontrado");
             }
         });
@@ -160,42 +177,48 @@ export function initEscaneo() {
     document.addEventListener("keydown", (e) => {
         const active = document.activeElement;
 
-        // Si el foco está en el buscador de productos → dejar que el usuario escriba ahí
         if (active && active.id === "buscar-producto") return;
-
-        // Si el foco está en el scan-input → su propio listener lo maneja
         if (active && active.id === "scan-input") return;
 
-        // Si algún modal está abierto → no capturar
         const modalAbierto = document.querySelector(
             "#modal-pago:not(.pos-modal--hidden), #modal-resultado:not(.pos-modal--hidden), #modal-consulta-precios:not(.pos-modal--hidden)"
         );
         if (modalAbierto) return;
 
-        // Si el modal de servicio está abierto → no capturar
         const modalServicio = document.getElementById("modal-servicio");
         if (modalServicio && modalServicio.style.display === "flex") return;
 
         if (e.key === "Enter") {
             e.preventDefault();
             const texto = normalizar(scanBuffer.trim());
+            console.log(`[POS:buscador] SCAN GLOBAL Enter → buffer="${texto}" foco-en=${active?.id || active?.tagName}`);
             scanBuffer = "";
 
-            if (!texto) return;
+            if (!texto) {
+                console.log("[POS:buscador] SCAN GLOBAL — buffer vacío, ignorado");
+                return;
+            }
 
             const producto = buscarProductoPorTextoExacto(texto);
-            if (producto) agregarDesdeCard(producto);
+            if (producto) {
+                console.log(`[POS:buscador] SCAN GLOBAL: encontrado "${producto.dataset.nombre}"`);
+                agregarDesdeCard(producto);
+            } else {
+                console.warn(`[POS:buscador] SCAN GLOBAL: NO encontrado para "${texto}"`);
+            }
             return;
         }
 
-        // Acumular caracteres del escáner — siempre, sin importar qué input esté enfocado
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
             e.preventDefault();
             scanBuffer += e.key;
+            console.log(`[POS:buscador] SCAN GLOBAL acumulando: "${scanBuffer}"`);
 
-            // Limpiar buffer después de 500ms sin actividad (los escáneres son rápidos)
             if (scanTimer) clearTimeout(scanTimer);
-            scanTimer = setTimeout(() => { scanBuffer = ""; }, 500);
+            scanTimer = setTimeout(() => {
+                if (scanBuffer) console.log(`[POS:buscador] SCAN GLOBAL buffer expiró sin Enter: "${scanBuffer}"`);
+                scanBuffer = "";
+            }, 500);
         }
     });
 }
@@ -215,7 +238,6 @@ function buscarProductoPorTexto(texto) {
         );
 }
 
-// Búsqueda exacta para escaneo global (barcode)
 function buscarProductoPorTextoExacto(texto) {
     return Array.from(document.querySelectorAll(".producto-item"))
         .find(p =>
@@ -239,6 +261,8 @@ function agregarDesdeCard(card) {
     const subcategoria_id = card.dataset.subcategoria  ? parseInt(card.dataset.subcategoria)  : null;
     const cat_padre_id    = card.dataset.catPadre      ? parseInt(card.dataset.catPadre)      : null;
     const atributos       = card.dataset.atributos     ? JSON.parse(card.dataset.atributos)   : {};
+
+    console.log(`[POS:buscador] agregarDesdeCard → id=${id} nombre="${nombre}" stock_piso=${stock_piso} stock_bodega=${stock_bodega} precios=`, precios);
 
     agregarProducto(id, nombre, precios, stock_piso, stock_bodega, subcategoria_id, cat_padre_id, atributos);
 }
