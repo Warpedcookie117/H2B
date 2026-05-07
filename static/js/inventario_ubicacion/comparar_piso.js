@@ -68,13 +68,19 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     const btnFaltan = document.getElementById("btn-faltan-piso");
     if (!btnFaltan) return;
 
-    const selectEl = document.getElementById("select-piso-cmp");
-    const btnTodos = document.getElementById("btn-todos-piso");
-    const countEl  = document.getElementById("cnt-faltan-piso");
-    const grid     = document.getElementById("gridProductos");
+    const selectEl     = document.getElementById("select-piso-cmp");
+    const btnTodos     = document.getElementById("btn-todos-piso");
+    const countEl      = document.getElementById("cnt-faltan-piso");
+    const grid         = document.getElementById("gridProductos");
+    const paginacionEl = document.getElementById("paginacion-ubicacion");
 
-    let activoPisoId   = window.pairedUbicacionId || null;
-    let gridOriginalHTML = null; // guarda el grid completo para restaurar
+    const POR_PAGINA = 20;
+
+    let activoPisoId        = window.pairedUbicacionId || null;
+    let gridOriginalHTML    = null;
+    let paginOriginalHTML   = null;
+    let faltanteCards       = [];  // nodos DOM de todos los faltantes
+    let faltantePage        = 1;
 
     // ── Conteo desde inventarioTodas ─────────────────────────
     function recalcularConteo() {
@@ -102,30 +108,77 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     window.refrescarComparacionPiso = recalcularConteo;
     document.addEventListener("DOMContentLoaded", recalcularConteo);
 
-    // ── AJAX: reemplazar grid sin recargar página ─────────────
-    async function cargarGrid(extraParams = {}) {
+    // ── Construir HTML de paginación client-side ──────────────
+    function buildPaginHTML(page, numPages, total) {
+        if (numPages <= 1) return "";
+        const prev = page > 1
+            ? `<button data-fp="prev"
+                class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+                       text-white font-black text-xs uppercase tracking-widest px-5 py-2">◀ Anterior</button>`
+            : `<span class="border-4 border-black bg-gray-200 text-gray-400
+                           font-black text-xs uppercase tracking-widest px-5 py-2 cursor-not-allowed">◀ Anterior</span>`;
+        const next = page < numPages
+            ? `<button data-fp="next"
+                class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+                       text-white font-black text-xs uppercase tracking-widest px-5 py-2">Siguiente ▶</button>`
+            : `<span class="border-4 border-black bg-gray-200 text-gray-400
+                           font-black text-xs uppercase tracking-widest px-5 py-2 cursor-not-allowed">Siguiente ▶</span>`;
+        return `<div class="flex flex-wrap items-center justify-center gap-3 mt-8 pt-6 border-t-4 border-black">
+            ${prev}
+            <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-5 py-2 text-center min-w-[120px]">
+                <p class="font-black text-black text-sm uppercase tracking-widest leading-none">${page} / ${numPages}</p>
+                <p class="font-semibold text-black/70 text-xs mt-0.5">${total} productos</p>
+            </div>
+            ${next}
+        </div>`;
+    }
+
+    // ── Renderizar página de faltantes ────────────────────────
+    function renderFaltantePage(page) {
+        faltantePage = page;
+        const total    = faltanteCards.length;
+        const numPages = Math.ceil(total / POR_PAGINA);
+        const start    = (page - 1) * POR_PAGINA;
+        const visible  = faltanteCards.slice(start, start + POR_PAGINA);
+
+        grid.innerHTML = "";
+        visible.forEach(card => grid.appendChild(card));
+        window.aplicarColoresCards?.();
+        renderAllResumenes();
+
+        if (paginacionEl) {
+            paginacionEl.innerHTML = buildPaginHTML(page, numPages, total);
+            paginacionEl.querySelectorAll("[data-fp]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    if (btn.dataset.fp === "prev") renderFaltantePage(faltantePage - 1);
+                    else                           renderFaltantePage(faltantePage + 1);
+                });
+            });
+        }
+    }
+
+    // ── AJAX: traer todos los faltantes sin paginación ────────
+    async function cargarFaltantes() {
         const url = new URL(window.location.href);
         url.searchParams.delete("page");
-        Object.entries(extraParams).forEach(([k, v]) => {
-            if (v === null) url.searchParams.delete(k);
-            else            url.searchParams.set(k, v);
-        });
+        url.searchParams.set("falta_en", activoPisoId);
 
-        try {
-            const res  = await fetch(url.toString(), {
-                headers: { "X-Requested-With": "XMLHttpRequest" },
-            });
-            const html    = await res.text();
-            const doc     = new DOMParser().parseFromString(html, "text/html");
-            const newGrid = doc.getElementById("gridProductos");
-            if (newGrid && grid) {
-                grid.innerHTML = newGrid.innerHTML;
-                window.aplicarColoresCards?.();
-                renderAllResumenes();
-            }
-        } catch (e) {
-            console.error("[comparar_piso] Error cargando grid:", e);
+        const res  = await fetch(url.toString(), {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        const html    = await res.text();
+        const doc     = new DOMParser().parseFromString(html, "text/html");
+        const newGrid = doc.getElementById("gridProductos");
+        if (!newGrid || !grid) return;
+
+        // Guardar estado original solo la primera vez
+        if (!gridOriginalHTML) {
+            gridOriginalHTML  = grid.innerHTML;
+            paginOriginalHTML = paginacionEl?.innerHTML ?? "";
         }
+
+        faltanteCards = Array.from(newGrid.querySelectorAll(".cardProducto"));
+        renderFaltantePage(1);
     }
 
     // ── Select (ubicación manual) ─────────────────────────────
@@ -138,17 +191,16 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     btnFaltan.addEventListener("click", async () => {
         if (!activoPisoId) return;
 
-        // Guardar grid original solo la primera vez
-        if (!gridOriginalHTML) gridOriginalHTML = grid.innerHTML;
-
-        btnFaltan.disabled = true;
+        btnFaltan.disabled    = true;
         btnFaltan.textContent = "Cargando...";
 
-        await cargarGrid({ falta_en: activoPisoId });
-
-        btnFaltan.disabled = false;
-        btnFaltan.innerHTML = `¿Qué me falta? (<span id="cnt-faltan-piso">${countEl?.textContent || 0}</span>)`;
-        btnTodos?.classList.remove("hidden");
+        try {
+            await cargarFaltantes();
+        } finally {
+            btnFaltan.disabled = false;
+            btnFaltan.innerHTML = `¿Qué me falta? (<span id="cnt-faltan-piso">${countEl?.textContent || 0}</span>)`;
+            btnTodos?.classList.remove("hidden");
+        }
     });
 
     // ── Botón "Mostrar todos" ─────────────────────────────────
@@ -156,9 +208,15 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
         if (gridOriginalHTML && grid) {
             grid.innerHTML = gridOriginalHTML;
             gridOriginalHTML = null;
-            window.aplicarColoresCards?.();
-            renderAllResumenes();
         }
+        if (paginacionEl && paginOriginalHTML !== null) {
+            paginacionEl.innerHTML = paginOriginalHTML;
+            paginOriginalHTML = null;
+        }
+        faltanteCards = [];
+        faltantePage  = 1;
+        window.aplicarColoresCards?.();
+        renderAllResumenes();
         btnTodos?.classList.add("hidden");
     });
 })();

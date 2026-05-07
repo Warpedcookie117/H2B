@@ -294,7 +294,7 @@
 }
 
 /* Colapsado: barra gris en lugar de texto invisible */
-#sidebar:not(.pinned):not(:hover) .sb-section-label {
+#sidebar:not(.pinned):not(.hovered):not(.open) .sb-section-label {
   display: block !important;
   width: auto !important;
   opacity: 1 !important;
