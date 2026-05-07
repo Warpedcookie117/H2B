@@ -15,7 +15,7 @@ from .views.productos import (
     productos_inactivos,
     reactivar_producto,
     eliminar_producto_definitivo,
-
+    api_stock_global,
 )
 
 # Categorías
@@ -86,7 +86,8 @@ urlpatterns = [
     path("ubicacion/<int:ubicacion_id>/", productos_por_ubicacion, name="productos_por_ubicacion"),
     path('producto/<int:producto_id>/codigo_base64/', codigo_base64, name='codigo_base64'),
     path("api/producto/<int:producto_id>/desactivar/", desactivar_producto, name="desactivar_producto"),
-    
+    path("api/stock-global/", api_stock_global, name="api_stock_global"),
+
     # Productos inactivos
     path("productos-inactivos/", productos_inactivos, name="productos_inactivos"),
     path("api/producto/<int:producto_id>/reactivar/", reactivar_producto, name="reactivar_producto"),

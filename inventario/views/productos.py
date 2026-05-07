@@ -276,6 +276,13 @@ def lista_productos(request):
         if precio_max:
             productos = productos.filter(**{f'precio_{precio_tipo}__lte': precio_max})
 
+    paginator = Paginator(productos, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    params = request.GET.copy()
+    params.pop('page', None)
+    query_string = params.urlencode()
+
     empleados = Empleado.objects.select_related('user').all()
     dueños = empleados.filter(rol='dueño')
     registradores = empleados.exclude(rol='dueño')
@@ -284,7 +291,9 @@ def lista_productos(request):
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
     return render(request, 'inventario/productos.html', {
-        'productos':        productos,
+        'productos':        page_obj,
+        'page_obj':         page_obj,
+        'query_string':     query_string,
         'empleados':        empleados,
         'dueños':           dueños,
         'registradores':    registradores,
@@ -292,6 +301,27 @@ def lista_productos(request):
         'subcategorias':    subcategorias,
         'ubicaciones':      ubicaciones,
     })
+
+
+@login_required
+def api_stock_global(request):
+    ids_param = request.GET.get('ids', '')
+    ids = [int(i) for i in ids_param.split(',') if i.strip().isdigit()]
+    if not ids:
+        return JsonResponse({})
+    inventarios = (
+        Inventario.objects
+        .filter(producto_id__in=ids)
+        .values('producto_id', 'ubicacion_id', 'cantidad_actual')
+    )
+    resultado = {}
+    for inv in inventarios:
+        pid = str(inv['producto_id'])
+        uid = str(inv['ubicacion_id'])
+        if pid not in resultado:
+            resultado[pid] = {}
+        resultado[pid][uid] = inv['cantidad_actual']
+    return JsonResponse(resultado)
     
 
    

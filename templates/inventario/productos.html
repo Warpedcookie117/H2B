@@ -131,9 +131,9 @@
 
                 <div class="w-full h-24 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-2">
                   {% if producto.foto_url %}
-                    <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+                    <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full" loading="lazy">
                   {% else %}
-                    <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+                    <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full" loading="lazy">
                   {% endif %}
                 </div>
 
@@ -145,7 +145,8 @@
                 </p>
                 <div class="flex items-center justify-center gap-1 mb-1">
                   <span class="text-[9px] font-black uppercase text-gray-600">Piezas:</span>
-                  <span class="font-black text-lg text-black leading-none">{{ inv.cantidad_actual }}</span>
+                  <span class="font-black text-lg text-black leading-none"
+                        data-stock-pid="{{ producto.id }}" data-stock-uid="{{ inv.ubicacion.id }}">{{ inv.cantidad_actual }}</span>
                 </div>
                 <div class="border-t border-dashed border-black/30 pt-1 text-[9px] text-gray-800 space-y-0.5 mb-2 text-center">
                   <p>Men: <span class="font-black">${{ producto.precio_menudeo }}</span></p>
@@ -233,9 +234,9 @@
 
               <div class="w-full h-36 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-3">
                 {% if producto.foto_url %}
-                  <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+                  <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full" loading="lazy">
                 {% else %}
-                  <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
+                  <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full" loading="lazy">
                 {% endif %}
               </div>
 
@@ -247,7 +248,8 @@
               </p>
               <div class="flex items-center justify-center gap-2 mb-2">
                 <span class="text-xs font-black uppercase text-gray-600">Piezas:</span>
-                <span class="font-black text-2xl text-black">{{ inv.cantidad_actual }}</span>
+                <span class="font-black text-2xl text-black"
+                      data-stock-pid="{{ producto.id }}" data-stock-uid="{{ inv.ubicacion.id }}">{{ inv.cantidad_actual }}</span>
               </div>
               <div class="border-t-2 border-dashed border-black/30 pt-2 text-xs text-gray-800 space-y-0.5 mb-3 text-center">
                 <p>Menudeo: <span class="font-black">${{ producto.precio_menudeo }}</span></p>
@@ -319,6 +321,8 @@
 
 </div>
 
+{% include "partials/paginacion.html" %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -344,6 +348,27 @@
 <script>
 window.addEventListener("pageshow", function (e) {
   if (e.persisted) window.location.reload();
+});
+
+// Actualizar cantidades en vivo
+document.addEventListener("DOMContentLoaded", function () {
+  const spans = document.querySelectorAll("[data-stock-pid]");
+  if (!spans.length) return;
+
+  const ids = [...new Set([...spans].map(s => s.dataset.stockPid))].join(",");
+
+  fetch("{% url 'inventario:api_stock_global' %}?ids=" + ids)
+    .then(r => r.json())
+    .then(data => {
+      spans.forEach(span => {
+        const pid = span.dataset.stockPid;
+        const uid = span.dataset.stockUid;
+        if (data[pid] && data[pid][uid] !== undefined) {
+          span.textContent = data[pid][uid];
+        }
+      });
+    })
+    .catch(() => {});
 });
 </script>
 {% endblock %}
