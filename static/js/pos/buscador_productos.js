@@ -56,6 +56,9 @@ export function initBuscador() {
     buscarInput.addEventListener("input", () => {
         console.log(`[POS:buscador] input en buscar-producto: "${buscarInput.value}"`);
         filtrarProductos(buscarInput.value);
+        if (!buscarInput.value) {
+            document.getElementById("scan-input")?.focus();
+        }
     });
 
     buscarInput.addEventListener("keydown", (e) => {
