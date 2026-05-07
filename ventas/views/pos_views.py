@@ -4,9 +4,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from inventario.models import Producto, Ubicacion
-from django.db.models import Sum, Case, When, IntegerField
-from django.db.models.functions import Coalesce
+from inventario.models import Producto, Ubicacion, Inventario
 from django.views.decorators.http import require_POST
 from django.core.cache import cache
 import json
@@ -52,41 +50,6 @@ def pos_view(request):
         messages.error(request, "La sucursal no tiene Piso configurado.")
         return redirect("sucursales:dashboard_sucursal", sucursal_id=sucursal_id)
 
-    # 4) Cargar productos
-    productos = (
-        Producto.objects.annotate(
-            stock_piso=Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventarios__ubicacion__sucursal_id=sucursal_id,
-                            inventarios__ubicacion__tipo="piso",
-                            then="inventarios__cantidad_actual",
-                        ),
-                        default=0,
-                        output_field=IntegerField(),
-                    )
-                ),
-                0,
-            ),
-            stock_bodega=Coalesce(
-                Sum(
-                    Case(
-                        When(
-                            inventarios__ubicacion__sucursal_id=sucursal_id,
-                            inventarios__ubicacion__tipo="bodega",
-                            then="inventarios__cantidad_actual",
-                        ),
-                        default=0,
-                        output_field=IntegerField(),
-                    )
-                ),
-                0,
-            ),
-        )
-        .filter(stock_piso__gt=0)
-        .order_by("nombre")
-    )
     from sucursales.models import Caja
     caja_nombre = "Caja"
     try:
@@ -97,20 +60,48 @@ def pos_view(request):
     from datetime import date
     hoy = date.today()
 
-    # Prefetch attribute values for POS offer filtering
-    productos_list = list(
-        productos
+    # 4) Cargar productos — lookup directo por ubicacion_id (evita GROUP BY + HAVING)
+    # Sin caché: siempre datos reales de la BD; el WS mantiene el stock en vivo tras la carga.
+    piso_map = {
+        inv["producto_id"]: inv["cantidad_actual"]
+        for inv in Inventario.objects.filter(
+            ubicacion=ubicacion_pos, cantidad_actual__gt=0
+        ).values("producto_id", "cantidad_actual")
+    }
+
+    bodega_map = {}
+    ubicacion_bodega = Ubicacion.objects.filter(
+        sucursal_id=sucursal_id, tipo="bodega"
+    ).first()
+    if ubicacion_bodega and piso_map:
+        bodega_map = {
+            inv["producto_id"]: inv["cantidad_actual"]
+            for inv in Inventario.objects.filter(
+                ubicacion=ubicacion_bodega,
+                producto_id__in=piso_map.keys(),
+            ).values("producto_id", "cantidad_actual")
+        }
+
+    productos_qs = (
+        Producto.objects
+        .filter(id__in=piso_map.keys())
         .only(
-            'id', 'nombre', 'precio_menudeo', 'precio_mayoreo', 'precio_docena',
-            'foto_url', 'categoria_id', 'categoria_padre_id',
+            "id", "nombre", "precio_menudeo", "precio_mayoreo", "precio_docena",
+            "foto_url", "codigo_barras", "categoria_id", "categoria_padre_id",
         )
-        .prefetch_related('valores_atributo__atributo')
+        .prefetch_related("valores_atributo__atributo")
+        .order_by("nombre")
     )
-    for p in productos_list:
+
+    productos_list = []
+    for p in productos_qs:
+        p.stock_piso   = piso_map.get(p.id, 0)
+        p.stock_bodega = bodega_map.get(p.id, 0)
         p.atributos_json = json.dumps(
             {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
             cls=DjangoJSONEncoder,
         )
+        productos_list.append(p)
 
     promociones_data = list(
         Promocion.objects.filter(activo=True).values(
@@ -262,36 +253,29 @@ def stock_productos(request):
     if not sucursal_id:
         return JsonResponse({"error": "Sin sucursal"}, status=400)
 
-    productos = Producto.objects.annotate(
-        stock_piso=Coalesce(
-            Sum(
-                Case(
-                    When(
-                        inventarios__ubicacion__sucursal_id=sucursal_id,
-                        inventarios__ubicacion__tipo="piso",
-                        then="inventarios__cantidad_actual",
-                    ),
-                    default=0,
-                    output_field=IntegerField(),
-                )
-            ),
-            0,
-        ),
-        stock_bodega=Coalesce(
-            Sum(
-                Case(
-                    When(
-                        inventarios__ubicacion__sucursal_id=sucursal_id,
-                        inventarios__ubicacion__tipo="bodega",
-                        then="inventarios__cantidad_actual",
-                    ),
-                    default=0,
-                    output_field=IntegerField(),
-                )
-            ),
-            0,
-        ),
-    ).values("id", "stock_piso", "stock_bodega")
+    ubs = {
+        ub["tipo"]: ub["id"]
+        for ub in Ubicacion.objects.filter(
+            sucursal_id=sucursal_id, tipo__in=["piso", "bodega"]
+        ).values("id", "tipo")
+    }
+    piso_id   = ubs.get("piso")
+    bodega_id = ubs.get("bodega")
 
-    data = {p["id"]: {"piso": p["stock_piso"], "bodega": p["stock_bodega"]} for p in productos}
+    if not piso_id:
+        return JsonResponse({})
+
+    ub_ids = [x for x in [piso_id, bodega_id] if x]
+    data = {}
+    for inv in Inventario.objects.filter(ubicacion_id__in=ub_ids).values(
+        "producto_id", "ubicacion_id", "cantidad_actual"
+    ):
+        pid = inv["producto_id"]
+        if pid not in data:
+            data[pid] = {"piso": 0, "bodega": 0}
+        if inv["ubicacion_id"] == piso_id:
+            data[pid]["piso"] = inv["cantidad_actual"]
+        elif inv["ubicacion_id"] == bodega_id:
+            data[pid]["bodega"] = inv["cantidad_actual"]
+
     return JsonResponse(data)

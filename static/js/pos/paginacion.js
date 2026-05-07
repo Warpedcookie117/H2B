@@ -2,7 +2,7 @@
 
 console.log("[POS:paginacion] Módulo cargado");
 
-const ITEMS_POR_PAGINA = 8; // 2 columnas × 4 filas
+const ITEMS_POR_PAGINA = 6; // 2 columnas × 3 filas
 
 let paginaActual = 1;
 let busquedaActiva = false;

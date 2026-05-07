@@ -44,8 +44,13 @@
 
 @media (min-width: 1024px) {
   .pos-wrapper {
-    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    grid-template-rows: auto 1fr;
+    height: calc(100dvh - 4rem);
     overflow: hidden;
+    padding: 1rem;
+    gap: 1rem;
   }
 }
 
@@ -61,12 +66,7 @@
 
 @media (min-width: 1024px) {
   .pos-layout {
-    flex-direction: row;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-    padding: 1rem;
-    gap: 1rem;
+    display: contents;
   }
 }
 
@@ -87,13 +87,15 @@
 
 @media (min-width: 1024px) {
   .pos-panel--carrito {
-    flex: 1;
+    grid-column: 1;
+    grid-row: 1 / -1;
     min-height: 0;
     overflow: hidden;
   }
   .pos-panel--productos {
-    width: 480px;
-    flex: 0 0 480px;
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
     min-height: 0;
     overflow: hidden;
   }
@@ -211,7 +213,7 @@
 .pos-productos-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 0.4rem;
   flex: 1;
   min-height: 0;
@@ -303,7 +305,7 @@
 
 .pos-producto-img {
   width: 100%;
-  height: 3.5rem;
+  height: 2.5rem;
   flex-shrink: 0;
   background: rgba(255,255,255,0.55);
   overflow: hidden;
@@ -317,8 +319,8 @@
 
 .pos-producto-nombre {
   font-weight: var(--pos-font-bold);
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: 0.58rem;
+  line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -329,13 +331,13 @@
 .pos-producto-precio,
 .pos-producto-precio-may {
   font-weight: var(--pos-font-bold);
-  font-size: 0.75rem;
-  line-height: 1.2;
+  font-size: 0.62rem;
+  line-height: 1.15;
 }
 .pos-producto-precio     { color: var(--pos-rosa); }
 .pos-producto-precio-may { color: var(--pos-azul); }
 .pos-producto-sub {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   font-weight: 700;
   opacity: 0.75;
 }
@@ -877,7 +879,14 @@
   margin: 0.75rem 0.75rem 0 0.75rem;
 }
 @media (min-width: 1024px) {
-  .pos-header { margin: 1rem 1rem 0 1rem; padding: 1rem 1.5rem; }
+  .pos-header {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+  }
+  .pos-header h1 { font-size: 1.1rem; margin-bottom: 0.15rem; }
+  .pos-header-desc { font-size: 0.65rem; margin-bottom: 0.25rem; }
 }
 
 .pos-header-info { position: relative; z-index: 10; }
