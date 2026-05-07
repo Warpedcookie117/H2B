@@ -53,6 +53,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const applyPinned = (pinned) => {
     sidebar.classList.toggle("pinned", pinned);
+    // Al desanclar, colapsar inmediatamente (fix touch screen)
+    if (!pinned) sidebar.classList.remove("hovered");
     localStorage.setItem("sidebarPinned", pinned);
     // Mover pestaña según estado
     if (tab) {
@@ -62,7 +64,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.innerWidth >= 768) {
       const main = document.getElementById("main-content");
       if (main) {
-        // Pinned → empujar a 16rem; no pinned → el CSS md:ml-16 (4rem) toma el control
         main.style.marginLeft = pinned ? "16rem" : "";
       }
     }
@@ -80,11 +81,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Mover pestaña también en hover (sin pinned)
+  // Expandir/colapsar con clase JS en lugar de :hover CSS (fix touch screen)
   sidebar.addEventListener("mouseenter", () => {
-    if (!isPinned() && tab) tab.style.left = "16rem";
+    if (!isPinned()) {
+      sidebar.classList.add("hovered");
+      if (tab) tab.style.left = "16rem";
+    }
   });
   sidebar.addEventListener("mouseleave", () => {
+    sidebar.classList.remove("hovered");
     if (!isPinned() && tab) tab.style.left = "4rem";
   });
 

@@ -32,14 +32,14 @@
   transition: margin-left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* PINNED o HOVER → expandido */
+/* PINNED o HOVERED (clase JS) → expandido — sin :hover CSS para que touch funcione */
 #sidebar.pinned,
-#sidebar:hover {
+#sidebar.hovered {
   width: var(--sb-w-exp);
 }
 
 /* ── TEXTO — solo visible cuando expandido ─────────────────── */
-#sidebar:not(.pinned):not(:hover) .sidebar-text {
+#sidebar:not(.pinned):not(.hovered):not(.open) .sidebar-text {
   opacity: 0;
   width: 0;
   overflow: hidden;
@@ -48,7 +48,8 @@
   transition: opacity 0.15s ease;
 }
 #sidebar.pinned .sidebar-text,
-#sidebar:hover .sidebar-text {
+#sidebar.hovered .sidebar-text,
+#sidebar.open .sidebar-text {
   opacity: 1;
   width: auto;
   display: inline-block;
@@ -56,18 +57,21 @@
 }
 
 /* ── FLECHAS DE SUBMENÚ — ocultas cuando sidebar cerrado ───── */
-#sidebar:not(.pinned):not(:hover) #flecha-inventario,
-#sidebar:not(.pinned):not(:hover) #flecha-sucursales,
-#sidebar:not(.pinned):not(:hover) .sucursal-flecha {
+#sidebar:not(.pinned):not(.hovered):not(.open) #flecha-inventario,
+#sidebar:not(.pinned):not(.hovered):not(.open) #flecha-sucursales,
+#sidebar:not(.pinned):not(.hovered):not(.open) .sucursal-flecha {
   opacity: 0;
   pointer-events: none;
 }
 #sidebar.pinned #flecha-inventario,
-#sidebar:hover  #flecha-inventario,
+#sidebar.hovered #flecha-inventario,
+#sidebar.open #flecha-inventario,
 #sidebar.pinned #flecha-sucursales,
-#sidebar:hover  #flecha-sucursales,
+#sidebar.hovered #flecha-sucursales,
+#sidebar.open #flecha-sucursales,
 #sidebar.pinned .sucursal-flecha,
-#sidebar:hover  .sucursal-flecha {
+#sidebar.hovered .sucursal-flecha,
+#sidebar.open .sucursal-flecha {
   opacity: 1;
   pointer-events: auto;
   transition: opacity 0.2s ease;
