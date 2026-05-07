@@ -56,7 +56,9 @@ function renderPagina(n) {
     const fin    = inicio + ITEMS_POR_PAGINA;
 
     items.forEach((item, i) => {
-        item.style.display = (i >= inicio && i < fin) ? "flex" : "none";
+        const visible = (i >= inicio && i < fin);
+        item.style.display = visible ? "flex" : "none";
+        if (visible) cargarImagenCard(item);
     });
 
     console.log(`[POS:paginacion] renderPagina ${n}: mostrando items ${inicio}–${fin - 1} de ${items.length}`);
@@ -72,6 +74,17 @@ function actualizarUI() {
     const next = document.getElementById("pos-pag-next");
     if (prev) prev.disabled = paginaActual <= 1;
     if (next) next.disabled = paginaActual >= total;
+}
+
+// ============================================================
+// LAZY LOAD DE IMÁGENES
+// ============================================================
+
+export function cargarImagenCard(card) {
+    const img = card.querySelector("img[data-src]");
+    if (!img) return;
+    img.src = img.dataset.src;
+    img.removeAttribute("data-src");
 }
 
 // ============================================================

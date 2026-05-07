@@ -2,7 +2,7 @@
 
 import { normalizar } from "./core.js";
 import { agregarProducto } from "./carrito.js";
-import { activarBusqueda, desactivarBusqueda } from "./paginacion.js";
+import { activarBusqueda, desactivarBusqueda, cargarImagenCard } from "./paginacion.js";
 
 console.log("[POS:buscador] Módulo cargado");
 
@@ -34,7 +34,7 @@ export function initBuscador() {
             const sku    = normalizar(item.dataset.sku    || "");
             const coincide = nombre.includes(texto) || codigo.includes(texto) || sku.includes(texto);
             item.style.display = coincide ? "flex" : "none";
-            if (coincide) coincidencias++;
+            if (coincide) { cargarImagenCard(item); coincidencias++; }
         });
         console.log(`[POS:buscador] filtrar "${texto}" → ${coincidencias} coincidencias de ${items.length}`);
     }

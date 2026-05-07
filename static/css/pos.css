@@ -276,8 +276,8 @@
 .pos-producto-card {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.35rem;
+  gap: 0.15rem;
+  padding: 0.25rem;
   border: 3px solid var(--pos-negro);
   box-shadow: 3px 3px 0 0 var(--pos-negro);
   cursor: pointer;
@@ -305,17 +305,16 @@
 
 .pos-producto-img {
   width: 100%;
-  height: 2.5rem;
+  height: 1.75rem;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.55);
+  background: #fff;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--pos-negro);
 }
-.pos-producto-img img           { width: 100%; height: 100%; object-fit: cover; }
-.pos-producto-img img.object-contain { object-fit: contain; }
+.pos-producto-img img { width: 100%; height: 100%; object-fit: contain; }
 
 .pos-producto-nombre {
   font-weight: var(--pos-font-bold);
@@ -354,6 +353,9 @@
   padding: 0.75rem;
   min-height: 80px;
   background: rgba(255,255,255,0.45);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 @media (min-width: 1024px) {
   .pos-carrito-lista {
