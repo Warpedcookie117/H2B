@@ -185,6 +185,25 @@ export function initEscaneo() {
     }
 
     // ============================================================
+    // FOCO PERMANENTE — el scan-input siempre tiene foco salvo buscar-producto
+    // ============================================================
+
+    document.addEventListener("click", (e) => {
+        if (e.target.id === "buscar-producto") return;
+
+        const modalAbierto =
+            !document.getElementById("modal-pago")?.classList.contains("pos-modal--hidden") ||
+            !document.getElementById("modal-resultado")?.classList.contains("pos-modal--hidden") ||
+            !document.getElementById("modal-consulta-precios")?.classList.contains("pos-modal--hidden") ||
+            document.getElementById("modal-servicio")?.style.display === "flex" ||
+            document.getElementById("modal-regalo")?.style.display === "flex";
+
+        if (modalAbierto) return;
+
+        setTimeout(() => document.getElementById("scan-input")?.focus(), 0);
+    });
+
+    // ============================================================
     // 4. ESCANEO GLOBAL — Enter desde cualquier lugar menos el buscador
     // ============================================================
 
