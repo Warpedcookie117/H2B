@@ -158,7 +158,9 @@
 
       <!-- IMAGEN -->
       <div class="w-full h-32 bg-white border-4 border-black flex items-center justify-center overflow-hidden mb-3">
-        {% if inv.producto.foto_url %}
+        {% if inv.producto.foto_thumbnail %}
+          <img src="{{ inv.producto.foto_thumbnail.url }}" loading="lazy" class="object-contain h-full w-full">
+        {% elif inv.producto.foto_url %}
           <img src="{{ inv.producto.foto_url.url }}" loading="lazy" class="object-contain h-full w-full">
         {% else %}
           <img src="{% static 'img/no-image.png' %}" loading="lazy" class="object-contain h-full w-full">

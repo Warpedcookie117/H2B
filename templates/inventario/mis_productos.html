@@ -130,7 +130,9 @@
                    data-codigo="{{ producto.codigo_barras|default:'' }}">
 
                 <div class="w-full h-24 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-2">
-                  {% if producto.foto_url %}
+                  {% if producto.foto_thumbnail %}
+                    <img src="{{ producto.foto_thumbnail.url }}" loading="lazy" class="object-contain h-full w-full">
+                  {% elif producto.foto_url %}
                     <img src="{{ producto.foto_url.url }}" loading="lazy" class="object-contain h-full w-full">
                   {% else %}
                     <img src="{% static 'img/no-image.png' %}" loading="lazy" class="object-contain h-full w-full">
@@ -233,7 +235,9 @@
                  data-codigo="{{ producto.codigo_barras|default:'' }}">
 
               <div class="w-full h-36 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-3">
-                {% if producto.foto_url %}
+                {% if producto.foto_thumbnail %}
+                  <img src="{{ producto.foto_thumbnail.url }}" loading="lazy" class="object-contain h-full w-full">
+                {% elif producto.foto_url %}
                   <img src="{{ producto.foto_url.url }}" loading="lazy" class="object-contain h-full w-full">
                 {% else %}
                   <img src="{% static 'img/no-image.png' %}" loading="lazy" class="object-contain h-full w-full">

@@ -106,6 +106,15 @@ class Producto(models.Model):
 
     foto_url = models.ImageField(upload_to='productos/', blank=True, null=True)
 
+    # Versión pequeña generada automáticamente al guardar.
+    # La foto_url original NUNCA se modifica.
+    foto_thumbnail = models.ImageField(
+        upload_to='productos/thumbs/',
+        blank=True,
+        null=True,
+        help_text="Versión pequeña auto-generada para listas y cards. No editar manualmente."
+    )
+
     codigo_barras = models.CharField(
         max_length=50,
         blank=True,
@@ -247,6 +256,34 @@ class Producto(models.Model):
     def cantidad_en_ubicacion(self, ubicacion):
         inv = self.inventarios.filter(ubicacion=ubicacion).first()
         return inv.cantidad_actual if inv else 0
+
+    # ============================================================
+    # CICLO DE GUARDADO — auto-genera thumbnail cuando cambia la foto
+    # ============================================================
+
+    def save(self, *args, **kwargs):
+        regenerar_thumb = False
+
+        if self.foto_url:
+            if not self.pk:
+                # Producto nuevo con foto → generar thumb
+                regenerar_thumb = True
+            else:
+                # Producto existente → solo regenerar si cambió la foto
+                try:
+                    anterior = type(self).objects.only("foto_url").get(pk=self.pk)
+                    if anterior.foto_url.name != self.foto_url.name:
+                        regenerar_thumb = True
+                except type(self).DoesNotExist:
+                    regenerar_thumb = True
+
+        if regenerar_thumb:
+            from inventario.services.imagen_service import generar_thumbnail
+            content_file, nombre = generar_thumbnail(self.foto_url)
+            if content_file is not None:
+                self.foto_thumbnail.save(nombre, content_file, save=False)
+
+        super().save(*args, **kwargs)
 
     # ============================================================
     # MÉTODOS DE CICLO DE VIDA
