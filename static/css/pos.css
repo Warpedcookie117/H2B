@@ -83,7 +83,7 @@
 }
 
 .pos-panel--carrito   { background: var(--pos-panel-carrito); }
-.pos-panel--productos { background: var(--pos-panel-productos); width: 100%; gap: 0.5rem; padding: 0.75rem; }
+.pos-panel--productos { background: var(--pos-panel-productos); width: 100%; gap: 0.35rem; padding: 0.5rem; }
 
 @media (min-width: 1024px) {
   .pos-panel--carrito {
@@ -117,15 +117,15 @@
 }
 
 .pos-titulo-productos {
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: var(--pos-font-bold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: center;
-  padding: 0.4rem 0.75rem;
+  padding: 0.3rem 0.75rem;
   background: var(--pos-naranja);
   color: var(--pos-blanco);
-  border: var(--pos-borde);
+  border: 3px solid var(--pos-negro);
   box-shadow: var(--pos-sombra-sm);
 }
 
@@ -192,10 +192,10 @@
 
 .pos-buscador {
   width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  border: var(--pos-borde);
+  border: 3px solid var(--pos-negro);
   background: var(--pos-blanco);
   outline: none;
   color: var(--pos-negro);
@@ -227,16 +227,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 3px solid var(--pos-negro);
+  gap: 0.5rem;
+  padding-top: 0.3rem;
+  border-top: 2px solid var(--pos-negro);
   flex-shrink: 0;
 }
 .pos-paginacion--hidden { display: none; }
 
 .pos-pag-btn {
-  padding: 0.35rem 0.85rem;
-  font-size: 0.75rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.7rem;
   font-weight: var(--pos-font-bold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -305,7 +305,7 @@
 
 .pos-producto-img {
   width: 100%;
-  height: 3rem;
+  height: 4.5rem;
   flex-shrink: 0;
   background: #fff;
   overflow: hidden;
@@ -613,8 +613,8 @@
    BOTÓN DESCUENTO
    ============================ */
 .pos-btn-descuento {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.65rem;
   font-weight: var(--pos-font-bold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -639,21 +639,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  border-bottom: var(--pos-borde);
-  padding-bottom: 0.5rem;
+  gap: 0.3rem;
+  border-bottom: 3px solid var(--pos-negro);
+  padding-bottom: 0.3rem;
 }
 .pos-header-botones {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .pos-btn-header {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.65rem;
   font-weight: var(--pos-font-bold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -896,10 +896,8 @@
     grid-column: 2;
     grid-row: 1;
     margin: 0;
-    padding: 0.5rem 0.75rem;
+    padding: 0.25rem 0.75rem;
   }
-  .pos-header h1 { font-size: 1.1rem; margin-bottom: 0.15rem; }
-  .pos-header-desc { font-size: 0.65rem; margin-bottom: 0.25rem; }
 }
 
 .pos-header-info { position: relative; z-index: 10; }
@@ -914,7 +912,7 @@
   margin-bottom: 0.4rem;
 }
 @media (min-width: 640px)  { .pos-header h1 { font-size: 1.5rem; } }
-@media (min-width: 1024px) { .pos-header h1 { font-size: 1.75rem; } }
+@media (min-width: 1024px) { .pos-header h1 { font-size: 0.95rem; margin-bottom: 0.1rem; } }
 
 .pos-header-desc {
   font-size: 0.7rem;
@@ -925,18 +923,19 @@
   margin-bottom: 0.5rem;
   margin-top: -0.2rem;
 }
-@media (min-width: 640px) { .pos-header-desc { font-size: 0.8rem; } }
+@media (min-width: 640px)  { .pos-header-desc { font-size: 0.8rem; } }
+@media (min-width: 1024px) { .pos-header-desc { font-size: 0.6rem; margin-bottom: 0.15rem; margin-top: 0; } }
 
-.pos-header-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; }
+.pos-header-meta { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.4rem; }
 
 .pos-header-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.2rem 0.6rem;
+  padding: 0.1rem 0.5rem;
   border: 2px solid rgba(0,0,0,0.5);
   box-shadow: 2px 2px 0 0 rgba(0,0,0,0.4);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: var(--pos-font-bold);
   text-transform: uppercase;
   letter-spacing: 0.08em;
