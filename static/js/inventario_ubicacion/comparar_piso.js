@@ -267,3 +267,89 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
         btnTodos?.classList.add("hidden");
     });
 })();
+
+
+// ─────────────────────────────────────────────────────────────
+// PAGINACIÓN AJAX (modo normal, sin reload)
+// + prefetch de imágenes de páginas adyacentes en idle
+// ─────────────────────────────────────────────────────────────
+(function () {
+    const grid         = document.getElementById("gridProductos");
+    const paginacionEl = document.getElementById("paginacion-ubicacion");
+    if (!grid || !paginacionEl) return;
+
+    const prefetchedPages = new Set();
+
+    async function navegarAPagina(href) {
+        try {
+            grid.style.opacity = "0.5";
+            const res  = await fetch(href, { credentials: "same-origin" });
+            const html = await res.text();
+            const doc  = new DOMParser().parseFromString(html, "text/html");
+
+            const newGrid  = doc.getElementById("gridProductos");
+            const newPagin = doc.getElementById("paginacion-ubicacion");
+
+            if (newGrid)  grid.innerHTML         = newGrid.innerHTML;
+            if (newPagin) paginacionEl.innerHTML = newPagin.innerHTML;
+
+            history.pushState({ ajaxPagin: true }, "", href);
+            window.aplicarColoresCards?.();
+            renderAllResumenes();
+
+            // Precargar imágenes del grid actual + adyacentes
+            const imgs = grid.querySelectorAll("img");
+            window.precargarImagenesEnIdle?.(Array.from(imgs));
+            prefetchAdyacentes();
+
+            // Scroll al inicio del grid para que se vea la página nueva
+            grid.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch (e) {
+            console.error("[paginacion AJAX]", e);
+            window.location.href = href; // fallback
+        } finally {
+            grid.style.opacity = "";
+        }
+    }
+
+    async function prefetchAdyacentes() {
+        const url = new URL(window.location.href);
+        const cur = parseInt(url.searchParams.get("page") || "1");
+        const candidates = [cur + 1, cur - 1].filter(p => p >= 1);
+
+        for (const page of candidates) {
+            if (prefetchedPages.has(page)) continue;
+            const u = new URL(window.location.href);
+            u.searchParams.set("page", page);
+            try {
+                const res  = await fetch(u.toString(), { credentials: "same-origin" });
+                if (!res.ok) continue;
+                const html = await res.text();
+                const doc  = new DOMParser().parseFromString(html, "text/html");
+                const imgs = Array.from(doc.querySelectorAll("#gridProductos img"));
+                window.precargarImagenesEnIdle?.(imgs);
+                prefetchedPages.add(page);
+            } catch (e) { /* silencioso */ }
+        }
+    }
+
+    // Interceptar clicks en links de paginación
+    paginacionEl.addEventListener("click", (e) => {
+        const link = e.target.closest("a[href*='page=']");
+        if (!link) return;
+        e.preventDefault();
+        navegarAPagina(link.href);
+    });
+
+    // Manejo del back/forward del navegador
+    window.addEventListener("popstate", (e) => {
+        if (e.state?.ajaxPagin) navegarAPagina(window.location.href);
+    });
+
+    // Al cargar la página, prefetch de páginas adyacentes en idle
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(prefetchAdyacentes, { timeout: 2000 });
+    } else {
+        setTimeout(prefetchAdyacentes, 500);
+    }
+})();

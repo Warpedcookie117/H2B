@@ -188,7 +188,13 @@ export function initEscaneo() {
     // FOCO PERMANENTE — el scan-input siempre tiene foco salvo buscar-producto
     // ============================================================
 
+    // En móvil/touch: NO devolver foco al scan-input automáticamente porque
+    // abre el teclado on-screen y el viewport reescala (parece reload).
+    // En móvil tampoco hay scanner físico que requiera mantener el foco.
+    const esTouch = window.matchMedia("(pointer: coarse)").matches;
+
     document.addEventListener("click", (e) => {
+        if (esTouch) return;
         if (e.target.id === "buscar-producto") return;
 
         const modalAbierto =
