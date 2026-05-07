@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     let activoPisoId        = window.pairedUbicacionId || null;
     let gridOriginalHTML    = null;
     let paginOriginalHTML   = null;
-    let faltanteCards       = [];  // nodos DOM de todos los faltantes
+    let faltanteGroups      = [];  // [[card, modalAgregar, modalAjustar], ...]
     let faltantePage        = 1;
 
     // ── Conteo desde inventarioTodas ─────────────────────────
@@ -136,13 +136,13 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     // ── Renderizar página de faltantes ────────────────────────
     function renderFaltantePage(page) {
         faltantePage = page;
-        const total    = faltanteCards.length;
+        const total    = faltanteGroups.length;
         const numPages = Math.ceil(total / POR_PAGINA);
         const start    = (page - 1) * POR_PAGINA;
-        const visible  = faltanteCards.slice(start, start + POR_PAGINA);
+        const visible  = faltanteGroups.slice(start, start + POR_PAGINA);
 
         grid.innerHTML = "";
-        visible.forEach(card => grid.appendChild(card));
+        visible.forEach(group => group.forEach(el => grid.appendChild(el)));
         window.aplicarColoresCards?.();
         renderAllResumenes();
 
@@ -177,7 +177,20 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
             paginOriginalHTML = paginacionEl?.innerHTML ?? "";
         }
 
-        faltanteCards = Array.from(newGrid.querySelectorAll(".cardProducto"));
+        // Agrupar card + sus modales hermanos (modal_agregar, modal_ajustar)
+        // El template renderea: card, modalAgregar_X, modalAjustar_X, card, ...
+        faltanteGroups = [];
+        let current = null;
+        for (const child of Array.from(newGrid.children)) {
+            if (child.classList?.contains("cardProducto")) {
+                if (current) faltanteGroups.push(current);
+                current = [child];
+            } else if (current) {
+                current.push(child);
+            }
+        }
+        if (current) faltanteGroups.push(current);
+
         renderFaltantePage(1);
     }
 
@@ -213,8 +226,8 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
             paginacionEl.innerHTML = paginOriginalHTML;
             paginOriginalHTML = null;
         }
-        faltanteCards = [];
-        faltantePage  = 1;
+        faltanteGroups = [];
+        faltantePage   = 1;
         window.aplicarColoresCards?.();
         renderAllResumenes();
         btnTodos?.classList.add("hidden");
