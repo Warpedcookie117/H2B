@@ -2,7 +2,7 @@
 
 import { normalizar } from "./core.js";
 import { agregarProducto } from "./carrito.js";
-import { activarBusqueda, desactivarBusqueda, cargarImagenCard } from "./paginacion.js";
+import { setFiltro, clearFiltro, cargarImagenCard } from "./paginacion.js";
 
 console.log("[POS:buscador] Módulo cargado");
 
@@ -18,25 +18,39 @@ export function initBuscador() {
 
     function filtrarProductos(texto) {
         texto = normalizar(texto);
-        const items = document.querySelectorAll(".producto-item");
 
         if (!texto) {
-            console.log("[POS:buscador] filtrar: texto vacío → desactivarBusqueda");
-            desactivarBusqueda();
+            console.log("[POS:buscador] filtrar: texto vacío → clearFiltro");
+            clearFiltro();
             return;
         }
 
-        activarBusqueda();
-        let coincidencias = 0;
-        items.forEach(item => {
-            const nombre = normalizar(item.dataset.nombre);
-            const codigo = normalizar(item.dataset.codigo || "");
-            const sku    = normalizar(item.dataset.sku    || "");
-            const coincide = nombre.includes(texto) || codigo.includes(texto) || sku.includes(texto);
-            item.style.display = coincide ? "flex" : "none";
-            if (coincide) { cargarImagenCard(item); coincidencias++; }
-        });
-        console.log(`[POS:buscador] filtrar "${texto}" → ${coincidencias} coincidencias de ${items.length}`);
+        const items = Array.from(document.querySelectorAll(".producto-item"));
+
+        const coincidentes = items
+            .map(item => {
+                const nombre = normalizar(item.dataset.nombre);
+                const codigo = normalizar(item.dataset.codigo || "");
+                const sku    = normalizar(item.dataset.sku    || "");
+                const score  = getScoreBusqueda(nombre, codigo, sku, texto);
+                return { item, score };
+            })
+            .filter(({ score }) => score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map(({ item }) => item);
+
+        setFiltro(coincidentes);
+        console.log(`[POS:buscador] filtrar "${texto}" → ${coincidentes.length} resultados`);
+    }
+
+    function getScoreBusqueda(nombre, codigo, sku, texto) {
+        if (codigo === texto || sku === texto)                        return 100; // exacto código/sku
+        if (nombre === texto)                                         return 90;  // exacto nombre
+        if (codigo.startsWith(texto) || sku.startsWith(texto))       return 80;  // código empieza con
+        if (nombre.startsWith(texto))                                 return 70;  // nombre empieza con
+        if (nombre.includes(texto))                                   return 60;  // nombre contiene
+        if (codigo.includes(texto) || sku.includes(texto))           return 50;  // código contiene
+        return 0;
     }
 
     buscarInput.addEventListener("input", () => {

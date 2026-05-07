@@ -1,11 +1,11 @@
-// paginacion.js — Paginación del grid de productos POS
+// paginacion.js — Paginación + filtro de búsqueda con animación
 
 console.log("[POS:paginacion] Módulo cargado");
 
-const ITEMS_POR_PAGINA = 6; // 2 columnas × 3 filas
+const ITEMS_POR_PAGINA = 6;
 
 let paginaActual = 1;
-let busquedaActiva = false;
+let filteredItems = null; // null = todos, array = resultados de búsqueda ordenados
 
 // ============================================================
 // INIT
@@ -16,57 +16,78 @@ export function initPaginacion() {
     renderPagina(1);
 
     document.getElementById("pos-pag-prev")?.addEventListener("click", () => {
-        console.log(`[POS:paginacion] click ANT → página ${paginaActual - 1}`);
         if (paginaActual > 1) irAPagina(paginaActual - 1);
     });
 
     document.getElementById("pos-pag-next")?.addEventListener("click", () => {
-        console.log(`[POS:paginacion] click SIG → página ${paginaActual + 1}`);
         if (paginaActual < getTotalPaginas()) irAPagina(paginaActual + 1);
     });
 }
 
 // ============================================================
-// PAGINACIÓN
+// ITEMS
 // ============================================================
 
-function getItems() {
+function getAllItems() {
     return Array.from(document.querySelectorAll(".producto-item"));
 }
 
+function getActiveItems() {
+    return filteredItems !== null ? filteredItems : getAllItems();
+}
+
 function getTotalPaginas() {
-    return Math.max(1, Math.ceil(getItems().length / ITEMS_POR_PAGINA));
+    return Math.max(1, Math.ceil(getActiveItems().length / ITEMS_POR_PAGINA));
 }
 
 function irAPagina(n) {
-    const anterior = paginaActual;
     paginaActual = Math.max(1, Math.min(n, getTotalPaginas()));
-    console.log(`[POS:paginacion] irAPagina: ${anterior} → ${paginaActual} (total=${getTotalPaginas()})`);
+    console.log(`[POS:paginacion] irAPagina → ${paginaActual}`);
     renderPagina(paginaActual);
 }
 
-function renderPagina(n) {
-    if (busquedaActiva) {
-        console.log("[POS:paginacion] renderPagina omitido — búsqueda activa");
-        return;
-    }
+// ============================================================
+// RENDER
+// ============================================================
 
-    const items = getItems();
+function renderPagina(n) {
+    const allItems    = getAllItems();
+    const activeItems = getActiveItems();
     const inicio = (n - 1) * ITEMS_POR_PAGINA;
     const fin    = inicio + ITEMS_POR_PAGINA;
 
-    items.forEach((item, i) => {
-        const visible = (i >= inicio && i < fin);
-        item.style.display = visible ? "flex" : "none";
-        if (visible) cargarImagenCard(item);
+    // Ocultar todos
+    allItems.forEach(item => { item.style.display = "none"; });
+
+    // Mostrar página actual con lazy-load y animación escalonada
+    activeItems.slice(inicio, fin).forEach((item, i) => {
+        item.style.display = "flex";
+        cargarImagenCard(item);
+        animarCard(item, i * 40);
     });
 
-    console.log(`[POS:paginacion] renderPagina ${n}: mostrando items ${inicio}–${fin - 1} de ${items.length}`);
+    console.log(`[POS:paginacion] renderPagina ${n}: ${inicio}–${Math.min(fin, activeItems.length) - 1} de ${activeItems.length}`);
     actualizarUI();
 }
 
+// ============================================================
+// ANIMACIÓN
+// ============================================================
+
+function animarCard(card, delayMs = 0) {
+    card.style.animationDelay = delayMs + "ms";
+    card.classList.remove("pos-card-anim");
+    void card.offsetWidth; // reflow para reiniciar la animación
+    card.classList.add("pos-card-anim");
+}
+
+// ============================================================
+// UI DE PAGINACIÓN
+// ============================================================
+
 function actualizarUI() {
     const total = getTotalPaginas();
+
     const info = document.getElementById("pos-pag-info");
     if (info) info.textContent = `${paginaActual} / ${total}`;
 
@@ -74,6 +95,10 @@ function actualizarUI() {
     const next = document.getElementById("pos-pag-next");
     if (prev) prev.disabled = paginaActual <= 1;
     if (next) next.disabled = paginaActual >= total;
+
+    // Siempre visible — también pagina resultados de búsqueda
+    const paginacion = document.getElementById("pos-paginacion");
+    if (paginacion) paginacion.classList.toggle("pos-paginacion--hidden", total <= 1);
 }
 
 // ============================================================
@@ -88,19 +113,21 @@ export function cargarImagenCard(card) {
 }
 
 // ============================================================
-// INTEGRACIÓN CON BUSCADOR
+// API DE FILTRO (usada por buscador_productos.js)
 // ============================================================
 
-export function activarBusqueda() {
-    console.log("[POS:paginacion] activarBusqueda");
-    busquedaActiva = true;
-    document.getElementById("pos-paginacion")?.classList.add("pos-paginacion--hidden");
+export function setFiltro(items) {
+    filteredItems = items;
+    paginaActual  = 1;
+    renderPagina(1);
 }
 
-export function desactivarBusqueda() {
-    console.log("[POS:paginacion] desactivarBusqueda — restaurando página 1");
-    busquedaActiva = false;
-    paginaActual = 1;
-    document.getElementById("pos-paginacion")?.classList.remove("pos-paginacion--hidden");
-    renderPagina(paginaActual);
+export function clearFiltro() {
+    filteredItems = null;
+    paginaActual  = 1;
+    renderPagina(1);
 }
+
+// Alias de compatibilidad — no hacen nada, la paginación ahora funciona en ambos modos
+export const activarBusqueda  = () => {};
+export const desactivarBusqueda = clearFiltro;

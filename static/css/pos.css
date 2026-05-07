@@ -305,7 +305,7 @@
 
 .pos-producto-img {
   width: 100%;
-  height: 1.75rem;
+  height: 3rem;
   flex-shrink: 0;
   background: #fff;
   overflow: hidden;
@@ -858,13 +858,24 @@
 }
 
 /* ============================
-   ANIMACIÓN ENTRADA
+   ANIMACIÓN ENTRADA MODALES
    ============================ */
 @keyframes posScaleIn {
   from { opacity: 0; transform: scale(0.9); }
   to   { opacity: 1; transform: scale(1); }
 }
 .pos-animate-scale { animation: posScaleIn 0.2s ease-out; }
+
+/* ============================
+   ANIMACIÓN CARDS (paginación / búsqueda)
+   ============================ */
+@keyframes posCardFadeIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+.pos-card-anim {
+  animation: posCardFadeIn 0.18s ease-out both;
+}
 
 /* ============================
    ENCABEZADO PRINCIPAL
