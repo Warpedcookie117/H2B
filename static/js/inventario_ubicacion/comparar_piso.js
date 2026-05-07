@@ -1,11 +1,10 @@
 /* ============================================================
    RESUMEN DE UBICACIONES — siempre visible en cada card
-   PANEL ¿QUÉ FALTA EN PISO?    — filtro por selección
+   PANEL ¿QUÉ FALTA?           — AJAX, sin reload de página
    ============================================================ */
 
-// ── Mapa rápido id → {nombre, tipo} ──────────────────────────
-const _ubicMap  = {};
-const _currId   = window.ubicacionActualId || 0;
+const _ubicMap = {};
+const _currId  = window.ubicacionActualId || 0;
 (window.todasUbicaciones || []).forEach(u => { _ubicMap[u.id] = u; });
 
 // ── RESUMEN SIEMPRE VISIBLE ───────────────────────────────────
@@ -19,27 +18,15 @@ function _cantOtraUbic(productoId, ubicId) {
 
 function renderResumenCard(card) {
     const pid = parseInt(card.dataset.producto);
-
-    // Pisos → siempre mostrar (aunque sean 0)
-    // Otros → solo si tienen stock
-    const relevantes = Object.values(_ubicMap).filter(u => {
-        if (u.id === _currId) return false;
-        const qty = _cantOtraUbic(pid, u.id);
-        return true;
-    });
+    const relevantes = Object.values(_ubicMap).filter(u => u.id !== _currId);
 
     let section = card.querySelector(".loc-summary");
-
-    if (relevantes.length === 0) {
-        if (section) section.remove();
-        return;
-    }
+    if (relevantes.length === 0) { if (section) section.remove(); return; }
 
     if (!section) {
         section = document.createElement("div");
         section.className = "loc-summary";
         section.style.cssText = "border-top:2px solid black;padding:0.3rem 0 0;margin:0.3rem 0 0;";
-        // Inserta justo antes del bloque de precios (después del contador de piezas)
         const cantSpan = card.querySelector(".cantidad-ubicacion");
         const cantBox  = cantSpan?.closest(".flex.items-center.justify-center");
         const priceBox = cantBox?.nextElementSibling;
@@ -53,18 +40,10 @@ function renderResumenCard(card) {
         return `<div style="
             background:${falta ? "#FF006E" : "#06D6A0"};
             color:${falta ? "white" : "black"};
-            border:2px solid black;
-            font-weight:900;
-            font-size:0.58rem;
-            text-transform:uppercase;
-            letter-spacing:0.05em;
-            padding:0.18rem 0.45rem;
-            margin-bottom:0.18rem;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:0.4rem;
-        ">
+            border:2px solid black;font-weight:900;font-size:0.58rem;
+            text-transform:uppercase;letter-spacing:0.05em;
+            padding:0.18rem 0.45rem;margin-bottom:0.18rem;
+            display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${u.nombre}</span>
           <span style="flex-shrink:0">${qty} pzas</span>
         </div>`;
@@ -75,10 +54,7 @@ function renderAllResumenes() {
     document.querySelectorAll("#gridProductos .cardProducto").forEach(renderResumenCard);
 }
 
-// Hook que llama actualizarCard tras cada operación
 window.refrescarResumenUbicaciones = function (productoId) {
-    // El producto puede estar en el grid actual (como origen) o en otro
-    // En ambos casos, cualquier card del grid con ese producto_id debe actualizarse
     document.querySelectorAll(`#gridProductos [data-producto="${productoId}"]`)
         .forEach(renderResumenCard);
 };
@@ -95,68 +71,94 @@ document.addEventListener("DOMContentLoaded", renderAllResumenes);
     const selectEl = document.getElementById("select-piso-cmp");
     const btnTodos = document.getElementById("btn-todos-piso");
     const countEl  = document.getElementById("cnt-faltan-piso");
+    const grid     = document.getElementById("gridProductos");
 
-    // Auto-paired (bodega↔piso misma sucursal) or null (global, usa select)
-    let activoPisoId  = window.pairedUbicacionId || null;
-    let soloFaltantes = false;
+    let activoPisoId   = window.pairedUbicacionId || null;
+    let gridOriginalHTML = null; // guarda el grid completo para restaurar
 
-    function recalcularPanel() {
-        const cards = document.querySelectorAll("#gridProductos .cardProducto");
+    // ── Conteo desde inventarioTodas ─────────────────────────
+    function recalcularConteo() {
+        if (!activoPisoId) {
+            if (countEl) countEl.textContent = 0;
+            btnFaltan.disabled = true;
+            return;
+        }
+        const enActual = new Set(
+            (window.inventarioTodas || [])
+                .filter(i => i.ubicacion_id === _currId)
+                .map(i => i.producto_id)
+        );
+        const enPaired = new Map(
+            (window.inventarioTodas || [])
+                .filter(i => i.ubicacion_id === activoPisoId)
+                .map(i => [i.producto_id, i.cantidad_actual])
+        );
+        let n = 0;
+        enActual.forEach(pid => { if ((enPaired.get(pid) || 0) === 0) n++; });
+        if (countEl)   countEl.textContent = n;
+        if (btnFaltan) btnFaltan.disabled   = false;
+    }
 
-        if (activoPisoId) {
-            // Count across ALL products in current location (global, not just current page)
-            const enActual = new Set(
-                (window.inventarioTodas || [])
-                    .filter(i => i.ubicacion_id === _currId)
-                    .map(i => i.producto_id)
-            );
-            const enPaired = new Map(
-                (window.inventarioTodas || [])
-                    .filter(i => i.ubicacion_id === activoPisoId)
-                    .map(i => [i.producto_id, i.cantidad_actual])
-            );
-            let faltantes = 0;
-            enActual.forEach(pid => {
-                if ((enPaired.get(pid) || 0) === 0) faltantes++;
+    window.refrescarComparacionPiso = recalcularConteo;
+    document.addEventListener("DOMContentLoaded", recalcularConteo);
+
+    // ── AJAX: reemplazar grid sin recargar página ─────────────
+    async function cargarGrid(extraParams = {}) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("page");
+        Object.entries(extraParams).forEach(([k, v]) => {
+            if (v === null) url.searchParams.delete(k);
+            else            url.searchParams.set(k, v);
+        });
+
+        try {
+            const res  = await fetch(url.toString(), {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
             });
-
-            if (countEl)   countEl.textContent = faltantes;
-            if (btnFaltan) btnFaltan.disabled   = false;
-
-            // Show/hide cards on the current page
-            cards.forEach(card => {
-                const qty = _cantOtraUbic(parseInt(card.dataset.producto), activoPisoId);
-                card.style.display = soloFaltantes && qty !== 0 ? "none" : "";
-            });
-        } else {
-            if (countEl)   countEl.textContent = 0;
-            if (btnFaltan) btnFaltan.disabled   = true;
-            cards.forEach(card => { card.style.display = ""; });
+            const html    = await res.text();
+            const doc     = new DOMParser().parseFromString(html, "text/html");
+            const newGrid = doc.getElementById("gridProductos");
+            if (newGrid && grid) {
+                grid.innerHTML = newGrid.innerHTML;
+                window.aplicarColoresCards?.();
+                renderAllResumenes();
+            }
+        } catch (e) {
+            console.error("[comparar_piso] Error cargando grid:", e);
         }
     }
 
-    window.refrescarComparacionPiso = recalcularPanel;
-
-    // Auto-run once DOM is ready (if paired, shows count immediately)
-    document.addEventListener("DOMContentLoaded", recalcularPanel);
-
+    // ── Select (ubicación manual) ─────────────────────────────
     selectEl?.addEventListener("change", e => {
-        activoPisoId  = e.target.value ? parseInt(e.target.value) : null;
-        soloFaltantes = false;
-        btnTodos?.classList.add("hidden");
-        recalcularPanel();
+        activoPisoId = e.target.value ? parseInt(e.target.value) : null;
+        recalcularConteo();
     });
 
-    btnFaltan.addEventListener("click", () => {
+    // ── Botón "¿Qué falta?" ───────────────────────────────────
+    btnFaltan.addEventListener("click", async () => {
         if (!activoPisoId) return;
-        soloFaltantes = true;
+
+        // Guardar grid original solo la primera vez
+        if (!gridOriginalHTML) gridOriginalHTML = grid.innerHTML;
+
+        btnFaltan.disabled = true;
+        btnFaltan.textContent = "Cargando...";
+
+        await cargarGrid({ falta_en: activoPisoId });
+
+        btnFaltan.disabled = false;
+        btnFaltan.innerHTML = `¿Qué me falta? (<span id="cnt-faltan-piso">${countEl?.textContent || 0}</span>)`;
         btnTodos?.classList.remove("hidden");
-        recalcularPanel();
     });
 
+    // ── Botón "Mostrar todos" ─────────────────────────────────
     btnTodos?.addEventListener("click", () => {
-        soloFaltantes = false;
+        if (gridOriginalHTML && grid) {
+            grid.innerHTML = gridOriginalHTML;
+            gridOriginalHTML = null;
+            window.aplicarColoresCards?.();
+            renderAllResumenes();
+        }
         btnTodos?.classList.add("hidden");
-        recalcularPanel();
     });
 })();

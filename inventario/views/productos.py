@@ -55,6 +55,20 @@ def productos_por_ubicacion(request, ubicacion_id):
             pass
         productos = productos.filter(filtro).distinct()
 
+    # Filtro "¿Qué falta?" — excluye productos que ya tienen stock en la ubicación paired
+    falta_en_id = None
+    falta_en_raw = request.GET.get("falta_en", "").strip()
+    if falta_en_raw:
+        try:
+            falta_en_id = int(falta_en_raw)
+            en_paired = Inventario.objects.filter(
+                ubicacion_id=falta_en_id,
+                cantidad_actual__gt=0,
+            ).values_list("producto_id", flat=True)
+            productos = productos.exclude(producto__id__in=en_paired)
+        except (ValueError, TypeError):
+            falta_en_id = None
+
     # Solo productos que existen en esta ubicación — evita cargar inventario global
     ids_en_ubicacion = list(
         Inventario.objects
@@ -119,6 +133,7 @@ def productos_por_ubicacion(request, ubicacion_id):
         "piso_ubicaciones": piso_ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
         "q": q,
+        "falta_en_id": falta_en_id,
     })
 
 
