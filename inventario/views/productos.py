@@ -185,7 +185,41 @@ def detalle_producto(request, producto_id):
         precio_docena_raw = request.POST.get("precio_docena", "").strip()
         producto.precio_docena = precio_docena_raw if precio_docena_raw else None
 
+        # ⭐ Cambio de subcategoría (afecta también categoría_padre y atributos)
+        sub_id_raw = request.POST.get("subcategoria", "").strip()
+        sub_cambio = False
+        if sub_id_raw and str(producto.categoria_id) != sub_id_raw:
+            try:
+                nueva_sub = Categoria.objects.select_related("padre").get(id=sub_id_raw)
+                if nueva_sub.padre_id is not None:
+                    producto.categoria = nueva_sub
+                    producto.categoria_padre = nueva_sub.padre
+                    sub_cambio = True
+            except (Categoria.DoesNotExist, ValueError):
+                pass
+
+        # ⭐ Cambio de dueño
+        dueno_id_raw = request.POST.get("dueño", "").strip()
+        if dueno_id_raw and str(producto.dueño_id) != dueno_id_raw:
+            try:
+                producto.dueño = Empleado.objects.get(id=dueno_id_raw, rol="dueño")
+            except (Empleado.DoesNotExist, ValueError):
+                pass
+
         producto.save()
+
+        # Si la sub cambió, los atributos a procesar son los de la NUEVA sub.
+        # Y borramos ValorAtributo huérfanos (de atributos que ya no aplican).
+        if sub_cambio:
+            atributos_actuales_ids = set(producto.categoria.atributos.values_list("id", flat=True))
+            ValorAtributo.objects.filter(producto=producto).exclude(
+                atributo_id__in=atributos_actuales_ids
+            ).delete()
+            sub_atributos = producto.categoria.atributos.all()
+            valores = {
+                v.atributo.id: v
+                for v in ValorAtributo.objects.filter(producto=producto)
+            }
 
         for attr in sub_atributos:
             field_name = f"attr_{attr.nombre}"
@@ -241,11 +275,32 @@ def detalle_producto(request, producto_id):
             "valor": valores.get(attr.id).valor if attr.id in valores else None
         })
 
+    # ⭐ Datos para los selects editables (solo si puede_editar, pero rendereamos siempre sin costo extra)
+    categorias_padre = list(Categoria.objects.filter(padre__isnull=True).order_by("nombre"))
+    subcategorias    = list(
+        Categoria.objects.filter(padre__isnull=False)
+        .select_related("padre")
+        .order_by("nombre")
+    )
+    dueños = list(
+        Empleado.objects
+        .filter(rol="dueño")
+        .select_related("user")
+        .order_by("user__first_name")
+    )
+    atributos_todos = list(
+        Atributo.objects.select_related("categoria").order_by("categoria_id", "nombre")
+    )
+
     return render(request, "inventario/detalle_producto.html", {
         "producto": producto,
         "inventarios": inventarios,
         "atributos": atributos,
         "puede_editar": puede_editar,
+        "categorias_padre": categorias_padre,
+        "subcategorias": subcategorias,
+        "dueños": dueños,
+        "atributos_todos": atributos_todos,
     })
 
 

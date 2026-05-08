@@ -106,6 +106,7 @@
         Código del producto
       </p>
       <img id="codigo-img" src=""
+           data-url="{% url 'inventario:codigo_base64' producto.id %}"
            class="mx-auto max-h-36 border-4 border-black shadow-[4px_4px_0_0_black] mb-3">
       <p class="font-black font-mono text-black text-lg tracking-widest">
         {{ producto.codigo_barras }}
@@ -162,17 +163,47 @@
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Categoría padre</label>
-            <input type="text" disabled value="{{ producto.categoria_padre.nombre }}" class="field-90s">
+            {% if puede_editar %}
+              <select id="sel-categoria-padre" class="field-90s">
+                {% for cp in categorias_padre %}
+                  <option value="{{ cp.id }}" {% if producto.categoria_padre_id == cp.id %}selected{% endif %}>{{ cp.nombre }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="text" disabled value="{{ producto.categoria_padre.nombre }}" class="field-90s">
+            {% endif %}
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Subcategoría</label>
-            <input type="text" disabled value="{{ producto.categoria.nombre }}" class="field-90s">
+            {% if puede_editar %}
+              <select id="sel-subcategoria" name="subcategoria" class="field-90s">
+                {% for sub in subcategorias %}
+                  <option value="{{ sub.id }}"
+                          data-padre="{{ sub.padre_id }}"
+                          {% if producto.categoria_id == sub.id %}selected{% endif %}>
+                    {{ sub.nombre }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="text" disabled value="{{ producto.categoria.nombre }}" class="field-90s">
+            {% endif %}
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Dueño</label>
-            <input type="text" disabled value="{{ producto.dueño }}" class="field-90s">
+            {% if puede_editar %}
+              <select name="dueño" class="field-90s">
+                {% for d in dueños %}
+                  <option value="{{ d.id }}" {% if producto.dueño_id == d.id %}selected{% endif %}>
+                    {{ d.user.get_full_name|default:d.user.username }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <input type="text" disabled value="{{ producto.dueño }}" class="field-90s">
+            {% endif %}
           </div>
 
           <div class="flex flex-col gap-1">
@@ -187,14 +218,69 @@
 
         </div>
 
+        {# Datos ocultos para que el JS arme el cascade y los atributos dinámicos #}
         {% if puede_editar %}
-        <div class="mt-6 flex justify-end">
+        <div id="atributos-data" style="display:none;">
+          {% for a in atributos_todos %}
+          <div data-categoria="{{ a.categoria_id }}"
+               data-id="{{ a.id }}"
+               data-nombre="{{ a.nombre }}"
+               data-tipo="{{ a.tipo }}"></div>
+          {% endfor %}
+        </div>
+        <div id="atributos-actuales" style="display:none;">
+          {% for a in atributos %}
+          <div data-id="{{ a.id }}" data-valor="{{ a.valor|default:'' }}"></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {# ── ATRIBUTOS — dentro del mismo form para guardar todo junto ── #}
+        <div class="mt-8 border-t-4 border-black pt-6">
+          <h3 class="font-black text-black uppercase tracking-widest text-base mb-1">Atributos del producto</h3>
+          <p class="text-black/60 font-semibold text-xs mb-4 uppercase tracking-widest">
+            Características específicas de la subcategoría seleccionada
+          </p>
+
+          <div id="atributos-container" class="space-y-3">
+            {% if atributos %}
+              {% for a in atributos %}
+              <div class="border-4 border-black shadow-[3px_3px_0_0_black] bg-[#F0FFF4]
+                          p-4 flex items-center justify-between gap-4 flex-wrap">
+                <span class="font-black text-black uppercase tracking-wide text-sm">{{ a.nombre }}</span>
+                {% if puede_editar %}
+                  <input type="text" name="attr_{{ a.nombre }}" value="{{ a.valor|default:'' }}" class="field-90s w-48">
+                {% else %}
+                  <span class="border-2 border-black bg-[#CCFF00] text-black font-black text-sm px-3 py-1">
+                    {{ a.valor|default:"Sin valor" }}
+                  </span>
+                {% endif %}
+              </div>
+              {% endfor %}
+            {% else %}
+              <p class="border-4 border-dashed border-gray-300 p-6 text-center text-gray-400 font-bold text-sm">
+                Esta subcategoría no tiene atributos configurados.
+              </p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if puede_editar %}
+        <div class="mt-6 flex justify-end gap-3 flex-wrap">
+          <button type="button" id="btn-restaurar"
+                  class="btn-90s bg-[#FFBE0B] border-4 border-black shadow-[4px_4px_0_0_black]
+                         text-black font-black text-sm uppercase tracking-widest px-5 py-3">
+            ↶ Restaurar valores originales
+          </button>
           <button type="submit"
                   class="btn-90s bg-[#00F5D4] border-4 border-black shadow-[4px_4px_0_0_black]
                          text-black font-black text-sm uppercase tracking-widest px-6 py-3">
             💾 Guardar cambios
           </button>
         </div>
+        <p class="mt-3 text-xs text-gray-500 font-semibold text-right">
+          Si cambiaste algo por error, dale a "Restaurar" — no se ha guardado nada todavía.
+        </p>
         {% endif %}
 
       </form>
@@ -241,39 +327,6 @@
       {% endif %}
     </div>
 
-  </div>
-
-  <!-- ATRIBUTOS -->
-  <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
-    <div class="bg-[#FFBE0B] border-b-4 border-black px-6 py-4">
-      <h2 class="font-black text-black uppercase tracking-widest text-lg">Atributos del producto</h2>
-      <p class="text-black/60 font-semibold text-xs mt-0.5 uppercase tracking-widest">
-        Características específicas de esta subcategoría
-      </p>
-    </div>
-    <div class="bg-white p-6">
-      {% if atributos %}
-        <ul class="space-y-3">
-          {% for a in atributos %}
-          <li class="border-4 border-black shadow-[3px_3px_0_0_black] bg-[#F0FFF4]
-                     p-4 flex items-center justify-between gap-4 flex-wrap">
-            <span class="font-black text-black uppercase tracking-wide text-sm">{{ a.nombre }}</span>
-            {% if puede_editar %}
-              <input type="text" name="attr_{{ a.nombre }}" value="{{ a.valor }}" class="field-90s w-48">
-            {% else %}
-              <span class="border-2 border-black bg-[#CCFF00] text-black font-black text-sm px-3 py-1">
-                {{ a.valor|default:"Sin valor" }}
-              </span>
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="border-4 border-dashed border-gray-300 p-6 text-center text-gray-400 font-bold text-sm">
-          Esta subcategoría no tiene atributos configurados.
-        </p>
-      {% endif %}
-    </div>
   </div>
 
   <!-- TEMPORADAS -->
@@ -344,30 +397,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const msgContainer = document.getElementById("msg-container");
-  if (msgContainer) {
-    setTimeout(() => { msgContainer.style.opacity = "0"; }, 3000);
-    setTimeout(() => { msgContainer.remove(); }, 3500);
-  }
-
-  const img = document.getElementById("codigo-img");
-  const url = "{% url 'inventario:codigo_base64' producto.id %}";
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      if (data.imagen) img.src = `data:image/png;base64,${data.imagen}`;
-    })
-    .catch(err => console.error("Error cargando código:", err));
-});
-
-function toggleCosto() {
-  const panel = document.getElementById("panelCosto");
-  const icon = document.getElementById("iconCosto");
-  const abierto = !panel.classList.contains("hidden");
-  panel.classList.toggle("hidden");
-  icon.textContent = abierto ? "▼" : "▲";
-}
-</script>
+<script src="{% static 'js/detalle_producto.js' %}"></script>
 {% endblock %}
