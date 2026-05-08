@@ -23,14 +23,29 @@ def generar_thumbnail(file_field):
     ContentFile con la versión redimensionada lista para asignarse
     a foto_thumbnail.
 
+    NUNCA cierra ni consume el file_field — Django todavía necesita
+    leerlo después para guardar el archivo original en disco.
+
     Devuelve (content_file, nombre_archivo) o (None, None) si falla.
     """
     if not file_field:
         return None, None
 
     try:
-        file_field.open("rb")
-        img = Image.open(file_field)
+        # Leer el contenido completo a bytes UNA sola vez y trabajar
+        # sobre una copia en memoria. Así no movemos el cursor del
+        # file_field ni lo cerramos — Django lo lee después intacto.
+        try:
+            file_field.seek(0)
+        except Exception:
+            pass
+        contenido = file_field.read()
+        try:
+            file_field.seek(0)
+        except Exception:
+            pass
+
+        img = Image.open(io.BytesIO(contenido))
 
         # Respetar la orientación EXIF (iPhone gira fotos vía metadata)
         img = ImageOps.exif_transpose(img)
@@ -59,8 +74,3 @@ def generar_thumbnail(file_field):
         return ContentFile(out.read(), name=nombre_final), nombre_final
     except Exception:
         return None, None
-    finally:
-        try:
-            file_field.close()
-        except Exception:
-            pass
