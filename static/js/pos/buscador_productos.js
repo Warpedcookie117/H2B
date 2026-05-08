@@ -201,6 +201,7 @@ export function initEscaneo() {
             !document.getElementById("modal-pago")?.classList.contains("pos-modal--hidden") ||
             !document.getElementById("modal-resultado")?.classList.contains("pos-modal--hidden") ||
             !document.getElementById("modal-consulta-precios")?.classList.contains("pos-modal--hidden") ||
+            !document.getElementById("modal-config-impresora")?.classList.contains("pos-modal--hidden") ||
             document.getElementById("modal-servicio")?.style.display === "flex" ||
             document.getElementById("modal-regalo")?.style.display === "flex";
 

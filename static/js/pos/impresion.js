@@ -72,15 +72,37 @@ async function listarImpresoras() {
 }
 
 async function _conectarQZ() {
-    if (!window.qz)  { console.warn("[QZ] qz-tray.js no cargado"); return; }
-    if (_qzOk)       return;
+    if (!window.qz) { console.warn("[QZ] qz-tray.js no cargado"); return; }
+    if (_qzOk)      return;
 
     try {
-        qz.security.setCertificatePromise(resolve => resolve());
-        qz.security.setSignaturePromise(() => resolve => resolve());
+        // Obtener certificado del servidor (identifica a este sitio ante QZ Tray)
+        let cert = "";
+        try {
+            const r = await fetch("/ventas/qz-cert/");
+            if (r.ok) cert = await r.text();
+        } catch (_) {}
+
+        if (cert.includes("BEGIN CERTIFICATE")) {
+            // Modo firmado: QZ Tray recuerda "Always Allow" para siempre
+            qz.security.setCertificatePromise(resolve => resolve(cert));
+            qz.security.setSignaturePromise(toSign => new Promise((resolve, reject) => {
+                const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+                fetch("/ventas/qz-sign/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+                    body: JSON.stringify({ message: toSign }),
+                }).then(r => r.json()).then(d => resolve(d.signature)).catch(reject);
+            }));
+        } else {
+            // Sin cert (fallback): pregunta cada vez
+            qz.security.setCertificatePromise(resolve => resolve());
+            qz.security.setSignaturePromise(() => resolve => resolve());
+        }
+
         await qz.websocket.connect({ retries: 2, delay: 1 });
         _qzOk = true;
-        console.log("[QZ] Conectado ✓");
+        console.log("[QZ] Conectado ✓", cert ? "(con certificado)" : "(sin certificado)");
     } catch (e) {
         console.warn("[QZ] No disponible:", e.message || e);
     }

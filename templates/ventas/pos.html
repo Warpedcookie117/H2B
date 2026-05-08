@@ -387,21 +387,28 @@
       Verificando...
     </div>
 
-    <!-- Nombre impresora -->
+    <!-- Select de impresoras disponibles (se llena al abrir si QZ está activo) -->
+    <div id="config-select-wrap" style="display:none;margin-bottom:1rem">
+      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
+        Impresoras disponibles
+      </label>
+      <select id="config-printer-select"
+              onchange="document.getElementById('config-printer-name').value = this.value"
+              style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:.9rem;
+                     background:white;outline:none;box-shadow:4px 4px 0 0 black">
+        <option value="">— Selecciona —</option>
+      </select>
+    </div>
+
+    <!-- Nombre impresora (fallback manual) -->
     <div style="margin-bottom:1rem">
       <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        Nombre exacto de la impresora
+        Nombre de la impresora
       </label>
       <input id="config-printer-name" type="text"
              placeholder="Ej: POS-588"
              style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:1rem;
-                    outline:none;box-shadow:4px 4px 0 0 black;margin-bottom:.5rem">
-      <button onclick="window._posListarImpresoras()"
-              style="border:3px solid black;background:#e5e7eb;font-weight:900;font-size:.7rem;
-                     text-transform:uppercase;letter-spacing:.08em;padding:.35rem .85rem;
-                     box-shadow:3px 3px 0 0 black;cursor:pointer">
-        Ver disponibles
-      </button>
+                    outline:none;box-shadow:4px 4px 0 0 black">
     </div>
 
     <!-- Botones acción -->
@@ -444,13 +451,33 @@
 </div>
 
 <script>
-function abrirConfigImpresora() {
-    document.getElementById("config-printer-name").value = localStorage.getItem("pos_impresora") || "";
-    const badge = document.getElementById("qz-estado-badge");
+async function abrirConfigImpresora() {
+    const saved = localStorage.getItem("pos_impresora") || "";
+    document.getElementById("config-printer-name").value = saved;
+
+    const badge  = document.getElementById("qz-estado-badge");
     const activo = window.qz && qz.websocket.isActive();
     badge.textContent = activo ? "✓ Conectado" : "✗ No conectado — abre QZ Tray";
     badge.style.background = activo ? "#06D6A0" : "#FF006E";
     badge.style.color      = activo ? "black"   : "white";
+
+    // Cargar lista de impresoras si QZ está activo
+    const selectWrap = document.getElementById("config-select-wrap");
+    const select     = document.getElementById("config-printer-select");
+    if (activo) {
+        selectWrap.style.display = "block";
+        select.innerHTML = '<option value="">Cargando...</option>';
+        try {
+            const printers = await qz.printers.find();
+            select.innerHTML = '<option value="">— Selecciona —</option>' +
+                printers.map(p => `<option value="${p}"${p === saved ? " selected" : ""}>${p}</option>`).join("");
+        } catch (_) {
+            selectWrap.style.display = "none";
+        }
+    } else {
+        selectWrap.style.display = "none";
+    }
+
     document.getElementById("modal-config-impresora").classList.remove("pos-modal--hidden");
 }
 
