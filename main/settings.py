@@ -192,26 +192,6 @@ else:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── QZ Tray: Demo Cert (generado por QZ Tray, confiable en todos los equipos)
-# Prioridad: variables de entorno QZ_CERTIFICATE / QZ_PRIVATE_KEY (producción)
-# Fallback: archivos .qz_cert.pem / .qz_key.pem (desarrollo local, gitignored)
-_QZ_KEY_PATH  = BASE_DIR / ".qz_key.pem"
-_QZ_CERT_PATH = BASE_DIR / ".qz_cert.pem"
-
-QZ_CERTIFICATE = os.getenv("QZ_CERTIFICATE", "")
-QZ_PRIVATE_KEY  = os.getenv("QZ_PRIVATE_KEY", "")
-
-if not QZ_CERTIFICATE:
-    try:
-        QZ_CERTIFICATE = _QZ_CERT_PATH.read_text()
-    except FileNotFoundError:
-        pass
-
-if not QZ_PRIVATE_KEY:
-    try:
-        QZ_PRIVATE_KEY = _QZ_KEY_PATH.read_text()
-    except FileNotFoundError:
-        pass
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024   # 20 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE  = 20 * 1024 * 1024   # 20 MB

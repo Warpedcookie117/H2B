@@ -631,7 +631,7 @@ function initModalResultado() {
             boxImpresion.innerHTML = `⚙ Configura la impresora (botón <b>🖨 Config</b> arriba) para imprimir automáticamente.`;
             boxImpresion.className = "pos-resultado-impresion pos-resultado-impresion--warn";
         } else {
-            const motivo = res.noQZ ? "QZ Tray no está corriendo." : (res.error || "Error de impresión.");
+            const motivo = res.noAgent ? "Agente POS no disponible. Abre pos_agent.exe." : (res.error || "Error de impresión.");
             const link   = url_html ? `<a href="${url_html}" target="_blank" style="color:inherit;font-weight:900;text-decoration:underline">Ver ticket</a>` : "";
             boxImpresion.innerHTML = `⚠ ${motivo} ${link}`;
             boxImpresion.className = "pos-resultado-impresion pos-resultado-impresion--error";

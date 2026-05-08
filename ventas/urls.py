@@ -1,7 +1,7 @@
 from django.urls import path
 
 # POS
-from ventas.views.pos_views import pos_view, procesar_venta, stock_productos, qz_cert, qz_sign
+from ventas.views.pos_views import pos_view, procesar_venta, stock_productos
 
 # Promociones
 from ventas.views.promociones_views import (
@@ -59,8 +59,7 @@ urlpatterns = [
     path("pos/", pos_view, name="pos"),
     path("procesar-venta/", procesar_venta, name="procesar_venta"),
     path("stock-productos/", stock_productos, name="stock_productos"),
-    path("qz-cert/", qz_cert, name="qz_cert"),
-    path("qz-sign/", qz_sign, name="qz_sign"),
+
 
     # ============================
     # TICKETS DE VENTA

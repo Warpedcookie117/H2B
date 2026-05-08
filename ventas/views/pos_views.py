@@ -1,9 +1,7 @@
 
-import base64
 import json
 import logging
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -245,31 +243,6 @@ def procesar_venta(request):
 
     finally:
         cache.delete(lock_key)
-
-
-@login_required
-def qz_cert(request):
-    """Devuelve el certificado público para que QZ Tray identifique al servidor."""
-    return HttpResponse(getattr(settings, "QZ_CERTIFICATE", ""), content_type="text/plain")
-
-
-@login_required
-@require_POST
-def qz_sign(request):
-    """Firma el mensaje que QZ Tray envía para verificar la identidad del servidor."""
-    key_pem = getattr(settings, "QZ_PRIVATE_KEY", "")
-    if not key_pem:
-        return JsonResponse({"error": "sin clave"}, status=503)
-    try:
-        from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
-        data    = json.loads(request.body)
-        message = data.get("message", "").encode()
-        key     = serialization.load_pem_private_key(key_pem.encode(), password=None)
-        sig     = key.sign(message, padding.PKCS1v15(), hashes.SHA512())
-        return JsonResponse({"signature": base64.b64encode(sig).decode()})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required

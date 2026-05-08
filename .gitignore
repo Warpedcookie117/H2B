@@ -16,7 +16,3 @@ db.sqlite3
 
 #fotos de prueba
 media/productos/
-
-# QZ Tray cert (auto-generado en el servidor, no se versiona)
-.qz_key.pem
-.qz_cert.pem

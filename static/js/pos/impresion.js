@@ -1,33 +1,48 @@
-// impresion.js — Impresión de tickets via QZ Tray (silencioso)
-// Fallback: link al ticket HTML del servidor para imprimir manualmente.
+// impresion.js — Agente POS local (localhost:12345)
+// print_server.py corre en la compu del cajero y hace el trabajo real.
 
-let _qzOk = false;
+const AGENT = "http://127.0.0.1:12345";
 
 export function initImpresion() {
-    _conectarQZ();
     window._posTestPrint        = testPrint;
     window._posListarImpresoras = listarImpresoras;
+    window._posAgentStatus      = agentStatus;
 }
 
-/**
- * Intenta imprimir el ticket via QZ Tray.
- * @returns {{ ok: boolean, noQZ?: boolean, noConfig?: boolean, error?: string }}
- */
-export async function imprimirTicket(ticket_texto, venta_id) {
+export async function imprimirTicket(ticket_texto, _venta_id) {
     const printer = localStorage.getItem("pos_impresora") || "";
-
     if (!printer) return { ok: false, noConfig: true };
 
-    if (!_qzOk) await _conectarQZ();
-
-    if (!_qzOk) return { ok: false, noQZ: true };
-
     try {
-        await _printQZ(ticket_texto, printer);
-        return { ok: true };
-    } catch (e) {
-        console.error("[QZ] Error al imprimir:", e);
-        return { ok: false, error: e.message };
+        const r = await fetch(`${AGENT}/print`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto: ticket_texto, printer }),
+        });
+        const d = await r.json();
+        return d.ok ? { ok: true } : { ok: false, error: d.error };
+    } catch {
+        return { ok: false, noAgent: true };
+    }
+}
+
+export async function agentStatus() {
+    try {
+        const r = await fetch(`${AGENT}/status`, { signal: AbortSignal.timeout(1500) });
+        const d = await r.json();
+        return { online: true, printer: d.printer };
+    } catch {
+        return { online: false };
+    }
+}
+
+async function listarImpresoras() {
+    try {
+        const r = await fetch(`${AGENT}/printers`, { signal: AbortSignal.timeout(2000) });
+        const d = await r.json();
+        return d.printers || [];
+    } catch {
+        return null;
     }
 }
 
@@ -35,13 +50,7 @@ async function testPrint() {
     const printer = localStorage.getItem("pos_impresora") || "";
     if (!printer) { alert("Primero guarda el nombre de la impresora."); return; }
 
-    if (!_qzOk) await _conectarQZ();
-    if (!_qzOk) {
-        alert("QZ Tray no está corriendo.\nÁbrelo desde el menú inicio e intenta de nuevo.");
-        return;
-    }
-
-    const sep  = "-".repeat(30);
+    const sep   = "-".repeat(30);
     const texto = [
         "COMERCIALIZADORA MODELO",
         "   TEST DE IMPRESION   ",
@@ -53,66 +62,14 @@ async function testPrint() {
     ].join("\n");
 
     try {
-        await _printQZ(texto, printer);
-        alert("Ticket de prueba enviado a: " + printer);
-    } catch (e) {
-        alert("Error: " + e.message);
+        const r = await fetch(`${AGENT}/print`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto, printer }),
+        });
+        const d = await r.json();
+        alert(d.ok ? "Ticket enviado a: " + printer : "Error: " + (d.error || "desconocido"));
+    } catch {
+        alert("Agente POS no disponible.\nAsegurate de que pos_agent.exe este corriendo.");
     }
-}
-
-async function listarImpresoras() {
-    if (!_qzOk) await _conectarQZ();
-    if (!_qzOk) { alert("QZ Tray no está corriendo."); return; }
-    try {
-        const lista = await qz.printers.find();
-        alert("Impresoras disponibles:\n\n" + lista.join("\n") + "\n\nCopia el nombre exacto en el campo de configuración.");
-    } catch (e) {
-        alert("Error listando impresoras: " + e.message);
-    }
-}
-
-async function _conectarQZ() {
-    if (!window.qz) { console.warn("[QZ] qz-tray.js no cargado"); return; }
-    if (_qzOk)      return;
-
-    try {
-        // Obtener certificado del servidor (identifica a este sitio ante QZ Tray)
-        let cert = "";
-        try {
-            const r = await fetch("/ventas/qz-cert/");
-            if (r.ok) cert = await r.text();
-        } catch (_) {}
-
-        if (cert.includes("BEGIN CERTIFICATE")) {
-            // Modo firmado: QZ Tray recuerda "Always Allow" para siempre
-            qz.security.setCertificatePromise(resolve => resolve(cert));
-            qz.security.setSignaturePromise(function(toSign) {
-                return function(resolve, reject) {
-                    const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
-                    fetch("/ventas/qz-sign/", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
-                        body: JSON.stringify({ message: toSign }),
-                    }).then(r => r.json()).then(d => resolve(d.signature)).catch(reject);
-                };
-            });
-        } else {
-            // Sin cert (fallback): pregunta cada vez
-            qz.security.setCertificatePromise(resolve => resolve());
-            qz.security.setSignaturePromise(() => resolve => resolve());
-        }
-
-        qz.security.setSignatureAlgorithm("SHA512");
-        await qz.websocket.connect({ retries: 2, delay: 1 });
-        _qzOk = true;
-        console.log("[QZ] Conectado ✓", cert ? "(con certificado)" : "(sin certificado)");
-    } catch (e) {
-        console.warn("[QZ] No disponible:", e.message || e);
-    }
-}
-
-async function _printQZ(texto, printer) {
-    if (!_qzOk) throw new Error("QZ Tray no conectado");
-    const cfg = qz.configs.create(printer);
-    await qz.print(cfg, [{ type: "raw", format: "plain", data: texto + "\n\n\n\n" }]);
 }

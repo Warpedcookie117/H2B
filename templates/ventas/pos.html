@@ -313,8 +313,6 @@
 </div>
 
 
-<!-- QZ Tray: expone window.qz para impresión silenciosa -->
-<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
 
 <!-- MODAL REGALO PROMOCIÓN -->
@@ -377,11 +375,11 @@
 
     <h2 class="pos-modal-titulo">🖨 Impresora Térmica</h2>
 
-    <!-- Estado QZ -->
+    <!-- Estado Agente POS -->
     <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem;color:#6b7280">
-      Estado QZ Tray
+      Estado Agente POS
     </p>
-    <div id="qz-estado-badge"
+    <div id="agent-estado-badge"
          style="font-size:.8rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
                 padding:.35rem .75rem;border:3px solid black;margin-bottom:1.25rem;display:inline-block">
       Verificando...
@@ -433,17 +431,16 @@
       </button>
     </div>
 
-    <!-- Instrucciones QZ Tray -->
+    <!-- Instrucciones Agente POS -->
     <details style="border:3px solid black;padding:.6rem .85rem">
       <summary style="font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;cursor:pointer">
-        ¿Cómo instalar QZ Tray?
+        ¿Cómo instalar el Agente POS?
       </summary>
       <ol style="margin:.75rem 0 0 1.1rem;font-size:.8rem;line-height:1.7;font-weight:600">
-        <li>Descarga desde <a href="https://qz.io/download/" target="_blank" style="font-weight:900;text-decoration:underline">qz.io/download</a></li>
-        <li>Instálalo y ábrelo (queda en la bandeja del sistema)</li>
-        <li>Recarga esta página</li>
-        <li>QZ Tray te pedirá permitir la conexión — marca <b>"Always allow"</b> y acepta</li>
-        <li>Guarda el nombre de tu impresora y haz clic en <b>Probar</b></li>
+        <li>Copia <b>pos_agent.exe</b> a esta computadora</li>
+        <li>Ejecuta <b>instalar_inicio.bat</b> para que arranque automáticamente con Windows</li>
+        <li>Abre <b>pos_agent.exe</b> (aparecerá una ventana negra — minimízala)</li>
+        <li>Recarga esta página, abre Config y selecciona tu impresora</li>
       </ol>
     </details>
 
@@ -452,33 +449,40 @@
 
 <script>
 async function abrirConfigImpresora() {
-    const saved = localStorage.getItem("pos_impresora") || "";
-    document.getElementById("config-printer-name").value = saved;
-
-    const badge  = document.getElementById("qz-estado-badge");
-    const activo = window.qz && qz.websocket.isActive();
-    badge.textContent = activo ? "✓ Conectado" : "✗ No conectado — abre QZ Tray";
-    badge.style.background = activo ? "#06D6A0" : "#FF006E";
-    badge.style.color      = activo ? "black"   : "white";
-
-    // Cargar lista de impresoras si QZ está activo
+    const saved      = localStorage.getItem("pos_impresora") || "";
+    const badge      = document.getElementById("agent-estado-badge");
     const selectWrap = document.getElementById("config-select-wrap");
     const select     = document.getElementById("config-printer-select");
-    if (activo) {
+
+    document.getElementById("config-printer-name").value = saved;
+    badge.textContent      = "Verificando...";
+    badge.style.background = "#e5e7eb";
+    badge.style.color      = "black";
+    document.getElementById("modal-config-impresora").classList.remove("pos-modal--hidden");
+
+    const fn     = window._posAgentStatus;
+    const status = fn ? await fn() : { online: false };
+
+    if (status.online) {
+        badge.textContent      = "✓ Agente activo";
+        badge.style.background = "#06D6A0";
+        badge.style.color      = "black";
+
         selectWrap.style.display = "block";
         select.innerHTML = '<option value="">Cargando...</option>';
-        try {
-            const printers = await qz.printers.find();
+        const printers = window._posListarImpresoras ? await window._posListarImpresoras() : null;
+        if (printers && printers.length) {
             select.innerHTML = '<option value="">— Selecciona —</option>' +
                 printers.map(p => `<option value="${p}"${p === saved ? " selected" : ""}>${p}</option>`).join("");
-        } catch (_) {
+        } else {
             selectWrap.style.display = "none";
         }
     } else {
+        badge.textContent      = "✗ Agente no disponible — abre pos_agent.exe";
+        badge.style.background = "#FF006E";
+        badge.style.color      = "white";
         selectWrap.style.display = "none";
     }
-
-    document.getElementById("modal-config-impresora").classList.remove("pos-modal--hidden");
 }
 
 function cerrarConfigImpresora() {
@@ -489,6 +493,11 @@ function guardarConfigImpresora() {
     const nombre = document.getElementById("config-printer-name").value.trim();
     if (!nombre) { alert("Escribe el nombre de la impresora."); return; }
     localStorage.setItem("pos_impresora", nombre);
+    fetch("http://127.0.0.1:12345/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ printer: nombre }),
+    }).catch(() => {});
     cerrarConfigImpresora();
 }
 </script>
