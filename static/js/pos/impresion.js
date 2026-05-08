@@ -102,6 +102,7 @@ async function _conectarQZ() {
             qz.security.setSignaturePromise(() => resolve => resolve());
         }
 
+        qz.security.setSignatureAlgorithm("SHA512");
         await qz.websocket.connect({ retries: 2, delay: 1 });
         _qzOk = true;
         console.log("[QZ] Conectado ✓", cert ? "(con certificado)" : "(sin certificado)");
