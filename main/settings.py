@@ -192,46 +192,26 @@ else:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ── QZ Tray: cert RSA auto-generado en primera ejecución ──────────────────
+# ── QZ Tray: Demo Cert (generado por QZ Tray, confiable en todos los equipos)
+# Prioridad: variables de entorno QZ_CERTIFICATE / QZ_PRIVATE_KEY (producción)
+# Fallback: archivos .qz_cert.pem / .qz_key.pem (desarrollo local, gitignored)
 _QZ_KEY_PATH  = BASE_DIR / ".qz_key.pem"
 _QZ_CERT_PATH = BASE_DIR / ".qz_cert.pem"
 
-def _generar_cert_qz():
-    import datetime
-    from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.x509.oid import NameOID
-    key  = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Comercializadora Modelo POS")])
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(name).issuer_name(name)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.utcnow())
-        .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=3650))
-        .sign(key, hashes.SHA256())
-    )
-    _QZ_KEY_PATH.write_bytes(key.private_bytes(
-        serialization.Encoding.PEM,
-        serialization.PrivateFormat.TraditionalOpenSSL,
-        serialization.NoEncryption(),
-    ))
-    _QZ_CERT_PATH.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+QZ_CERTIFICATE = os.getenv("QZ_CERTIFICATE", "")
+QZ_PRIVATE_KEY  = os.getenv("QZ_PRIVATE_KEY", "")
 
-if not _QZ_CERT_PATH.exists():
+if not QZ_CERTIFICATE:
     try:
-        _generar_cert_qz()
-        print("[QZ] Certificado generado en", _QZ_CERT_PATH)
-    except Exception as _e:
-        print(f"[QZ] No se pudo generar cert: {_e}")
+        QZ_CERTIFICATE = _QZ_CERT_PATH.read_text()
+    except FileNotFoundError:
+        pass
 
-try:
-    QZ_PRIVATE_KEY = _QZ_KEY_PATH.read_text()
-    QZ_CERTIFICATE = _QZ_CERT_PATH.read_text()
-except FileNotFoundError:
-    QZ_PRIVATE_KEY = QZ_CERTIFICATE = ""
+if not QZ_PRIVATE_KEY:
+    try:
+        QZ_PRIVATE_KEY = _QZ_KEY_PATH.read_text()
+    except FileNotFoundError:
+        pass
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024   # 20 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE  = 20 * 1024 * 1024   # 20 MB
