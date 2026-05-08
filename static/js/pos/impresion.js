@@ -86,14 +86,16 @@ async function _conectarQZ() {
         if (cert.includes("BEGIN CERTIFICATE")) {
             // Modo firmado: QZ Tray recuerda "Always Allow" para siempre
             qz.security.setCertificatePromise(resolve => resolve(cert));
-            qz.security.setSignaturePromise(toSign => new Promise((resolve, reject) => {
-                const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
-                fetch("/ventas/qz-sign/", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
-                    body: JSON.stringify({ message: toSign }),
-                }).then(r => r.json()).then(d => resolve(d.signature)).catch(reject);
-            }));
+            qz.security.setSignaturePromise(function(toSign) {
+                return function(resolve, reject) {
+                    const csrf = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || "";
+                    fetch("/ventas/qz-sign/", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+                        body: JSON.stringify({ message: toSign }),
+                    }).then(r => r.json()).then(d => resolve(d.signature)).catch(reject);
+                };
+            });
         } else {
             // Sin cert (fallback): pregunta cada vez
             qz.security.setCertificatePromise(resolve => resolve());
