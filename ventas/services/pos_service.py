@@ -2,7 +2,7 @@ from django.db import transaction
 from ventas.models import Venta, VentaDetalle, Promocion
 from inventario.services.inventario_service import InventarioService
 from inventario.models import Producto
-from ventas.services.ticket_service import generar_texto_ticket, imprimir_silencioso
+from ventas.services.ticket_service import generar_texto_ticket
 from sucursales.models import Caja
 
 
@@ -179,9 +179,8 @@ class POSService:
                     sucursal=sucursal
                 )
 
-        # 8) Generar ticket e imprimir silenciosamente
+        # 8) Generar ticket (impresión la maneja el cliente via QZ Tray)
         ticket_texto = generar_texto_ticket(venta)
-        imprimir_silencioso(ticket_texto)
 
         # 9) Regresar venta + detalles + ticket
         return {

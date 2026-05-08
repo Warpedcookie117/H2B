@@ -106,6 +106,11 @@
                    class="pos-btn-header pos-btn-header--corte">
                     Corte de caja
                 </a>
+                <button onclick="abrirConfigImpresora()"
+                        class="pos-btn-header"
+                        title="Configurar impresora térmica">
+                    🖨 Config
+                </button>
                 <button id="btn-descuento" class="pos-btn-descuento">
                     10% OFF
                 </button>
@@ -308,6 +313,8 @@
 </div>
 
 
+<!-- QZ Tray: expone window.qz para impresión silenciosa -->
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js"></script>
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
 
 <!-- MODAL REGALO PROMOCIÓN -->
@@ -361,6 +368,103 @@
     </div>
 </div>
 
+
+<!-- ========================================================= -->
+<!-- MODAL CONFIGURACIÓN DE IMPRESORA                        -->
+<!-- ========================================================= -->
+<div id="modal-config-impresora" class="pos-modal pos-modal--hidden">
+  <div class="pos-modal-content pos-animate-scale" style="max-width:480px">
+
+    <h2 class="pos-modal-titulo">🖨 Impresora Térmica</h2>
+
+    <!-- Estado QZ -->
+    <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem;color:#6b7280">
+      Estado QZ Tray
+    </p>
+    <div id="qz-estado-badge"
+         style="font-size:.8rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
+                padding:.35rem .75rem;border:3px solid black;margin-bottom:1.25rem;display:inline-block">
+      Verificando...
+    </div>
+
+    <!-- Nombre impresora -->
+    <div style="margin-bottom:1rem">
+      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
+        Nombre exacto de la impresora
+      </label>
+      <input id="config-printer-name" type="text"
+             placeholder="Ej: POS-588"
+             style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:1rem;
+                    outline:none;box-shadow:4px 4px 0 0 black;margin-bottom:.5rem">
+      <button onclick="window._posListarImpresoras()"
+              style="border:3px solid black;background:#e5e7eb;font-weight:900;font-size:.7rem;
+                     text-transform:uppercase;letter-spacing:.08em;padding:.35rem .85rem;
+                     box-shadow:3px 3px 0 0 black;cursor:pointer">
+        Ver disponibles
+      </button>
+    </div>
+
+    <!-- Botones acción -->
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem">
+      <button onclick="guardarConfigImpresora()"
+              style="flex:1;border:4px solid black;background:#3A86FF;color:white;font-weight:900;
+                     font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
+                     box-shadow:4px 4px 0 0 black;cursor:pointer">
+        💾 Guardar
+      </button>
+      <button onclick="window._posTestPrint()"
+              style="flex:1;border:4px solid black;background:#06D6A0;color:black;font-weight:900;
+                     font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
+                     box-shadow:4px 4px 0 0 black;cursor:pointer">
+        🖨 Probar
+      </button>
+      <button onclick="cerrarConfigImpresora()"
+              style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;
+                     text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
+                     box-shadow:4px 4px 0 0 black;cursor:pointer">
+        Cancelar
+      </button>
+    </div>
+
+    <!-- Instrucciones QZ Tray -->
+    <details style="border:3px solid black;padding:.6rem .85rem">
+      <summary style="font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;cursor:pointer">
+        ¿Cómo instalar QZ Tray?
+      </summary>
+      <ol style="margin:.75rem 0 0 1.1rem;font-size:.8rem;line-height:1.7;font-weight:600">
+        <li>Descarga desde <a href="https://qz.io/download/" target="_blank" style="font-weight:900;text-decoration:underline">qz.io/download</a></li>
+        <li>Instálalo y ábrelo (queda en la bandeja del sistema)</li>
+        <li>Recarga esta página</li>
+        <li>QZ Tray te pedirá permitir la conexión — marca <b>"Always allow"</b> y acepta</li>
+        <li>Guarda el nombre de tu impresora y haz clic en <b>Probar</b></li>
+      </ol>
+    </details>
+
+  </div>
+</div>
+
+<script>
+function abrirConfigImpresora() {
+    document.getElementById("config-printer-name").value = localStorage.getItem("pos_impresora") || "";
+    const badge = document.getElementById("qz-estado-badge");
+    const activo = window.qz && qz.websocket.isActive();
+    badge.textContent = activo ? "✓ Conectado" : "✗ No conectado — abre QZ Tray";
+    badge.style.background = activo ? "#06D6A0" : "#FF006E";
+    badge.style.color      = activo ? "black"   : "white";
+    document.getElementById("modal-config-impresora").classList.remove("pos-modal--hidden");
+}
+
+function cerrarConfigImpresora() {
+    document.getElementById("modal-config-impresora").classList.add("pos-modal--hidden");
+}
+
+function guardarConfigImpresora() {
+    const nombre = document.getElementById("config-printer-name").value.trim();
+    if (!nombre) { alert("Escribe el nombre de la impresora."); return; }
+    localStorage.setItem("pos_impresora", nombre);
+    cerrarConfigImpresora();
+}
+</script>
 
 {% endblock %}
 {% block extra_head %}

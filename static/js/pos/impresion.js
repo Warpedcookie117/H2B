@@ -1,94 +1,93 @@
-// impresion.js — Impresión via window.print() para impresora térmica con driver usbprint.sys
+// impresion.js — Impresión de tickets via QZ Tray (silencioso)
+// Fallback: link al ticket HTML del servidor para imprimir manualmente.
 
-console.log("[POS:impresion] Módulo cargado");
+let _qzOk = false;
 
 export function initImpresion() {
-    console.log("[POS:impresion] initImpresion — escuchando evento 'imprimir-ticket'");
-    document.addEventListener("imprimir-ticket", async (e) => {
-        console.log("[POS:impresion] imprimir-ticket recibido:", e.detail);
-        try {
-            await imprimirTicket(e.detail);
-        } catch (err) {
-            console.error("[POS:impresion] Error de impresión:", err);
-            document.dispatchEvent(new CustomEvent("impresion-fallo", {
-                detail: {
-                    venta_id: e.detail.venta_id,
-                    motivo: err.message || "No se pudo abrir la ventana de impresión."
-                }
-            }));
-        }
-    });
+    _conectarQZ();
+    window._posTestPrint        = testPrint;
+    window._posListarImpresoras = listarImpresoras;
 }
 
-async function imprimirTicket({ ticket_texto, venta_id }) {
-    console.log(`[POS:impresion] imprimirTicket → venta_id=${venta_id} texto_len=${ticket_texto?.length}`);
+/**
+ * Intenta imprimir el ticket via QZ Tray.
+ * @returns {{ ok: boolean, noQZ?: boolean, noConfig?: boolean, error?: string }}
+ */
+export async function imprimirTicket(ticket_texto, venta_id) {
+    const printer = localStorage.getItem("pos_impresora") || "";
 
-    if (!ticket_texto) {
-        throw new Error("No se recibió el texto del ticket.");
+    if (!printer) return { ok: false, noConfig: true };
+
+    if (!_qzOk) await _conectarQZ();
+
+    if (!_qzOk) return { ok: false, noQZ: true };
+
+    try {
+        await _printQZ(ticket_texto, printer);
+        return { ok: true };
+    } catch (e) {
+        console.error("[QZ] Error al imprimir:", e);
+        return { ok: false, error: e.message };
+    }
+}
+
+async function testPrint() {
+    const printer = localStorage.getItem("pos_impresora") || "";
+    if (!printer) { alert("Primero guarda el nombre de la impresora."); return; }
+
+    if (!_qzOk) await _conectarQZ();
+    if (!_qzOk) {
+        alert("QZ Tray no está corriendo.\nÁbrelo desde el menú inicio e intenta de nuevo.");
+        return;
     }
 
-    const textoEscapado = ticket_texto
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+    const sep  = "-".repeat(30);
+    const texto = [
+        "COMERCIALIZADORA MODELO",
+        "   TEST DE IMPRESION   ",
+        sep,
+        "Impresora: " + printer,
+        new Date().toLocaleString("es-MX"),
+        sep,
+        "Si ves esto, funciona! :)",
+    ].join("\n");
 
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Ticket #${venta_id}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 10pt;
-      background: white;
-      color: black;
+    try {
+        await _printQZ(texto, printer);
+        alert("Ticket de prueba enviado a: " + printer);
+    } catch (e) {
+        alert("Error: " + e.message);
     }
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: inherit;
-      font-size: inherit;
-      line-height: 1.5;
-      padding: 2mm;
+}
+
+async function listarImpresoras() {
+    if (!_qzOk) await _conectarQZ();
+    if (!_qzOk) { alert("QZ Tray no está corriendo."); return; }
+    try {
+        const lista = await qz.printers.find();
+        alert("Impresoras disponibles:\n\n" + lista.join("\n") + "\n\nCopia el nombre exacto en el campo de configuración.");
+    } catch (e) {
+        alert("Error listando impresoras: " + e.message);
     }
-    @media print {
-      @page { size: 58mm auto; margin: 0mm 2mm; }
-      body { width: 58mm; }
+}
+
+async function _conectarQZ() {
+    if (!window.qz)  { console.warn("[QZ] qz-tray.js no cargado"); return; }
+    if (_qzOk)       return;
+
+    try {
+        qz.security.setCertificatePromise(resolve => resolve());
+        qz.security.setSignaturePromise(() => resolve => resolve());
+        await qz.websocket.connect({ retries: 2, delay: 1 });
+        _qzOk = true;
+        console.log("[QZ] Conectado ✓");
+    } catch (e) {
+        console.warn("[QZ] No disponible:", e.message || e);
     }
-  </style>
-</head>
-<body>
-  <pre>${textoEscapado}</pre>
-  <script>
-    window.onload = function () {
-      window.print();
-      window.onafterprint = function () { window.close(); };
-      setTimeout(function () { window.close(); }, 5000);
-    };
-  <\/script>
-</body>
-</html>`;
+}
 
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url  = URL.createObjectURL(blob);
-    console.log(`[POS:impresion] abriendo ventana de impresión...`);
-    const popup = window.open(url, "_blank", "width=300,height=500,toolbar=0,menubar=0");
-
-    if (!popup) {
-        URL.revokeObjectURL(url);
-        console.error("[POS:impresion] VENTANA BLOQUEADA por el navegador");
-        throw new Error(
-            "El navegador bloqueó la ventana de impresión. " +
-            "Permite popups para este sitio e intenta de nuevo."
-        );
-    }
-
-    popup.addEventListener("unload", () => URL.revokeObjectURL(url));
-    console.log("[POS:impresion] ventana de impresión abierta ✓");
-
-    document.dispatchEvent(new CustomEvent("impresion-exito", {
-        detail: { venta_id }
-    }));
+async function _printQZ(texto, printer) {
+    if (!_qzOk) throw new Error("QZ Tray no conectado");
+    const cfg = qz.configs.create(printer);
+    await qz.print(cfg, [{ type: "raw", format: "plain", data: texto + "\n\n\n\n" }]);
 }

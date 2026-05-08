@@ -29,6 +29,7 @@ import {
 } from "./pago.js";
 
 import { actualizarTotales } from "./totales.js";
+import { imprimirTicket } from "./impresion.js";
 
 
 // ============================================================
@@ -583,7 +584,8 @@ function initModalPago() {
                     pagado_efectivo:  data.pagado_efectivo,
                     pagado_tarjeta:   data.pagado_tarjeta,
                     ticket_texto:     data.ticket_texto,
-                    venta_id:         data.venta_id
+                    venta_id:         data.venta_id,
+                    url_html:         data.url_html,
                 }
             }));
 
@@ -603,41 +605,37 @@ function initModalPago() {
 
 function initModalResultado() {
     console.log("[POS:ui] initModalResultado");
-    const modal       = document.getElementById("modal-resultado");
-    const btnCerrar   = document.getElementById("cerrar-resultado");
+    const modal        = document.getElementById("modal-resultado");
+    const btnCerrar    = document.getElementById("cerrar-resultado");
     const boxImpresion = document.getElementById("resultado-impresion");
 
-    // Venta procesada correctamente → llenar y mostrar modal
-    document.addEventListener("pago-exito", (e) => {
-        const { total, cambio, pagado_efectivo, pagado_tarjeta } = e.detail;
-        console.log(`[POS:ui] pago-exito → total=${total} cambio=${cambio} efectivo=${pagado_efectivo} tarjeta=${pagado_tarjeta}`);
+    document.addEventListener("pago-exito", async (e) => {
+        const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html } = e.detail;
+        console.log(`[POS:ui] pago-exito → venta_id=${venta_id} total=${total} cambio=${cambio}`);
 
         document.getElementById("resultado-total-venta").textContent = total.toFixed(2);
         document.getElementById("resultado-recibido").textContent    = (pagado_efectivo + pagado_tarjeta).toFixed(2);
         document.getElementById("resultado-cambio").textContent      = cambio.toFixed(2);
 
-        boxImpresion.textContent = "";
+        boxImpresion.textContent = "Enviando a impresora...";
         boxImpresion.className   = "pos-resultado-impresion";
 
         modal.classList.remove("pos-modal--hidden");
 
-        // La impresión se hace en el servidor (imprimir_silencioso)
-        // Notificamos éxito directo para actualizar el mensaje en pantalla
-        document.dispatchEvent(new CustomEvent("impresion-exito", {
-            detail: { venta_id: e.detail.venta_id }
-        }));
-    });
+        const res = await imprimirTicket(ticket_texto, venta_id);
 
-    // Impresión exitosa
-    document.addEventListener("impresion-exito", () => {
-        boxImpresion.textContent = "✓ Ticket enviado correctamente.";
-        boxImpresion.className   = "pos-resultado-impresion pos-resultado-impresion--ok";
-    });
-
-    // Impresión fallida — el ticket sigue disponible en el Dashboard
-    document.addEventListener("impresion-fallo", (e) => {
-        boxImpresion.textContent = `No se pudo imprimir. Puedes imprimirlo desde el Dashboard. Venta: ${e.detail.venta_id}`;
-        boxImpresion.className   = "pos-resultado-impresion pos-resultado-impresion--error";
+        if (res.ok) {
+            boxImpresion.textContent = "✓ Ticket enviado a la impresora.";
+            boxImpresion.className   = "pos-resultado-impresion pos-resultado-impresion--ok";
+        } else if (res.noConfig) {
+            boxImpresion.innerHTML = `⚙ Configura la impresora (botón <b>🖨 Config</b> arriba) para imprimir automáticamente.`;
+            boxImpresion.className = "pos-resultado-impresion pos-resultado-impresion--warn";
+        } else {
+            const motivo = res.noQZ ? "QZ Tray no está corriendo." : (res.error || "Error de impresión.");
+            const link   = url_html ? `<a href="${url_html}" target="_blank" style="color:inherit;font-weight:900;text-decoration:underline">Ver ticket</a>` : "";
+            boxImpresion.innerHTML = `⚠ ${motivo} ${link}`;
+            boxImpresion.className = "pos-resultado-impresion pos-resultado-impresion--error";
+        }
     });
 
     btnCerrar.onclick = () => modal.classList.add("pos-modal--hidden");
