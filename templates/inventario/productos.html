@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% load static %}
+{% load cloudinary_helpers %}
 
 {% block content %}
 
@@ -130,10 +131,8 @@
                    data-codigo="{{ producto.codigo_barras|default:'' }}">
 
                 <div class="w-full h-24 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-2">
-                  {% if producto.foto_thumbnail %}
-                    <img src="{{ producto.foto_thumbnail.url }}" class="object-contain h-full w-full" loading="lazy">
-                  {% elif producto.foto_url %}
-                    <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full" loading="lazy">
+                  {% if producto.foto_url %}
+                    <img src="{% foto_card producto.foto_url 400 %}" class="object-contain h-full w-full" loading="lazy">
                   {% else %}
                     <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full" loading="lazy">
                   {% endif %}
@@ -235,10 +234,8 @@
                  data-codigo="{{ producto.codigo_barras|default:'' }}">
 
               <div class="w-full h-36 bg-white border-2 border-black flex items-center justify-center overflow-hidden mb-3">
-                {% if producto.foto_thumbnail %}
-                  <img src="{{ producto.foto_thumbnail.url }}" class="object-contain h-full w-full" loading="lazy">
-                {% elif producto.foto_url %}
-                  <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full" loading="lazy">
+                {% if producto.foto_url %}
+                  <img src="{% foto_card producto.foto_url %}" class="object-contain h-full w-full" loading="lazy">
                 {% else %}
                   <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full" loading="lazy">
                 {% endif %}

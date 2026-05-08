@@ -258,34 +258,6 @@ class Producto(models.Model):
         return inv.cantidad_actual if inv else 0
 
     # ============================================================
-    # CICLO DE GUARDADO — auto-genera thumbnail cuando cambia la foto
-    # ============================================================
-
-    def save(self, *args, **kwargs):
-        regenerar_thumb = False
-
-        if self.foto_url:
-            if not self.pk:
-                # Producto nuevo con foto → generar thumb
-                regenerar_thumb = True
-            else:
-                # Producto existente → solo regenerar si cambió la foto
-                try:
-                    anterior = type(self).objects.only("foto_url").get(pk=self.pk)
-                    if anterior.foto_url.name != self.foto_url.name:
-                        regenerar_thumb = True
-                except type(self).DoesNotExist:
-                    regenerar_thumb = True
-
-        if regenerar_thumb:
-            from inventario.services.imagen_service import generar_thumbnail
-            content_file, nombre = generar_thumbnail(self.foto_url)
-            if content_file is not None:
-                self.foto_thumbnail.save(nombre, content_file, save=False)
-
-        super().save(*args, **kwargs)
-
-    # ============================================================
     # MÉTODOS DE CICLO DE VIDA
     # ============================================================
 

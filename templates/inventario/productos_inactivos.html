@@ -1,5 +1,6 @@
 {% extends "partials/base.html" %}
 {% load static %}
+{% load cloudinary_helpers %}
 
 {% block title %}Productos Inactivos{% endblock %}
 
@@ -89,10 +90,8 @@
 
         <!-- IMAGEN -->
         <div class="w-full h-32 bg-white border-4 border-black flex items-center justify-center overflow-hidden mb-3">
-          {% if producto.foto_thumbnail %}
-            <img src="{{ producto.foto_thumbnail.url }}" class="object-contain h-full w-full">
-          {% elif producto.foto_url %}
-            <img src="{{ producto.foto_url.url }}" class="object-contain h-full w-full">
+          {% if producto.foto_url %}
+            <img src="{% foto_card producto.foto_url %}" class="object-contain h-full w-full">
           {% else %}
             <img src="{% static 'img/no-image.png' %}" class="object-contain h-full w-full">
           {% endif %}

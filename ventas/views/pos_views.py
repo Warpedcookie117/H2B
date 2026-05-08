@@ -87,7 +87,7 @@ def pos_view(request):
         .filter(id__in=piso_map.keys())
         .only(
             "id", "nombre", "precio_menudeo", "precio_mayoreo", "precio_docena",
-            "foto_url", "foto_thumbnail", "codigo_barras", "categoria_id", "categoria_padre_id",
+            "foto_url", "codigo_barras", "categoria_id", "categoria_padre_id",
         )
         .prefetch_related("valores_atributo__atributo")
         .order_by("nombre")

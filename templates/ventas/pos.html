@@ -1,5 +1,6 @@
 {% extends "partials/base.html" %}
 {% load static %}
+{% load cloudinary_helpers %}
 
 {% block content %}
 
@@ -141,10 +142,8 @@
                 draggable="true"
             >
                 <div class="pos-producto-img">
-                    {% if p.foto_thumbnail %}
-                        <img data-src="{{ p.foto_thumbnail.url }}" alt="{{ p.nombre }}">
-                    {% elif p.foto_url %}
-                        <img data-src="{{ p.foto_url.url }}" alt="{{ p.nombre }}">
+                    {% if p.foto_url %}
+                        <img data-src="{% foto_card p.foto_url %}" alt="{{ p.nombre }}">
                     {% else %}
                         <img data-src="{% static 'img/no-image.png' %}" alt="{{ p.nombre }}" class="object-contain">
                     {% endif %}
