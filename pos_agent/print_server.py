@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import os
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -41,7 +42,6 @@ def print_image(imagen_base64, printer_name):
     img_bytes = base64.b64decode(imagen_base64)
     img = Image.open(io.BytesIO(img_bytes))
 
-    # Leer DPI embebido por python-barcode (203 o 300 según preset)
     img_dpi = img.info.get("dpi", (203, 203))
     if isinstance(img_dpi, (int, float)):
         img_dpi = (img_dpi, img_dpi)
@@ -53,19 +53,15 @@ def print_image(imagen_base64, printer_name):
     pdc = win32ui.CreateDC()
     pdc.CreatePrinterDC(printer_name)
 
-    # Densidad real de la impresora
     printer_dpi_x = pdc.GetDeviceCaps(win32con.LOGPIXELSX)
     printer_dpi_y = pdc.GetDeviceCaps(win32con.LOGPIXELSY)
     printer_w = pdc.GetDeviceCaps(win32con.HORZRES)
     printer_h = pdc.GetDeviceCaps(win32con.VERTRES)
 
     img_w, img_h = img.size
-
-    # Tamaño de salida que preserva el tamaño físico real de la etiqueta
     out_w = int(img_w * printer_dpi_x / dpi_x)
     out_h = int(img_h * printer_dpi_y / dpi_y)
 
-    # Solo reducir si excede el área imprimible (no escalar hacia arriba)
     if out_w > printer_w or out_h > printer_h:
         scale = min(printer_w / out_w, printer_h / out_h)
         out_w = int(out_w * scale)
@@ -173,14 +169,55 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
-if __name__ == "__main__":
+def _crear_icono():
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (64, 64), "#1a1a2e")
+    d = ImageDraw.Draw(img)
+    # Cuerpo de impresora
+    d.rectangle([10, 22, 54, 40], fill="#3A86FF")
+    # Bandeja de papel (arriba)
+    d.rectangle([18, 14, 46, 24], fill="#e5e7eb")
+    # Papel saliendo (abajo)
+    d.rectangle([18, 37, 46, 52], fill="#e5e7eb")
+    # Líneas del papel
+    d.rectangle([22, 41, 42, 43], fill="#9ca3af")
+    d.rectangle([22, 46, 38, 48], fill="#9ca3af")
+    # Luz indicadora
+    d.ellipse([44, 26, 51, 33], fill="#06D6A0")
+    return img
+
+
+def _label_status(item):
     cfg = load_config()
-    print(f"[POS Agent] Corriendo en localhost:{PORT}")
-    print(f"[POS Agent] Impresora tickets : {cfg.get('printer') or '(no configurada)'}")
-    print(f"[POS Agent] Impresora etiquetas: {cfg.get('printer_etiquetas') or '(no configurada)'}")
-    print("[POS Agent] Minimiza esta ventana — no la cierres.")
+    t = cfg.get("printer") or "sin config"
+    e = cfg.get("printer_etiquetas") or "sin config"
+    return f"Tickets: {t}  |  Etiquetas: {e}"
+
+
+if __name__ == "__main__":
     server = HTTPServer(("127.0.0.1", PORT), Handler)
+    hilo = threading.Thread(target=server.serve_forever, daemon=True)
+    hilo.start()
+
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("[POS Agent] Detenido.")
+        import pystray
+
+        def on_salir(icon, _):
+            icon.stop()
+            server.shutdown()
+
+        icono = pystray.Icon(
+            "pos_agent",
+            _crear_icono(),
+            "POS Agent — activo",
+            pystray.Menu(
+                pystray.MenuItem(_label_status, None, enabled=False),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem("Salir", on_salir),
+            ),
+        )
+        icono.run()
+
+    except Exception:
+        # Fallback si pystray falla: correr sin bandeja
+        hilo.join()

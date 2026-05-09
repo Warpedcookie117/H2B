@@ -1,10 +1,10 @@
 @echo off
 echo Instalando dependencias...
-pip install pywin32 pyinstaller
+pip install -r requirements.txt
 
 echo.
 echo Compilando pos_agent.exe...
-pyinstaller --onefile --name pos_agent print_server.py
+pyinstaller --onefile --windowed --name pos_agent print_server.py
 
 echo.
 echo ============================================
