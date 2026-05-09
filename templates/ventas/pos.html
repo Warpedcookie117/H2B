@@ -371,7 +371,7 @@
 <!-- MODAL CONFIGURACIÓN POS                                 -->
 <!-- ========================================================= -->
 <div id="modal-config-impresora" class="pos-modal pos-modal--hidden">
-  <div class="pos-modal-content pos-animate-scale" style="max-width:500px">
+  <div class="pos-modal-content pos-animate-scale" style="max-width:min(95vw,800px);width:100%">
 
     <h2 class="pos-modal-titulo">⚙ Configuración POS</h2>
 
@@ -385,77 +385,90 @@
       Verificando...
     </div>
 
-    <!-- ── IMPRESORA DE TICKETS ── -->
-    <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;
-              margin-bottom:.4rem;border-top:3px solid black;padding-top:.75rem;color:#111">
-      🖨 Impresora de Tickets (térmica)
-    </p>
-    <div id="badge-termica"
-         style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
-                display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
+    <!-- ── DOS IMPRESORAS lado a lado ── -->
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;border-top:3px solid black;padding-top:.75rem;margin-bottom:1rem">
 
-    <div id="config-select-wrap" style="display:none;margin-bottom:.75rem">
-      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        Selecciona la impresora
-      </label>
-      <select id="config-printer-select"
-              onchange="document.getElementById('config-printer-name').value = this.value"
-              style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.9rem;
-                     background:white;outline:none;box-shadow:3px 3px 0 0 black">
-        <option value="">— Selecciona —</option>
-      </select>
-    </div>
-    <div style="margin-bottom:1rem">
-      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        O escribe el nombre exacto
-      </label>
-      <input id="config-printer-name" type="text" placeholder="Ej: POS-588"
-             style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.95rem;
-                    outline:none;box-shadow:3px 3px 0 0 black">
+      <!-- TÉRMICA -->
+      <div style="flex:1;min-width:220px;border:3px solid black;padding:.75rem;box-shadow:3px 3px 0 0 black">
+        <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;color:#111">
+          🖨 Tickets (térmica)
+        </p>
+        <div id="badge-termica"
+             style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
+                    display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
+
+        <div id="config-select-wrap" style="display:none;margin-bottom:.6rem">
+          <label style="font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.25rem">
+            Selecciona la impresora
+          </label>
+          <select id="config-printer-select"
+                  onchange="document.getElementById('config-printer-name').value = this.value"
+                  style="width:100%;border:3px solid black;padding:.35rem .6rem;font-weight:700;font-size:.85rem;
+                         background:white;outline:none;box-shadow:2px 2px 0 0 black">
+            <option value="">— Selecciona —</option>
+          </select>
+        </div>
+        <div style="margin-bottom:.75rem">
+          <label style="font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.25rem">
+            O escribe el nombre exacto
+          </label>
+          <input id="config-printer-name" type="text" placeholder="Ej: POS-588"
+                 style="width:100%;border:3px solid black;padding:.35rem .6rem;font-weight:700;font-size:.9rem;
+                        outline:none;box-shadow:2px 2px 0 0 black">
+        </div>
+        <button onclick="window._posTestPrint()"
+                style="width:100%;border:3px solid black;background:#06D6A0;color:black;font-weight:900;
+                       font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;padding:.45rem .75rem;
+                       box-shadow:3px 3px 0 0 black;cursor:pointer">
+          🖨 Probar ticket
+        </button>
+      </div>
+
+      <!-- ETIQUETAS -->
+      <div style="flex:1;min-width:220px;border:3px solid black;padding:.75rem;box-shadow:3px 3px 0 0 black">
+        <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;color:#111">
+          🏷 Etiquetas
+        </p>
+        <div id="badge-etiqueta"
+             style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
+                    display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
+
+        <div id="config-etiqueta-select-wrap" style="display:none;margin-bottom:.6rem">
+          <label style="font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.25rem">
+            Selecciona la impresora
+          </label>
+          <select id="config-etiqueta-select"
+                  onchange="document.getElementById('config-etiqueta-name').value = this.value"
+                  style="width:100%;border:3px solid black;padding:.35rem .6rem;font-weight:700;font-size:.85rem;
+                         background:white;outline:none;box-shadow:2px 2px 0 0 black">
+            <option value="">— Selecciona —</option>
+          </select>
+        </div>
+        <div style="margin-bottom:.75rem">
+          <label style="font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.25rem">
+            O escribe el nombre exacto
+          </label>
+          <input id="config-etiqueta-name" type="text" placeholder="Ej: POS-9250-L"
+                 style="width:100%;border:3px solid black;padding:.35rem .6rem;font-weight:700;font-size:.9rem;
+                        outline:none;box-shadow:2px 2px 0 0 black">
+        </div>
+        <button onclick="window._posTestEtiqueta()"
+                style="width:100%;border:3px solid black;background:#FFD60A;color:black;font-weight:900;
+                       font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;padding:.45rem .75rem;
+                       box-shadow:3px 3px 0 0 black;cursor:pointer">
+          🏷 Probar etiqueta
+        </button>
+      </div>
+
     </div>
 
-    <!-- ── IMPRESORA DE ETIQUETAS ── -->
-    <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;
-              margin-bottom:.4rem;border-top:3px solid black;padding-top:.75rem;color:#111">
-      🏷 Impresora de Etiquetas
-    </p>
-    <div id="badge-etiqueta"
-         style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
-                display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
-
-    <div id="config-etiqueta-select-wrap" style="display:none;margin-bottom:.75rem">
-      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        Selecciona la impresora
-      </label>
-      <select id="config-etiqueta-select"
-              onchange="document.getElementById('config-etiqueta-name').value = this.value"
-              style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.9rem;
-                     background:white;outline:none;box-shadow:3px 3px 0 0 black">
-        <option value="">— Selecciona —</option>
-      </select>
-    </div>
-    <div style="margin-bottom:1.25rem">
-      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        O escribe el nombre exacto
-      </label>
-      <input id="config-etiqueta-name" type="text" placeholder="Ej: POS-9250-L"
-             style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.95rem;
-                    outline:none;box-shadow:3px 3px 0 0 black">
-    </div>
-
-    <!-- Botones -->
+    <!-- Botones Guardar / Cancelar -->
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem">
       <button onclick="guardarConfigImpresora()"
               style="flex:1;border:4px solid black;background:#3A86FF;color:white;font-weight:900;
                      font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
                      box-shadow:4px 4px 0 0 black;cursor:pointer">
         💾 Guardar
-      </button>
-      <button onclick="window._posTestPrint()"
-              style="flex:1;border:4px solid black;background:#06D6A0;color:black;font-weight:900;
-                     font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
-                     box-shadow:4px 4px 0 0 black;cursor:pointer">
-        🖨 Probar ticket
       </button>
       <button onclick="cerrarConfigImpresora()"
               style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;
@@ -483,7 +496,7 @@
       <ol style="margin:.75rem 0 0 1.1rem;font-size:.8rem;line-height:1.7;font-weight:600">
         <li>Copia <b>pos_agent.exe</b> a esta computadora</li>
         <li>Ejecuta <b>instalar_inicio.bat</b> para que arranque automáticamente con Windows</li>
-        <li>Abre <b>pos_agent.exe</b> (aparecerá una ventana negra — minimízala)</li>
+        <li>Abre <b>pos_agent.exe</b> (aparece en la bandeja del sistema, esquina inferior derecha)</li>
         <li>Recarga esta página, abre Config y selecciona tus impresoras</li>
       </ol>
     </details>

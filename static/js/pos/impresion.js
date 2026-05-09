@@ -5,6 +5,7 @@ const AGENT = "http://127.0.0.1:12345";
 
 export function initImpresion() {
     window._posTestPrint        = testPrint;
+    window._posTestEtiqueta     = testPrintEtiqueta;
     window._posListarImpresoras = listarImpresoras;
     window._posAgentStatus      = agentStatus;
 }
@@ -43,6 +44,45 @@ async function listarImpresoras() {
         return d.printers || [];
     } catch {
         return null;
+    }
+}
+
+async function testPrintEtiqueta() {
+    const printer = localStorage.getItem("pos_impresora_etiquetas") || "";
+    if (!printer) { alert("Primero guarda el nombre de la impresora de etiquetas."); return; }
+
+    // Genera imagen de prueba con Canvas
+    const canvas = document.createElement("canvas");
+    canvas.width  = 400;
+    canvas.height = 160;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 400, 160);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(4, 4, 392, 152);
+    ctx.fillStyle = "#000000";
+    ctx.font = "bold 28px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("TEST ETIQUETA", 200, 50);
+    ctx.font = "16px monospace";
+    ctx.fillText(printer, 200, 85);
+    ctx.fillText(new Date().toLocaleString("es-MX"), 200, 115);
+    ctx.font = "13px monospace";
+    ctx.fillText("Si ves esto, funciona! :)", 200, 145);
+
+    const base64 = canvas.toDataURL("image/png").split(",")[1];
+
+    try {
+        const r = await fetch(`${AGENT}/print-label`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imagen_base64: base64, printer }),
+        });
+        const d = await r.json();
+        alert(d.ok ? "Etiqueta enviada a: " + printer : "Error: " + (d.error || "desconocido"));
+    } catch {
+        alert("Agente POS no disponible.\nAsegurate de que pos_agent.exe este corriendo.");
     }
 }
 
