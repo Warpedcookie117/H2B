@@ -121,6 +121,23 @@ window.imprimirEtiqueta = async function (productoId, ubicacionId) {
   ventana.document.close();
 };
 
+window.descargarEtiquetaPDF = async function (url, codigo) {
+  try {
+    const r = await fetch(url);
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `etiqueta_${codigo}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch (e) {
+    console.error("Error descargando PDF:", e);
+  }
+};
+
 window.configurarImpresoraEtiquetas = function () {
   const actual = localStorage.getItem("pos_impresora_etiquetas") || "(sin configurar)";
   const nombre = prompt(`Impresora de etiquetas actual: ${actual}\n\nIngresa el nuevo nombre (deja vacío para borrar la configuración):`);

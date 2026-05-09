@@ -252,11 +252,10 @@
                   class="btn-90s flex-1 bg-[#3A86FF] border-4 border-black text-white py-1 text-[10px] font-black uppercase flex items-center justify-center">
             🖨 Imprimir
           </button>
-          <a href="{% url 'inventario:descargar_etiqueta_pdf' inv.producto.id %}"
-             download
-             class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black text-black py-1 text-[10px] font-black uppercase flex items-center justify-center">
+          <button onclick="descargarEtiquetaPDF('{% url 'inventario:descargar_etiqueta_pdf' inv.producto.id %}', '{{ inv.producto.codigo_barras }}')"
+                  class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black text-black py-1 text-[10px] font-black uppercase flex items-center justify-center">
             ⬇ Descargar PDF
-          </a>
+          </button>
         </div>
         <div id="codigo-{{ inv.producto.id }}-{{ ubicacion.id }}"
              class="codigo text-[9px] border-t-4 border-black p-1 font-mono text-center select-all break-all cursor-pointer"
