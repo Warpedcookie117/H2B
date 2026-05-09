@@ -137,6 +137,38 @@ class Promocion(models.Model):
         ordering = ['-activo', 'nombre']
 
 
+class ConfigTicket(models.Model):
+    """
+    Singleton — siempre acceder con ConfigTicket.get().
+    Guarda todos los textos y opciones que aparecen en el ticket impreso.
+    """
+    # ---- ENCABEZADO ----
+    nombre_empresa  = models.CharField(max_length=30, default="COMERCIALIZADORA MODELO")
+    telefono        = models.CharField(max_length=30, blank=True, default="")
+    direccion       = models.CharField(max_length=30, blank=True, default="")
+
+    # ---- ARTÍCULOS ----
+    mostrar_id_producto  = models.BooleanField(default=True,  help_text="Muestra #123 antes del nombre del producto")
+    mostrar_tipo_precio  = models.BooleanField(default=True,  help_text='Muestra la línea "PRECIO MAYOREO APLICADO"')
+    texto_mayoreo        = models.CharField(max_length=30, default="PRECIO MAYOREO APLICADO")
+    texto_menudeo        = models.CharField(max_length=30, default="PRECIO MENUDEO APLICADO")
+
+    # ---- PIE ----
+    mensaje_pie            = models.CharField(max_length=30, default="NO CAMBIOS NI DEVOLUCIONES")
+    mensaje_agradecimiento = models.CharField(max_length=30, default="GRACIAS POR TU COMPRA")
+
+    class Meta:
+        verbose_name = "Configuración de Ticket"
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return f"Config Ticket — {self.nombre_empresa}"
+
+
 class Oferta(models.Model):
     TIPO = [
         ('porcentaje', 'Descuento porcentual (%)'),

@@ -368,16 +368,16 @@
 
 
 <!-- ========================================================= -->
-<!-- MODAL CONFIGURACIÓN DE IMPRESORA                        -->
+<!-- MODAL CONFIGURACIÓN POS                                 -->
 <!-- ========================================================= -->
 <div id="modal-config-impresora" class="pos-modal pos-modal--hidden">
-  <div class="pos-modal-content pos-animate-scale" style="max-width:480px">
+  <div class="pos-modal-content pos-animate-scale" style="max-width:500px">
 
-    <h2 class="pos-modal-titulo">🖨 Impresora Térmica</h2>
+    <h2 class="pos-modal-titulo">⚙ Configuración POS</h2>
 
-    <!-- Estado Agente POS -->
+    <!-- Estado Agente -->
     <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem;color:#6b7280">
-      Estado Agente POS
+      Estado del Agente POS
     </p>
     <div id="agent-estado-badge"
          style="font-size:.8rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
@@ -385,31 +385,65 @@
       Verificando...
     </div>
 
-    <!-- Select de impresoras disponibles (se llena al abrir si QZ está activo) -->
-    <div id="config-select-wrap" style="display:none;margin-bottom:1rem">
+    <!-- ── IMPRESORA DE TICKETS ── -->
+    <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;
+              margin-bottom:.4rem;border-top:3px solid black;padding-top:.75rem;color:#111">
+      🖨 Impresora de Tickets (térmica)
+    </p>
+    <div id="badge-termica"
+         style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
+                display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
+
+    <div id="config-select-wrap" style="display:none;margin-bottom:.75rem">
       <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        Impresoras disponibles
+        Selecciona la impresora
       </label>
       <select id="config-printer-select"
               onchange="document.getElementById('config-printer-name').value = this.value"
-              style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:.9rem;
-                     background:white;outline:none;box-shadow:4px 4px 0 0 black">
+              style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.9rem;
+                     background:white;outline:none;box-shadow:3px 3px 0 0 black">
         <option value="">— Selecciona —</option>
       </select>
     </div>
-
-    <!-- Nombre impresora (fallback manual) -->
     <div style="margin-bottom:1rem">
       <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
-        Nombre de la impresora
+        O escribe el nombre exacto
       </label>
-      <input id="config-printer-name" type="text"
-             placeholder="Ej: POS-588"
-             style="width:100%;border:4px solid black;padding:.5rem .75rem;font-weight:700;font-size:1rem;
-                    outline:none;box-shadow:4px 4px 0 0 black">
+      <input id="config-printer-name" type="text" placeholder="Ej: POS-588"
+             style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.95rem;
+                    outline:none;box-shadow:3px 3px 0 0 black">
     </div>
 
-    <!-- Botones acción -->
+    <!-- ── IMPRESORA DE ETIQUETAS ── -->
+    <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;
+              margin-bottom:.4rem;border-top:3px solid black;padding-top:.75rem;color:#111">
+      🏷 Impresora de Etiquetas
+    </p>
+    <div id="badge-etiqueta"
+         style="font-size:.75rem;font-weight:700;padding:.25rem .6rem;border:2px solid black;
+                display:inline-block;margin-bottom:.75rem;background:#e5e7eb">—</div>
+
+    <div id="config-etiqueta-select-wrap" style="display:none;margin-bottom:.75rem">
+      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
+        Selecciona la impresora
+      </label>
+      <select id="config-etiqueta-select"
+              onchange="document.getElementById('config-etiqueta-name').value = this.value"
+              style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.9rem;
+                     background:white;outline:none;box-shadow:3px 3px 0 0 black">
+        <option value="">— Selecciona —</option>
+      </select>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <label style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.3rem">
+        O escribe el nombre exacto
+      </label>
+      <input id="config-etiqueta-name" type="text" placeholder="Ej: POS-9250-L"
+             style="width:100%;border:4px solid black;padding:.45rem .75rem;font-weight:700;font-size:.95rem;
+                    outline:none;box-shadow:3px 3px 0 0 black">
+    </div>
+
+    <!-- Botones -->
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem">
       <button onclick="guardarConfigImpresora()"
               style="flex:1;border:4px solid black;background:#3A86FF;color:white;font-weight:900;
@@ -421,7 +455,7 @@
               style="flex:1;border:4px solid black;background:#06D6A0;color:black;font-weight:900;
                      font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
                      box-shadow:4px 4px 0 0 black;cursor:pointer">
-        🖨 Probar
+        🖨 Probar ticket
       </button>
       <button onclick="cerrarConfigImpresora()"
               style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;
@@ -431,7 +465,17 @@
       </button>
     </div>
 
-    <!-- Instrucciones Agente POS -->
+    <!-- Botón formato de ticket (solo dueños) -->
+    {% if request.user.empleado.rol == "dueño" %}
+    <a href="{% url 'ventas:config_ticket' %}"
+       style="display:block;text-align:center;border:3px solid black;background:#FFD60A;color:black;
+              font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;
+              padding:.5rem 1rem;box-shadow:4px 4px 0 0 black;margin-bottom:1rem;text-decoration:none">
+      📝 ¿Cambiar el formato del ticket de venta?
+    </a>
+    {% endif %}
+
+    <!-- Instrucciones -->
     <details style="border:3px solid black;padding:.6rem .85rem">
       <summary style="font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;cursor:pointer">
         ¿Cómo instalar el Agente POS?
@@ -440,7 +484,7 @@
         <li>Copia <b>pos_agent.exe</b> a esta computadora</li>
         <li>Ejecuta <b>instalar_inicio.bat</b> para que arranque automáticamente con Windows</li>
         <li>Abre <b>pos_agent.exe</b> (aparecerá una ventana negra — minimízala)</li>
-        <li>Recarga esta página, abre Config y selecciona tu impresora</li>
+        <li>Recarga esta página, abre Config y selecciona tus impresoras</li>
       </ol>
     </details>
 
@@ -448,40 +492,60 @@
 </div>
 
 <script>
-async function abrirConfigImpresora() {
-    const saved      = localStorage.getItem("pos_impresora") || "";
-    const badge      = document.getElementById("agent-estado-badge");
-    const selectWrap = document.getElementById("config-select-wrap");
-    const select     = document.getElementById("config-printer-select");
+function _setBadge(el, texto, color, textColor) {
+    el.textContent      = texto;
+    el.style.background = color;
+    el.style.color      = textColor || "black";
+}
 
-    document.getElementById("config-printer-name").value = saved;
-    badge.textContent      = "Verificando...";
-    badge.style.background = "#e5e7eb";
-    badge.style.color      = "black";
+async function abrirConfigImpresora() {
+    const savedTermica  = localStorage.getItem("pos_impresora") || "";
+    const savedEtiqueta = localStorage.getItem("pos_impresora_etiquetas") || "";
+
+    document.getElementById("config-printer-name").value  = savedTermica;
+    document.getElementById("config-etiqueta-name").value = savedEtiqueta;
+
+    const badge    = document.getElementById("agent-estado-badge");
+    const badgeT   = document.getElementById("badge-termica");
+    const badgeE   = document.getElementById("badge-etiqueta");
+    const wrapT    = document.getElementById("config-select-wrap");
+    const wrapE    = document.getElementById("config-etiqueta-select-wrap");
+    const selT     = document.getElementById("config-printer-select");
+    const selE     = document.getElementById("config-etiqueta-select");
+
+    _setBadge(badge, "Verificando...", "#e5e7eb");
     document.getElementById("modal-config-impresora").classList.remove("pos-modal--hidden");
 
     const fn     = window._posAgentStatus;
     const status = fn ? await fn() : { online: false };
 
     if (status.online) {
-        badge.textContent      = "✓ Agente activo";
-        badge.style.background = "#06D6A0";
-        badge.style.color      = "black";
+        _setBadge(badge, "✓ Agente activo", "#06D6A0");
 
-        selectWrap.style.display = "block";
-        select.innerHTML = '<option value="">Cargando...</option>';
+        _setBadge(badgeT, savedTermica  ? "✓ " + savedTermica  : "Sin configurar",
+                          savedTermica  ? "#06D6A0" : "#FFF3B0");
+        _setBadge(badgeE, savedEtiqueta ? "✓ " + savedEtiqueta : "Sin configurar",
+                          savedEtiqueta ? "#06D6A0" : "#FFF3B0");
+
+        // Cargar lista de impresoras
+        wrapT.style.display = "block";
+        wrapE.style.display = "block";
+        selT.innerHTML = selE.innerHTML = '<option value="">Cargando...</option>';
+
         const printers = window._posListarImpresoras ? await window._posListarImpresoras() : null;
         if (printers && printers.length) {
-            select.innerHTML = '<option value="">— Selecciona —</option>' +
+            const mkOpts = (saved) => '<option value="">— Selecciona —</option>' +
                 printers.map(p => `<option value="${p}"${p === saved ? " selected" : ""}>${p}</option>`).join("");
+            selT.innerHTML = mkOpts(savedTermica);
+            selE.innerHTML = mkOpts(savedEtiqueta);
         } else {
-            selectWrap.style.display = "none";
+            wrapT.style.display = wrapE.style.display = "none";
         }
     } else {
-        badge.textContent      = "✗ Agente no disponible — abre pos_agent.exe";
-        badge.style.background = "#FF006E";
-        badge.style.color      = "white";
-        selectWrap.style.display = "none";
+        _setBadge(badge, "✗ Agente no disponible — abre pos_agent.exe", "#FF006E", "white");
+        _setBadge(badgeT, savedTermica  || "Sin configurar", savedTermica  ? "#e5e7eb" : "#FFF3B0");
+        _setBadge(badgeE, savedEtiqueta || "Sin configurar", savedEtiqueta ? "#e5e7eb" : "#FFF3B0");
+        wrapT.style.display = wrapE.style.display = "none";
     }
 }
 
@@ -490,14 +554,26 @@ function cerrarConfigImpresora() {
 }
 
 function guardarConfigImpresora() {
-    const nombre = document.getElementById("config-printer-name").value.trim();
-    if (!nombre) { alert("Escribe el nombre de la impresora."); return; }
-    localStorage.setItem("pos_impresora", nombre);
+    const termica  = document.getElementById("config-printer-name").value.trim();
+    const etiqueta = document.getElementById("config-etiqueta-name").value.trim();
+
+    if (!termica && !etiqueta) {
+        alert("Escribe al menos un nombre de impresora.");
+        return;
+    }
+    if (termica)  localStorage.setItem("pos_impresora", termica);
+    if (etiqueta) localStorage.setItem("pos_impresora_etiquetas", etiqueta);
+
+    const payload = {};
+    if (termica)  payload.printer           = termica;
+    if (etiqueta) payload.printer_etiquetas = etiqueta;
+
     fetch("http://127.0.0.1:12345/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ printer: nombre }),
+        body: JSON.stringify(payload),
     }).catch(() => {});
+
     cerrarConfigImpresora();
 }
 </script>

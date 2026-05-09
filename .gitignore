@@ -16,3 +16,7 @@ db.sqlite3
 
 #fotos de prueba
 media/productos/
+
+# Agente POS — binarios compilados (el código fuente sí va a git)
+pos_agent/build/
+pos_agent/dist/

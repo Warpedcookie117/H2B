@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Formato del Ticket{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+  <!-- Encabezado -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#FFD60A] p-4 mb-6 flex items-center gap-4">
+    <a href="{% url 'ventas:pos' %}"
+       class="border-4 border-black bg-white font-black text-sm px-3 py-1 shadow-[3px_3px_0_0_black] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all">
+      ← Volver
+    </a>
+    <h1 class="font-black text-2xl uppercase tracking-widest">🖨 Formato del Ticket</h1>
+  </div>
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="border-4 border-black bg-[#06D6A0] p-3 mb-4 font-black text-sm uppercase tracking-widest shadow-[4px_4px_0_0_black]">
+      {{ msg }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" id="ticket-form">
+    {% csrf_token %}
+
+    <div class="flex flex-col lg:flex-row gap-6">
+
+      <!-- ======== COLUMNA IZQUIERDA: Controles ======== -->
+      <div class="flex-1 flex flex-col gap-4">
+
+        <!-- ENCABEZADO -->
+        <section class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-4">
+          <h2 class="font-black text-xs uppercase tracking-widest border-b-4 border-black pb-2 mb-4">
+            📄 Encabezado del ticket
+          </h2>
+
+          <div class="mb-3">
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Nombre de tu negocio
+              <span class="text-gray-400 normal-case font-normal">(aparece arriba de todo)</span>
+            </label>
+            <input name="nombre_empresa" id="f-nombre" maxlength="30"
+                   value="{{ cfg.nombre_empresa }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-nombre">{{ cfg.nombre_empresa|length }}</span>/30</p>
+          </div>
+
+          <div class="mb-3">
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Teléfono
+              <span class="text-gray-400 normal-case font-normal">(opcional — deja vacío para no mostrar)</span>
+            </label>
+            <input name="telefono" id="f-tel" maxlength="30"
+                   value="{{ cfg.telefono }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-tel">{{ cfg.telefono|length }}</span>/30</p>
+          </div>
+
+          <div>
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Dirección
+              <span class="text-gray-400 normal-case font-normal">(opcional — deja vacío para no mostrar)</span>
+            </label>
+            <input name="direccion" id="f-dir" maxlength="30"
+                   value="{{ cfg.direccion }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-dir">{{ cfg.direccion|length }}</span>/30</p>
+          </div>
+        </section>
+
+        <!-- ARTÍCULOS -->
+        <section class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-4">
+          <h2 class="font-black text-xs uppercase tracking-widest border-b-4 border-black pb-2 mb-4">
+            🛒 Cómo se ven los artículos
+          </h2>
+
+          <!-- Toggle: mostrar ID -->
+          <label class="flex items-center gap-3 mb-4 cursor-pointer">
+            <input type="checkbox" name="mostrar_id_producto" id="f-id"
+                   {% if cfg.mostrar_id_producto %}checked{% endif %}
+                   onchange="actualizarPreview()"
+                   class="w-5 h-5 border-4 border-black accent-black cursor-pointer">
+            <span class="font-bold text-sm">
+              Mostrar el número de ID antes del producto
+              <br><span class="text-gray-500 font-normal text-xs">Ejemplo: <code class="bg-gray-100 px-1">#42 Coca Cola x2</code> vs <code class="bg-gray-100 px-1">Coca Cola x2</code></span>
+            </span>
+          </label>
+
+          <!-- Toggle: mostrar tipo precio -->
+          <label class="flex items-center gap-3 mb-4 cursor-pointer">
+            <input type="checkbox" name="mostrar_tipo_precio" id="f-tipo"
+                   {% if cfg.mostrar_tipo_precio %}checked{% endif %}
+                   onchange="actualizarPreview()"
+                   class="w-5 h-5 border-4 border-black accent-black cursor-pointer">
+            <span class="font-bold text-sm">
+              Mostrar el tipo de precio aplicado
+              <br><span class="text-gray-500 font-normal text-xs">Imprime una línea indicando si fue precio mayoreo o menudeo</span>
+            </span>
+          </label>
+
+          <!-- Texto mayoreo -->
+          <div id="wrap-mayoreo" class="mb-3 {% if not cfg.mostrar_tipo_precio %}opacity-40{% endif %}">
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Texto cuando aplica precio mayoreo
+            </label>
+            <input name="texto_mayoreo" id="f-may" maxlength="30"
+                   value="{{ cfg.texto_mayoreo }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-may">{{ cfg.texto_mayoreo|length }}</span>/30</p>
+          </div>
+
+          <!-- Texto menudeo -->
+          <div id="wrap-menudeo" class="{% if not cfg.mostrar_tipo_precio %}opacity-40{% endif %}">
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Texto cuando aplica precio menudeo
+            </label>
+            <input name="texto_menudeo" id="f-men" maxlength="30"
+                   value="{{ cfg.texto_menudeo }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-men">{{ cfg.texto_menudeo|length }}</span>/30</p>
+          </div>
+        </section>
+
+        <!-- PIE -->
+        <section class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-4">
+          <h2 class="font-black text-xs uppercase tracking-widest border-b-4 border-black pb-2 mb-4">
+            ✉ Mensaje al final del ticket
+          </h2>
+
+          <div class="mb-3">
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Mensaje principal
+              <span class="text-gray-400 normal-case font-normal">(política, aviso, etc.)</span>
+            </label>
+            <input name="mensaje_pie" id="f-pie" maxlength="30"
+                   value="{{ cfg.mensaje_pie }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-pie">{{ cfg.mensaje_pie|length }}</span>/30</p>
+          </div>
+
+          <div>
+            <label class="block font-black text-xs uppercase tracking-widest mb-1">
+              Mensaje de despedida
+            </label>
+            <input name="mensaje_agradecimiento" id="f-grac" maxlength="30"
+                   value="{{ cfg.mensaje_agradecimiento }}"
+                   oninput="actualizarPreview()"
+                   class="w-full border-4 border-black p-2 font-mono font-bold text-sm outline-none shadow-[3px_3px_0_0_black]">
+            <p class="text-right text-xs text-gray-400 mt-0.5"><span id="cnt-grac">{{ cfg.mensaje_agradecimiento|length }}</span>/30</p>
+          </div>
+        </section>
+
+        <!-- Guardar -->
+        <button type="submit"
+                class="w-full border-4 border-black bg-[#3A86FF] text-white font-black text-sm uppercase tracking-widest py-3 shadow-[4px_4px_0_0_black] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all">
+          💾 Guardar cambios
+        </button>
+
+      </div>
+
+      <!-- ======== COLUMNA DERECHA: Preview ======== -->
+      <div class="lg:w-72 flex-shrink-0">
+        <div class="sticky top-4">
+          <p class="font-black text-xs uppercase tracking-widest mb-2 text-gray-500">Vista previa del ticket</p>
+          <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-4">
+            <pre id="ticket-preview"
+                 class="font-mono text-[11px] leading-relaxed whitespace-pre text-black overflow-x-auto"></pre>
+          </div>
+          <p class="text-xs text-gray-400 mt-2 font-semibold">
+            * El preview usa datos de ejemplo. Los precios y productos reales varían.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<script>
+const ANCHO = 30;
+
+function center(txt) {
+  if (txt.length >= ANCHO) return txt.substring(0, ANCHO);
+  const pad = Math.floor((ANCHO - txt.length) / 2);
+  return ' '.repeat(pad) + txt;
+}
+function sep(c = '-') { return c.repeat(ANCHO); }
+
+function actualizarPreview() {
+  const nombre  = document.getElementById('f-nombre').value  || '';
+  const tel     = document.getElementById('f-tel').value     || '';
+  const dir     = document.getElementById('f-dir').value     || '';
+  const showId  = document.getElementById('f-id').checked;
+  const showTipo= document.getElementById('f-tipo').checked;
+  const mayo    = document.getElementById('f-may').value     || '';
+  const menu    = document.getElementById('f-men').value     || '';
+  const pie     = document.getElementById('f-pie').value     || '';
+  const grac    = document.getElementById('f-grac').value    || '';
+
+  // Actualizar contadores
+  document.getElementById('cnt-nombre').textContent = nombre.length;
+  document.getElementById('cnt-tel').textContent    = tel.length;
+  document.getElementById('cnt-dir').textContent    = dir.length;
+  document.getElementById('cnt-may').textContent    = mayo.length;
+  document.getElementById('cnt-men').textContent    = menu.length;
+  document.getElementById('cnt-pie').textContent    = pie.length;
+  document.getElementById('cnt-grac').textContent   = grac.length;
+
+  // Opacidad en campos de tipo precio
+  const wMay = document.getElementById('wrap-mayoreo');
+  const wMen = document.getElementById('wrap-menudeo');
+  wMay.classList.toggle('opacity-40', !showTipo);
+  wMen.classList.toggle('opacity-40', !showTipo);
+
+  // ---- Construir preview ----
+  const lineas = [];
+  lineas.push(center(nombre));
+  if (tel)  lineas.push(center(tel));
+  if (dir)  lineas.push(center(dir));
+  lineas.push(center('TICKET DE VENTA: 17'));
+  lineas.push(center('Fecha: 09/05/2026 14:30'));
+  lineas.push(sep());
+
+  // Items de ejemplo
+  const items = [
+    { id: 42, nombre: 'Coca Cola 600ml', cant: 2, precio: 36.00 },
+    { id: 7,  nombre: 'Pan Bimbo',       cant: 1, precio: 28.50 },
+  ];
+  for (const it of items) {
+    const pref = showId ? `#${it.id} ` : '';
+    const etiq = `${pref}${it.nombre} x${it.cant}`;
+    const prec = `$${it.precio.toFixed(2)}`;
+    const sp   = ANCHO - etiq.length - prec.length;
+    if (sp > 0) lineas.push(etiq + ' '.repeat(sp) + prec);
+    else { lineas.push(etiq); lineas.push('  ' + prec); }
+  }
+  lineas.push(sep());
+
+  if (showTipo) lineas.push(center(menu || 'PRECIO MENUDEO APLICADO'));
+
+  lineas.push('Subtotal:  $64.50');
+  lineas.push('Descuento: $0.00');
+  lineas.push('Total:     $64.50');
+  lineas.push(sep());
+  lineas.push(center('METODO DE PAGO'));
+  lineas.push('Efectivo: $70.00');
+  lineas.push('Tarjeta:  $0.00');
+  lineas.push('Cambio:   $5.50');
+  lineas.push(sep());
+  if (pie)  lineas.push(center(pie));
+  if (grac) lineas.push(center(grac));
+
+  document.getElementById('ticket-preview').textContent = lineas.join('\n');
+}
+
+// Render inicial
+actualizarPreview();
+</script>
+{% endblock %}

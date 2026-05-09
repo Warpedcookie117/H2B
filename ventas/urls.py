@@ -49,6 +49,8 @@ from ventas.views.ticket_corte_views import (
 )
 
 
+from ventas.views.config_ticket_views import config_ticket_view
+
 app_name = "ventas"
 
 urlpatterns = [
@@ -107,5 +109,10 @@ urlpatterns = [
     path("ofertas/toggle/<int:oferta_id>/",         toggle_oferta_view,   name="oferta_toggle"),
     path("ofertas/eliminar/<int:oferta_id>/",       eliminar_oferta_view, name="oferta_eliminar"),
     path("api/buscar-producto/",                    buscar_producto_view, name="buscar_producto"),
+
+    # ============================
+    # Config Ticket
+    # ============================
+    path("config-ticket/", config_ticket_view, name="config_ticket"),
 
 ]

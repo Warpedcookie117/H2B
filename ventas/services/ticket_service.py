@@ -62,8 +62,9 @@ def _detectar_tipo_precio(item):
 
 def generar_texto_ticket(obj):
 
-    from ventas.models import Venta, CorteCaja
+    from ventas.models import Venta, CorteCaja, ConfigTicket
 
+    cfg = ConfigTicket.get()
     lineas = []
 
     # ============================================================
@@ -78,11 +79,15 @@ def generar_texto_ticket(obj):
             lineas.append(_sep("*"))
             lineas.append(_c("FELICIDADES"))
             lineas.append(_c("PRIMER TICKET DE VENTA"))
-            lineas.append(_c("COMERCIALIZADORA MODELO"))
+            lineas.append(_c(cfg.nombre_empresa))
             lineas.append(_c("ESTO ES HISTORIA, COMPA!"))
             lineas.append(_sep("*"))
 
-        lineas.append(_c("COMERCIALIZADORA MODELO"))
+        lineas.append(_c(cfg.nombre_empresa))
+        if cfg.telefono:
+            lineas.append(_c(cfg.telefono))
+        if cfg.direccion:
+            lineas.append(_c(cfg.direccion))
         lineas.append(_c(f"TICKET DE VENTA: {venta.id}"))
         lineas.append(_c(f"Fecha: {venta.fecha.strftime('%d/%m/%Y %H:%M')}"))
         lineas.append(_sep())
@@ -96,11 +101,16 @@ def generar_texto_ticket(obj):
                 item.producto.nombre if item.producto else "PRODUCTO ELIMINADO"
             )
 
+            if cfg.mostrar_id_producto:
+                prefijo = f"#{producto_id} "
+            else:
+                prefijo = ""
+
             if es_regalo:
-                etiqueta  = f"#{producto_id} {nombre} x{item.cantidad}"
+                etiqueta   = f"{prefijo}{nombre} x{item.cantidad}"
                 precio_str = "$0.00 *PROMO*"
             else:
-                etiqueta  = f"#{producto_id} {nombre} x{item.cantidad}"
+                etiqueta   = f"{prefijo}{nombre} x{item.cantidad}"
                 precio_str = f"${item.precio_unitario:.2f}"
 
             espacio = ANCHO - len(etiqueta) - len(precio_str)
@@ -119,10 +129,11 @@ def generar_texto_ticket(obj):
 
         lineas.append(_sep())
 
-        if "MAY" in tipos_precio:
-            lineas.append(_c("PRECIO MAYOREO APLICADO"))
-        else:
-            lineas.append(_c("PRECIO MENUDEO APLICADO"))
+        if cfg.mostrar_tipo_precio:
+            if "MAY" in tipos_precio:
+                lineas.append(_c(cfg.texto_mayoreo))
+            else:
+                lineas.append(_c(cfg.texto_menudeo))
 
         lineas.append(f"Subtotal:  ${venta.subtotal:.2f}")
         lineas.append(f"Descuento: ${venta.descuento:.2f}")
@@ -133,8 +144,10 @@ def generar_texto_ticket(obj):
         lineas.append(f"Tarjeta:  ${venta.pagado_tarjeta:.2f}")
         lineas.append(f"Cambio:   ${venta.cambio:.2f}")
         lineas.append(_sep())
-        lineas.append(_c("NO CAMBIOS NI DEVOLUCIONES"))
-        lineas.append(_c("GRACIAS POR TU COMPRA"))
+        if cfg.mensaje_pie:
+            lineas.append(_c(cfg.mensaje_pie))
+        if cfg.mensaje_agradecimiento:
+            lineas.append(_c(cfg.mensaje_agradecimiento))
 
         return "\n".join(lineas)
 
@@ -190,7 +203,7 @@ def generar_texto_ticket(obj):
         total_efectivo_caja = round(sum(float(v.pagado_efectivo) - float(v.cambio) for v in corte.ventas.all()), 2)
         total_tarjeta_caja  = round(sum(float(v.pagado_tarjeta) for v in corte.ventas.all()), 2)
 
-        lineas.append(_c("COMERCIALIZADORA MODELO"))
+        lineas.append(_c(cfg.nombre_empresa))
         lineas.append(_c("CORTE CAJA"))
         lineas.append(_c(f"Fecha: {corte.fecha.strftime('%d/%m/%Y %H:%M')}"))
         lineas.append(_c(f"Caja: {corte.caja.nombre}"))
