@@ -93,10 +93,40 @@ document.addEventListener("DOMContentLoaded", function () {
   // ============================
   // Imprimir etiqueta
   // ============================
-  window.imprimirEtiqueta = function (productoId, ubicacionId) {
+  const _AGENT_URL = "http://127.0.0.1:12345";
+
+  window.imprimirEtiqueta = async function (productoId, ubicacionId) {
     const img = document.getElementById(`img-${productoId}-${ubicacionId}`);
     if (!img || !img.src) return;
 
+    let printer = localStorage.getItem("pos_impresora_etiquetas") || "";
+
+    if (!printer) {
+      const nombre = prompt(
+        "Ingresa el nombre exacto de la impresora de etiquetas\n" +
+        "(como aparece en Configuración → Bluetooth y dispositivos → Impresoras):"
+      );
+      if (!nombre || !nombre.trim()) return;
+      printer = nombre.trim();
+      localStorage.setItem("pos_impresora_etiquetas", printer);
+    }
+
+    try {
+      const base64 = img.src.includes(",") ? img.src.split(",")[1] : img.src;
+      const r = await fetch(`${_AGENT_URL}/print-label`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagen_base64: base64, printer }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const d = await r.json();
+      if (d.ok) return;
+      console.warn("Agente error al imprimir etiqueta:", d.error);
+    } catch {
+      console.warn("Agente POS no disponible, usando ventana de impresión");
+    }
+
+    // Fallback: ventana de impresión del navegador
     const ventana = window.open("", "_blank");
     ventana.document.write(`
       <html>
@@ -118,6 +148,19 @@ document.addEventListener("DOMContentLoaded", function () {
       </html>
     `);
     ventana.document.close();
+  };
+
+  window.configurarImpresoraEtiquetas = function () {
+    const actual = localStorage.getItem("pos_impresora_etiquetas") || "(sin configurar)";
+    const nombre = prompt(`Impresora de etiquetas actual: ${actual}\n\nIngresa el nuevo nombre (deja vacío para borrar la configuración):`);
+    if (nombre === null) return;
+    if (nombre.trim()) {
+      localStorage.setItem("pos_impresora_etiquetas", nombre.trim());
+      alert(`Impresora guardada: ${nombre.trim()}`);
+    } else {
+      localStorage.removeItem("pos_impresora_etiquetas");
+      alert("Configuración de impresora de etiquetas eliminada.");
+    }
   };
 
   // ============================

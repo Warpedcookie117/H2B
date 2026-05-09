@@ -3,7 +3,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from inventario.forms import  ProductoForm, TemporadaForm
 from inventario.models import Atributo, Categoria, Inventario, MovimientoInventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
@@ -688,6 +688,56 @@ def codigo_base64(request, producto_id):
         return JsonResponse({'error': 'No se pudo generar el código de barras.'}, status=500)
 
 
+@login_required
+def descargar_etiqueta_pdf(request, producto_id):
+    """Genera un PDF con las dimensiones exactas de la etiqueta del producto."""
+    import base64 as _b64
+    import io as _io
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import ImageReader
+
+    # Dimensiones físicas por tamaño (ancho x alto en mm)
+    TAMAÑOS = {
+        "chica":   (50, 20),
+        "mediana": (100, 30),
+        "grande":  (135, 32),
+    }
+
+    producto = get_object_or_404(Producto, id=producto_id)
+
+    if not producto.codigo_barras:
+        return HttpResponse("Este producto no tiene código de barras.", status=404)
+
+    tamaño = producto.tamano_etiqueta or "mediana"
+    tipo   = producto.tipo_codigo    or "code128"
+    ancho_mm, alto_mm = TAMAÑOS.get(tamaño, (100, 30))
+
+    try:
+        img_b64 = BarcodeRenderService.generar(
+            codigo=producto.codigo_barras,
+            tipo=tipo,
+            tamaño=tamaño,
+        )
+    except Exception as e:
+        _logger.error("Error generando barcode PDF para producto %s: %s", producto_id, e, exc_info=True)
+        return HttpResponse("Error generando el código de barras.", status=500)
+
+    img_bytes = _b64.b64decode(img_b64)
+    page_w = ancho_mm * mm
+    page_h = alto_mm * mm
+
+    buf = _io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(page_w, page_h))
+    c.drawImage(ImageReader(_io.BytesIO(img_bytes)), 0, 0, width=page_w, height=page_h, preserveAspectRatio=True, anchor="c")
+    c.save()
+    buf.seek(0)
+
+    response = HttpResponse(buf.read(), content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="etiqueta_{producto.codigo_barras}.pdf"'
+    )
+    return response
 
 
 # Vista encargada del formulario de temporadas y de mostrarlas a usuarios empleados normales.

@@ -9,6 +9,7 @@ from .views.productos import (
     lista_productos,
     buscar_producto_por_codigo,
     codigo_base64,
+    descargar_etiqueta_pdf,
     productos_por_ubicacion,
     temporada_view,
     mis_productos,
@@ -85,6 +86,7 @@ urlpatterns = [
     path('detalle_producto/<int:producto_id>/', detalle_producto, name='detalle_producto'),
     path("ubicacion/<int:ubicacion_id>/", productos_por_ubicacion, name="productos_por_ubicacion"),
     path('producto/<int:producto_id>/codigo_base64/', codigo_base64, name='codigo_base64'),
+    path('producto/<int:producto_id>/etiqueta-pdf/', descargar_etiqueta_pdf, name='descargar_etiqueta_pdf'),
     path("api/producto/<int:producto_id>/desactivar/", desactivar_producto, name="desactivar_producto"),
     path("api/stock-global/", api_stock_global, name="api_stock_global"),
 

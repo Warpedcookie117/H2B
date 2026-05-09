@@ -10,24 +10,24 @@ class BarcodeRenderService:
     # chica 50×20 mm, mediana 100×30 mm, grande 135×32 mm)
     SIZE_PRESETS = {
         "chica": {
-            "module_width": 0.18,
-            "module_height": 6,
+            "module_width": 0.30,   # mínimo recomendado para Code128 escaneable
+            "module_height": 9,
             "font_size": 8,
-            "quiet_zone": 1,
-            "dpi": 150,
+            "quiet_zone": 2.5,
+            "dpi": 203,             # DPI estándar de impresoras térmicas
         },
         "mediana": {
-            "module_width": 0.22,
-            "module_height": 10,
+            "module_width": 0.35,
+            "module_height": 13,
             "font_size": 10,
-            "quiet_zone": 2,
-            "dpi": 200,
+            "quiet_zone": 3,
+            "dpi": 203,
         },
         "grande": {
-            "module_width": 0.28,
-            "module_height": 14,
+            "module_width": 0.40,
+            "module_height": 16,
             "font_size": 12,
-            "quiet_zone": 3,
+            "quiet_zone": 4,
             "dpi": 300,
         },
     }
