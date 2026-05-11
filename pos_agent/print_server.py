@@ -82,6 +82,73 @@ def list_printers():
     return [p[2] for p in win32print.EnumPrinters(flags)]
 
 
+def enum_jobs(printer_name):
+    """Lista jobs en cola de la impresora con su status."""
+    import win32print
+    try:
+        hprinter = win32print.OpenPrinter(printer_name)
+    except Exception:
+        return []
+    try:
+        jobs = win32print.EnumJobs(hprinter, 0, 999, 1)
+    except Exception:
+        jobs = []
+    finally:
+        win32print.ClosePrinter(hprinter)
+
+    out = []
+    for j in jobs:
+        st = j.get("Status", 0)
+        flags = []
+        if st & 0x01: flags.append("Pausado")
+        if st & 0x02: flags.append("Error")
+        if st & 0x08: flags.append("En spooler")
+        if st & 0x10: flags.append("Imprimiendo")
+        if st & 0x20: flags.append("Offline")
+        if st & 0x40: flags.append("Sin papel")
+        if st & 0x80: flags.append("Impreso")
+        out.append({
+            "id": j.get("JobId"),
+            "document": j.get("Document", ""),
+            "status_flags": flags or ["Pendiente"],
+        })
+    return out
+
+
+def diagnostico(printer_name, espera_s=1.5):
+    """Espera y devuelve estado fisico + jobs pendientes despues de imprimir."""
+    import time
+    time.sleep(espera_s)
+    return {
+        "printer": printer_info(printer_name),
+        "jobs": enum_jobs(printer_name),
+    }
+
+
+def printer_info(name):
+    """Devuelve estado de la impresora consultando Windows.
+    exists=False si no esta instalada; online=False si esta apagada o desconectada."""
+    import win32print
+    try:
+        hprinter = win32print.OpenPrinter(name)
+    except Exception:
+        return {"exists": False, "online": False, "status_text": "No instalada"}
+    try:
+        info  = win32print.GetPrinter(hprinter, 2)
+        st    = info.get("Status", 0)
+        attrs = info.get("Attributes", 0)
+        # PRINTER_STATUS_OFFLINE = 0x80, PRINTER_ATTRIBUTE_WORK_OFFLINE = 0x400
+        if (st & 0x80) or (attrs & 0x400):
+            return {"exists": True, "online": False, "status_text": "Apagada o desconectada"}
+        if st & 0x10: return {"exists": True, "online": True, "status_text": "Sin papel"}
+        if st & 0x08: return {"exists": True, "online": True, "status_text": "Atasco de papel"}
+        if st & 0x02: return {"exists": True, "online": True, "status_text": "Error"}
+        if st & 0x400000: return {"exists": True, "online": False, "status_text": "Sin energia"}  # POWER_SAVE
+        return {"exists": True, "online": True, "status_text": "Lista"}
+    finally:
+        win32print.ClosePrinter(hprinter)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -114,6 +181,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, {"printers": list_printers()})
             except Exception as e:
                 self._send(500, {"error": str(e)})
+        elif self.path.startswith("/printer-info"):
+            from urllib.parse import urlparse, parse_qs
+            qs = parse_qs(urlparse(self.path).query)
+            name = (qs.get("name") or [""])[0]
+            if not name:
+                self._send(400, {"error": "Falta name"})
+                return
+            try:
+                self._send(200, printer_info(name))
+            except Exception as e:
+                self._send(500, {"error": str(e)})
         else:
             self.send_response(404)
             self.end_headers()
@@ -135,7 +213,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 print_raw(texto, printer)
-                self._send(200, {"ok": True})
+                resp = {"ok": True}
+                if body.get("diag"):
+                    resp["diag"] = diagnostico(printer)
+                self._send(200, resp)
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
 
@@ -151,7 +232,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 print_image(imagen_base64, printer)
-                self._send(200, {"ok": True})
+                resp = {"ok": True}
+                if body.get("diag"):
+                    resp["diag"] = diagnostico(printer)
+                self._send(200, resp)
             except Exception as e:
                 self._send(500, {"ok": False, "error": str(e)})
 
