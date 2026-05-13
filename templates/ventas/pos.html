@@ -313,6 +313,91 @@
 </div>
 
 
+<style>
+  @media (max-width: 540px) {
+      #modal-variantes-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+  }
+</style>
+
+<!-- Badge global para el atajo *N (cantidad multiplicada) -->
+<div id="atajo-cantidad-badge"
+     style="display:none;position:fixed;top:.75rem;right:.75rem;z-index:10000;
+            background:#FB5607;color:#fff;border:3px solid black;box-shadow:4px 4px 0 0 black;
+            padding:.4rem .75rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
+            font-size:.85rem;display:flex;flex-direction:column;align-items:flex-end;gap:.1rem;">
+    <span id="atajo-cantidad-texto" style="font-size:1rem;">×1</span>
+    <span id="atajo-cantidad-sub" style="font-size:.62rem;opacity:.9;">escanea ahora (Esc para cancelar)</span>
+</div>
+
+<!-- ========================================================= -->
+<!-- MODAL SELECTOR DE VARIANTES (mismo barcode → varias variantes) -->
+<!-- ========================================================= -->
+<div id="modal-variantes" class="pos-modal pos-modal--hidden">
+    <div class="pos-modal-content pos-modal-content--wide pos-animate-scale"
+         style="overflow-x:hidden;">
+
+        <h2 class="pos-modal-titulo">🎯 ¿Cuál variante?</h2>
+        <p id="modal-variantes-sub" class="pos-consulta-codigo">
+            Varios productos comparten este código. Filtra o pícale a uno.
+        </p>
+
+        <div style="display:flex;gap:.5rem;align-items:stretch;margin-bottom:.5rem;flex-wrap:wrap;">
+            <input
+                id="modal-variantes-buscar"
+                type="text"
+                class="pos-consulta-input"
+                placeholder="Filtra por nombre, atributo o color..."
+                autocomplete="off"
+                style="flex:1 1 200px;min-width:0;margin:0;"
+            >
+            <div style="display:flex;align-items:center;gap:.4rem;border:3px solid black;background:#FFBE0B;padding:.25rem .5rem;box-shadow:3px 3px 0 0 black;">
+                <label for="modal-variantes-cantidad"
+                       style="font-weight:900;text-transform:uppercase;font-size:.7rem;letter-spacing:.06em;color:#000;">
+                    Cant.
+                </label>
+                <input
+                    id="modal-variantes-cantidad"
+                    type="number"
+                    min="1"
+                    value="1"
+                    style="width:4.5rem;border:2px solid black;padding:.2rem .35rem;font-weight:900;font-size:1rem;background:#fff;outline:none;"
+                >
+            </div>
+        </div>
+
+        <div id="modal-variantes-grid"
+             style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;overflow-x:hidden;margin-top:.25rem;padding:.25rem;">
+        </div>
+
+        <div id="modal-variantes-paginacion"
+             style="display:none;align-items:center;justify-content:center;gap:.5rem;margin-top:.6rem;">
+            <button id="modal-variantes-prev" type="button"
+                    style="border:3px solid black;background:#FFBE0B;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;padding:.35rem .7rem;box-shadow:3px 3px 0 0 black;cursor:pointer;">
+                ◀ Ant
+            </button>
+            <span id="modal-variantes-info"
+                  style="font-weight:900;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;">
+                1 / 1
+            </span>
+            <button id="modal-variantes-next" type="button"
+                    style="border:3px solid black;background:#FFBE0B;font-weight:900;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;padding:.35rem .7rem;box-shadow:3px 3px 0 0 black;cursor:pointer;">
+                Sig ▶
+            </button>
+        </div>
+
+        <div class="pos-footer-modal">
+            <button id="cerrar-modal-variantes"
+                class="pos-modal-btn pos-modal-btn--cancelar">
+                Cerrar (Esc)
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
 
 <!-- MODAL REGALO PROMOCIÓN -->
@@ -535,10 +620,10 @@ async function abrirConfigImpresora() {
     if (status.online) {
         _setBadge(badge, "✓ Agente activo", "#06D6A0");
 
-        _setBadge(badgeT, savedTermica  ? "✓ " + savedTermica  : "Sin configurar",
-                          savedTermica  ? "#06D6A0" : "#FFF3B0");
-        _setBadge(badgeE, savedEtiqueta ? "✓ " + savedEtiqueta : "Sin configurar",
-                          savedEtiqueta ? "#06D6A0" : "#FFF3B0");
+        _setBadge(badgeT, savedTermica  ? "Verificando " + savedTermica  + "…" : "Sin configurar",
+                          savedTermica  ? "#e5e7eb" : "#FFF3B0");
+        _setBadge(badgeE, savedEtiqueta ? "Verificando " + savedEtiqueta + "…" : "Sin configurar",
+                          savedEtiqueta ? "#e5e7eb" : "#FFF3B0");
 
         // Cargar lista de impresoras
         wrapT.style.display = "block";
@@ -554,6 +639,25 @@ async function abrirConfigImpresora() {
         } else {
             wrapT.style.display = wrapE.style.display = "none";
         }
+
+        // Verificar conexion fisica de cada impresora
+        const verificar = async (badgeEl, nombre) => {
+            if (!nombre) return;
+            const info = window._posPrinterInfo ? await window._posPrinterInfo(nombre) : null;
+            if (!info) {
+                _setBadge(badgeEl, "? " + nombre, "#FFF3B0");
+            } else if (!info.exists) {
+                _setBadge(badgeEl, "✗ " + nombre + " — NO instalada en Windows", "#FF006E", "white");
+            } else if (!info.online) {
+                _setBadge(badgeEl, "✗ " + nombre + " — " + info.status_text, "#FF006E", "white");
+            } else if (info.status_text !== "Lista") {
+                _setBadge(badgeEl, "⚠ " + nombre + " — " + info.status_text, "#FFD60A");
+            } else {
+                _setBadge(badgeEl, "✓ " + nombre + " — Conectada", "#06D6A0");
+            }
+        };
+        verificar(badgeT, savedTermica);
+        verificar(badgeE, savedEtiqueta);
     } else {
         _setBadge(badge, "✗ Agente no disponible — abre pos_agent.exe", "#FF006E", "white");
         _setBadge(badgeT, savedTermica  || "Sin configurar", savedTermica  ? "#e5e7eb" : "#FFF3B0");

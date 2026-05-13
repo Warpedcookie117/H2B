@@ -1,3 +1,27 @@
+/* ============================================================
+   FIX GLOBAL — auto-zoom de iOS Safari en inputs <16px
+   ============================================================
+   iOS hace zoom automático cuando el input tiene font-size < 16px.
+   En móvil forzamos 16px en todos los controles para evitar ese
+   zoom; en desktop las clases de Tailwind (text-sm, text-xs, etc.)
+   siguen funcionando normalmente. */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* nuevo_producto — el borde lo maneja input-wrapper */
 #form-producto .form-control {
   border: none !important;

@@ -7,14 +7,15 @@ from barcode.writer import ImageWriter
 class BarcodeRenderService:
 
     # Presets por tamaño de etiqueta (pensados para:
-    # chica 50×20 mm, mediana 100×30 mm, grande 135×32 mm)
+    # chica 30×15 mm, mediana 100×30 mm, grande 135×32 mm)
+    # Nota: 'chica' al limite GS1; sirve para codigos cortos (≤7 chars Code128)
     SIZE_PRESETS = {
         "chica": {
-            "module_width": 0.38,
-            "module_height": 10,
-            "font_size": 8,
-            "quiet_zone": 4.0,   # GS1 recomienda ≥10× module_width por lado
-            "dpi": 203,
+            "module_width": 0.25,    # minimo Code128 segun GS1
+            "module_height": 7,
+            "font_size": 6,
+            "quiet_zone": 2.0,
+            "dpi": 300,
         },
         "mediana": {
             "module_width": 0.50,

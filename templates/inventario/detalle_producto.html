@@ -91,30 +91,99 @@
       <p class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-3">
         Imagen del producto
       </p>
-      {% if producto.foto_url %}
-        <img src="{{ producto.foto_url.url }}"
-             class="max-h-64 mx-auto border-4 border-black shadow-[4px_4px_0_0_black] object-contain">
-      {% else %}
-        <div class="border-4 border-dashed border-gray-300 bg-white h-40 flex items-center justify-center">
-          <p class="text-gray-400 font-bold text-sm">Sin imagen</p>
+
+      {% if permisos.foto %}
+        <div onclick="abrirMenuFotoDetalle()" class="cursor-pointer inline-block">
+          <img id="foto-detalle-preview"
+               src="{% if producto.foto_url %}{{ producto.foto_url.url }}{% endif %}"
+               class="max-h-64 mx-auto border-4 border-black shadow-[4px_4px_0_0_black] object-contain {% if not producto.foto_url %}hidden{% endif %}">
+          <div id="foto-detalle-placeholder"
+               class="border-4 border-dashed border-gray-400 bg-white h-40 w-64 mx-auto flex flex-col items-center justify-center {% if producto.foto_url %}hidden{% endif %}">
+            <span class="text-4xl">📷</span>
+            <span class="text-[10px] font-black uppercase tracking-widest text-gray-600 mt-2 text-center px-2">
+              Pícale para subir la foto
+            </span>
+          </div>
         </div>
+        <p class="text-xs text-gray-500 font-semibold mt-3">
+          Pícale a la imagen para cambiarla
+        </p>
+      {% else %}
+        {% if producto.foto_url %}
+          <img src="{{ producto.foto_url.url }}"
+               class="max-h-64 mx-auto border-4 border-black shadow-[4px_4px_0_0_black] object-contain">
+        {% else %}
+          <div class="border-4 border-dashed border-gray-300 bg-white h-40 flex items-center justify-center">
+            <p class="text-gray-400 font-bold text-sm">Sin imagen</p>
+          </div>
+        {% endif %}
       {% endif %}
     </div>
 
-    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#F0FFF4] p-6 text-center">
+    <div id="card-codigo-barras"
+         class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#F0FFF4] p-6 text-center"
+         data-producto-id="{{ producto.id }}"
+         data-url-cambiar="{% url 'inventario:cambiar_codigo_barras' producto.id %}"
+         data-url-buscar="{% url 'inventario:buscar_producto' %}"
+         data-subcategoria-id="{{ producto.categoria_id|default:'' }}">
+
       <p class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-3">
         Código del producto
       </p>
+
       <img id="codigo-img" src=""
            data-url="{% url 'inventario:codigo_base64' producto.id %}"
            class="mx-auto max-h-36 border-4 border-black shadow-[4px_4px_0_0_black] mb-3">
-      <p class="font-black font-mono text-black text-lg tracking-widest">
-        {{ producto.codigo_barras }}
-      </p>
-      <span class="inline-block mt-2 border-2 border-black bg-[#CCFF00]
-                   text-black font-black text-[10px] uppercase tracking-widest px-2 py-0.5">
-        Tipo: {{ producto.tipo_codigo }}
-      </span>
+
+      {# ── MODO LECTURA ── #}
+      <div id="codigo-lectura">
+        <p id="codigo-texto" class="font-black font-mono text-black text-lg tracking-widest">
+          {{ producto.codigo_barras }}
+        </p>
+        <span id="codigo-tipo"
+              class="inline-block mt-2 border-2 border-black bg-[#CCFF00]
+                     text-black font-black text-[10px] uppercase tracking-widest px-2 py-0.5">
+          Tipo: {{ producto.tipo_codigo }}
+        </span>
+
+        {% if permisos.codigo_barras %}
+        <div class="mt-4">
+          <button type="button" id="btn-editar-codigo"
+                  class="btn-90s border-4 border-black bg-[#FFBE0B] shadow-[3px_3px_0_0_black]
+                         text-black font-black text-xs uppercase tracking-widest px-4 py-2">
+            ✏️ Editar código
+          </button>
+        </div>
+        {% endif %}
+      </div>
+
+      {# ── MODO EDICIÓN (solo dueño) ── #}
+      {% if permisos.codigo_barras %}
+      <div id="codigo-edicion" class="hidden mt-2 space-y-3">
+        <input type="text" id="input-codigo-barras"
+               value="{{ producto.codigo_barras|default:'' }}"
+               data-original="{{ producto.codigo_barras|default:'' }}"
+               class="field-90s font-mono text-center tracking-widest"
+               autocomplete="off">
+        <p class="text-[11px] font-bold text-gray-700">
+          ⚠️ Cambiar el código invalida las etiquetas impresas con el código anterior.
+        </p>
+        <p id="codigo-error"
+           class="hidden border-4 border-black bg-[#FF006E] text-white font-black uppercase tracking-widest text-xs px-3 py-2"></p>
+        <div class="flex gap-2 justify-center flex-wrap">
+          <button type="button" id="btn-cancelar-codigo"
+                  class="btn-90s border-4 border-black bg-gray-200 shadow-[3px_3px_0_0_black]
+                         text-black font-black text-xs uppercase tracking-widest px-3 py-2">
+            Cancelar
+          </button>
+          <button type="button" id="btn-guardar-codigo"
+                  class="btn-90s border-4 border-black bg-[#00F5D4] shadow-[3px_3px_0_0_black]
+                         text-black font-black text-xs uppercase tracking-widest px-4 py-2">
+            💾 Guardar
+          </button>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
   </div>
@@ -124,46 +193,61 @@
     <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4">
       <h2 class="font-black text-white uppercase tracking-widest text-lg">Información del producto</h2>
       <p class="text-white/70 font-semibold text-xs mt-0.5 uppercase tracking-widest">
-        {% if puede_editar %}Puedes editar y guardar{% else %}Solo lectura — habla con el dueño para editar{% endif %}
+        {% if es_dueno %}
+          Puedes editar todo (excepto fecha y registrado por)
+        {% elif es_cajero %}
+          Puedes editar nombre, descripción, foto y atributos
+        {% else %}
+          Solo lectura — habla con el dueño para editar
+        {% endif %}
       </p>
     </div>
     <div class="bg-white p-6">
-      <form method="POST" enctype="multipart/form-data">
+      <form method="POST" enctype="multipart/form-data" id="form-detalle-producto">
         {% csrf_token %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5
-                    {% if not puede_editar %}pointer-events-none opacity-70{% endif %}">
+        {# Input oculto donde aterriza la foto cuando la cajera/dueño la actualizan #}
+        {% if permisos.foto %}
+        <input type="file" id="id_foto_url_detalle" name="foto_url" accept="image/*"
+               class="hidden" onchange="previewFotoDetalle(this)">
+        {% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Nombre</label>
-            <input type="text" name="nombre" value="{{ producto.nombre }}" class="field-90s">
+            <input type="text" name="nombre" value="{{ producto.nombre }}" class="field-90s"
+                   {% if not permisos.nombre %}disabled{% endif %}>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Descripción</label>
-            <textarea name="descripcion" rows="2" class="field-90s">{{ producto.descripcion }}</textarea>
+            <textarea name="descripcion" rows="2" class="field-90s"
+                      {% if not permisos.descripcion %}disabled{% endif %}>{{ producto.descripcion }}</textarea>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Precio menudeo</label>
             <input type="number" step="0.5" name="precio_menudeo"
-                   value="{{ producto.precio_menudeo }}" class="field-90s">
+                   value="{{ producto.precio_menudeo }}" class="field-90s"
+                   {% if not permisos.precios %}disabled{% endif %}>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Precio mayoreo</label>
             <input type="number" step="0.5" name="precio_mayoreo"
-                   value="{{ producto.precio_mayoreo }}" class="field-90s">
+                   value="{{ producto.precio_mayoreo }}" class="field-90s"
+                   {% if not permisos.precios %}disabled{% endif %}>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Precio docena</label>
             <input type="number" step="0.5" name="precio_docena"
-                   value="{{ producto.precio_docena|default:'' }}" class="field-90s">
+                   value="{{ producto.precio_docena|default:'' }}" class="field-90s"
+                   {% if not permisos.precios %}disabled{% endif %}>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Categoría padre</label>
-            {% if puede_editar %}
+            {% if permisos.categoria %}
               <select id="sel-categoria-padre" class="field-90s">
                 {% for cp in categorias_padre %}
                   <option value="{{ cp.id }}" {% if producto.categoria_padre_id == cp.id %}selected{% endif %}>{{ cp.nombre }}</option>
@@ -176,7 +260,7 @@
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Subcategoría</label>
-            {% if puede_editar %}
+            {% if permisos.categoria %}
               <select id="sel-subcategoria" name="subcategoria" class="field-90s">
                 {% for sub in subcategorias %}
                   <option value="{{ sub.id }}"
@@ -193,7 +277,7 @@
 
           <div class="flex flex-col gap-1">
             <label class="font-black text-black uppercase tracking-widest text-xs">Dueño</label>
-            {% if puede_editar %}
+            {% if permisos.dueño %}
               <select name="dueño" class="field-90s">
                 {% for d in dueños %}
                   <option value="{{ d.id }}" {% if producto.dueño_id == d.id %}selected{% endif %}>
@@ -219,7 +303,7 @@
         </div>
 
         {# Datos ocultos para que el JS arme el cascade y los atributos dinámicos #}
-        {% if puede_editar %}
+        {% if permisos.categoria %}
         <div id="atributos-data" style="display:none;">
           {% for a in atributos_todos %}
           <div data-categoria="{{ a.categoria_id }}"
@@ -248,7 +332,7 @@
               <div class="border-4 border-black shadow-[3px_3px_0_0_black] bg-[#F0FFF4]
                           p-4 flex items-center justify-between gap-4 flex-wrap">
                 <span class="font-black text-black uppercase tracking-wide text-sm">{{ a.nombre }}</span>
-                {% if puede_editar %}
+                {% if permisos.atributos %}
                   <input type="text" name="attr_{{ a.nombre }}" value="{{ a.valor|default:'' }}" class="field-90s w-48">
                 {% else %}
                   <span class="border-2 border-black bg-[#CCFF00] text-black font-black text-sm px-3 py-1">
@@ -300,7 +384,7 @@
     </button>
 
     <div id="panelCosto" class="hidden bg-white px-6 py-5">
-      {% if puede_editar %}
+      {% if permisos.costo %}
         <form method="POST">
           {% csrf_token %}
           <input type="hidden" name="solo_costo" value="1">
@@ -393,6 +477,141 @@
   </div>
 
 </div>
+
+{# ============================================================ #}
+{# MODAL CONFIRMAR CAMBIO DE CÓDIGO DE BARRAS (solo dueño)     #}
+{# ============================================================ #}
+{% if permisos.codigo_barras %}
+<div id="modal-cambio-codigo"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-lg">
+    <div id="modal-cambio-codigo-header"
+         class="border-b-4 border-black px-5 py-3 bg-[#FFBE0B]">
+      <p class="font-black uppercase tracking-widest text-sm text-black"
+         id="modal-cambio-codigo-titulo">
+        ⚠️ Este código ya existe
+      </p>
+    </div>
+    <div class="p-5 space-y-3">
+      <p id="modal-cambio-codigo-mensaje"
+         class="font-bold text-sm text-black"></p>
+
+      <ul id="modal-cambio-codigo-lista"
+          class="space-y-2 max-h-60 overflow-y-auto"></ul>
+
+      <p id="modal-cambio-codigo-pregunta"
+         class="font-black uppercase tracking-widest text-xs text-black pt-2 hidden">
+        ¿Tu producto es una variante de los anteriores?
+        <span class="block font-bold normal-case tracking-normal text-gray-600 mt-1">
+          (mismo producto físico, distinto color / tamaño / etc.)
+        </span>
+      </p>
+    </div>
+    <div class="border-t-4 border-black p-3 flex flex-wrap gap-2 justify-end">
+      <button type="button" id="modal-cambio-codigo-cancelar"
+              class="btn-90s border-4 border-black bg-gray-200 text-black font-black uppercase tracking-widest text-xs px-4 py-2 shadow-[3px_3px_0_0_black]">
+        Cancelar cambio
+      </button>
+      <button type="button" id="modal-cambio-codigo-confirmar"
+              class="hidden btn-90s border-4 border-black bg-[#00F5D4] text-black font-black uppercase tracking-widest text-xs px-4 py-2 shadow-[3px_3px_0_0_black]">
+        Sí, es variante — guardar
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ============================================================ #}
+{# MODAL ELEGIR FOTO — mismo patrón que nuevo_producto          #}
+{# ============================================================ #}
+{% if permisos.foto %}
+<div id="menu-foto-detalle"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+     onclick="cerrarMenuFotoDetalle(event)">
+  <div class="bg-[#f0e6ff] border-4 border-black shadow-[6px_6px_0_#000] w-full max-w-sm mx-4">
+    <p class="font-black uppercase text-center text-sm tracking-widest border-b-4 border-black py-2 px-4">
+      Foto del producto
+    </p>
+    <button type="button" onclick="abrirFotoDetalle('camara')"
+            class="w-full py-3 font-black uppercase tracking-wide text-sm border-b-2 border-black bg-[#FFBE0B] hover:bg-yellow-400 active:brightness-90">
+      📷 Tomar foto
+    </button>
+    <button type="button" onclick="abrirFotoDetalle('galeria')"
+            class="w-full py-3 font-black uppercase tracking-wide text-sm border-b-2 border-black bg-white hover:bg-gray-100 active:brightness-90">
+      🖼️ Elegir de galería
+    </button>
+    <button type="button" onclick="cerrarMenuFotoDetalle()"
+            class="w-full py-3 font-black uppercase tracking-wide text-sm text-gray-500">
+      Cancelar
+    </button>
+  </div>
+</div>
+
+<script>
+function abrirMenuFotoDetalle() {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const input = document.getElementById("id_foto_url_detalle");
+  if (!input) return;
+  if (isIOS) {
+    // En iOS Safari el selector nativo ya ofrece "Tomar foto / Galería",
+    // no hace falta el modal intermedio.
+    input.removeAttribute("capture");
+    input.click();
+    return;
+  }
+  document.getElementById("menu-foto-detalle").classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function cerrarMenuFotoDetalle(e) {
+  if (!e || e.target === document.getElementById("menu-foto-detalle")) {
+    document.getElementById("menu-foto-detalle").classList.add("hidden");
+    document.body.style.overflow = "";
+  }
+}
+
+function abrirFotoDetalle(modo) {
+  cerrarMenuFotoDetalle();
+  const input = document.getElementById("id_foto_url_detalle");
+  if (!input) return;
+  if (modo === "camara") {
+    input.setAttribute("capture", "environment");
+  } else {
+    input.removeAttribute("capture");
+  }
+  input.click();
+}
+
+function previewFotoDetalle(input) {
+  const preview     = document.getElementById("foto-detalle-preview");
+  const placeholder = document.getElementById("foto-detalle-placeholder");
+  const MAX_MB = 15;
+
+  if (!input.files || !input.files[0]) {
+    if (preview)     preview.classList.add("hidden");
+    if (placeholder) placeholder.classList.remove("hidden");
+    return;
+  }
+
+  if (input.files[0].size > MAX_MB * 1024 * 1024) {
+    alert(`La foto pesa más de ${MAX_MB}MB. Comprime la imagen antes de subirla.`);
+    input.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    if (preview) {
+      preview.src = e.target.result;
+      preview.classList.remove("hidden");
+    }
+    if (placeholder) placeholder.classList.add("hidden");
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
+{% endif %}
 
 {% endblock %}
 

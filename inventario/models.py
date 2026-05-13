@@ -119,8 +119,12 @@ class Producto(models.Model):
         max_length=50,
         blank=True,
         null=True,
-        unique=True,
-        help_text="Código de barras escaneado o generado automáticamente"
+        db_index=True,
+        help_text=(
+            "Código de barras escaneado o generado automáticamente. "
+            "Puede repetirse entre variantes del mismo producto físico; "
+            "la unicidad real la garantiza firma_unica."
+        )
     )
     
     costo = models.DecimalField(

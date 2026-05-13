@@ -224,8 +224,33 @@ export function initAtributos({ atributosContainer }) {
         });
     }
 
+    // ============================================
+    // MODO EDITABLE PRELLENADO PARA VARIANTE NUEVA
+    // - Re-renderiza los inputs editables de la subcategoría
+    // - Prellena cada input con el valor de la plantilla (atributos del
+    //   producto que se eligió como base de la nueva variante).
+    // ============================================
+    function renderAtributosEditableConValores(subId, atributos = []) {
+        mostrarAtributosDeSubcategoria(subId);
+
+        if (!atributos.length) return;
+
+        const valoresPorId = {};
+        atributos.forEach(a => {
+            valoresPorId[String(a.id)] = a.valor || "";
+        });
+
+        atributosContainer.querySelectorAll("input.atributo-input").forEach(inp => {
+            const attrId = inp.dataset.atributoId;
+            if (attrId && valoresPorId[attrId] !== undefined) {
+                inp.value = valoresPorId[attrId];
+            }
+        });
+    }
+
     return {
         mostrarAtributosDeSubcategoria,
-        renderAtributosReadOnly
+        renderAtributosReadOnly,
+        renderAtributosEditableConValores
     };
 }

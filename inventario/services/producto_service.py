@@ -62,14 +62,7 @@ class ProductService:
         if not producto.tipo_codigo:
             raise ValueError("Error crítico: no se asignó tipo_codigo.")
 
-        # Verificar duplicado ANTES de guardar (evita IntegrityError dentro de atomic)
         from inventario.models import Producto as Prod
-        existente = Prod.objects.filter(codigo_barras=producto.codigo_barras).first()
-        if existente:
-            raise ValidationError(
-                f"Este código de barras ya está registrado. "
-                f"Busca el ID {existente.id} en el inventario global."
-            )
 
         producto.save()
 

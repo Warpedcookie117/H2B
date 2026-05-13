@@ -121,6 +121,40 @@ document.addEventListener("DOMContentLoaded", () => {
             botonInventario.verificarInventario(data.producto_id, ubicacionSelect.value);
         },
 
+        // El usuario eligió "Registrar como variante nueva":
+        // - Prellenamos la subcategoría del producto plantilla y cargamos sus atributos
+        //   en modo EDITABLE con los valores de la plantilla.
+        // - Dejamos todos los campos editables para que cambie nombre, precio,
+        //   foto o atributos según corresponda. firma_unica se recalcula al guardar.
+        onVarianteNueva: (plantilla, _todas) => {
+            categorias.cargarSubcategorias(
+                plantilla.categoria_padre_id,
+                plantilla.subcategoria_id
+            );
+            atributos.renderAtributosEditableConValores(
+                plantilla.subcategoria_id,
+                plantilla.atributos || []
+            );
+
+            // No bloqueamos campos — todos editables. Solo el código de barras se
+            // mantiene como está (es el que comparten las variantes).
+            actualizarTemporadasEditable(plantilla.temporadas || []);
+
+            // Foto: mostrar la plantilla pero permitir cambiarla
+            const fotoInput = document.getElementById("id_foto_url");
+            if (fotoInput) {
+                fotoInput.style.pointerEvents = "auto";
+                fotoInput.style.opacity       = "1";
+            }
+            mostrarFoto(plantilla.foto_url);
+
+            // Botón: pasa a estado "registrar variante" (rojo)
+            submitBtn.textContent = "Registrar variante";
+            submitBtn.classList.remove("bg-[#06D6A0]", "bg-[#3A86FF]");
+            submitBtn.classList.add("bg-[#FF006E]");
+            submitBtn.dataset.estado = "rojo";
+        },
+
         onProductoNoEncontrado: () => {
             // producto_existente.js maneja el desbloqueo directo
         },
@@ -128,8 +162,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // ← Este callback limpia atributos y banner cuando se borra el código
         onLimpiar: () => {
             atributos.mostrarAtributosDeSubcategoria(""); // limpia atributos y oculta banner
+            form.dataset.modoVariante = "";
         }
     });
+
+    function actualizarTemporadasEditable(temporadasDelProducto) {
+        document.querySelectorAll('.temporada-checkbox-group input[type="checkbox"]')
+            .forEach(cb => {
+                cb.checked  = temporadasDelProducto.includes(parseInt(cb.value));
+                cb.disabled = false;
+            });
+    }
 
     // ============================
     // 5. REGENERAR ATRIBUTOS EN RELOAD CON ERRORES

@@ -338,20 +338,17 @@ class ProductoForm(forms.ModelForm):
  
     def clean_codigo_barras(self):
         codigo = self.cleaned_data.get("codigo_barras")
- 
+
         if codigo:
             codigo = str(codigo).strip()
- 
+
             try:
                 CodigoService.validar_codigo_real(codigo)
             except ValueError as e:
                 raise forms.ValidationError(str(e))
- 
-            if Producto.objects.filter(codigo_barras=codigo).exists():
-                raise forms.ValidationError("Ya existe un producto con este código de barras.")
- 
+
             return codigo
- 
+
         return None
  
     def clean(self):

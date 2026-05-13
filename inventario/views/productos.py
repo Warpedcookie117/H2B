@@ -120,7 +120,22 @@ def productos_por_ubicacion(request, ubicacion_id):
         page_obj = None
     else:
         paginator = Paginator(productos, 20)
-        page_obj  = paginator.get_page(request.GET.get("page", 1))
+        page_number_raw = request.GET.get("page")
+
+        # Si no se pide página explícita y viene un highlight, ubicar al producto
+        # en la página correcta para que el resaltado y el scroll funcionen.
+        if not page_number_raw:
+            highlight_raw = request.GET.get("highlight")
+            if highlight_raw:
+                try:
+                    highlight_id = int(highlight_raw)
+                    ids = list(productos.values_list("producto_id", flat=True))
+                    if highlight_id in ids:
+                        page_number_raw = ids.index(highlight_id) // 20 + 1
+                except (ValueError, TypeError):
+                    pass
+
+        page_obj = paginator.get_page(page_number_raw or 1)
         lista_productos = page_obj
 
     return render(request, "inventario/inventario_ubicacion.html", {
@@ -158,53 +173,81 @@ def detalle_producto(request, producto_id):
     sub_atributos = producto.categoria.atributos.all()
 
     empleado = getattr(request.user, "empleado", None)
-    puede_editar = empleado and empleado.rol == "dueño"
+    rol = getattr(empleado, "rol", None)
+    es_dueno  = rol == "dueño"
+    es_cajero = rol == "cajero"
+    puede_editar = es_dueno or es_cajero
+
+    # Permisos por campo (cajero edita lo básico operativo; dueño todo)
+    permisos = {
+        "nombre":          puede_editar,
+        "descripcion":     puede_editar,
+        "atributos":       puede_editar,
+        "foto":            puede_editar,
+        "precios":         es_dueno,
+        "categoria":       es_dueno,
+        "dueño":           es_dueno,
+        "costo":           es_dueno,
+        "codigo_barras":   es_dueno,
+    }
 
     if request.method == "POST" and puede_editar:
 
-        # ⭐ Guardado solo del costo
+        # ⭐ Guardado solo del costo (solo dueño)
         if request.POST.get("solo_costo"):
+            if not es_dueno:
+                messages.error(request, "No tienes permiso para editar el costo.")
+                return redirect("inventario:detalle_producto", producto_id=producto.id)
             costo = request.POST.get("costo", "").strip()
             producto.costo = costo if costo else None
             producto.save(update_fields=["costo"])
             messages.success(request, "Costo guardado.")
             return redirect("inventario:detalle_producto", producto_id=producto.id)
 
-        # Guardado general
-        producto.nombre = request.POST.get("nombre", producto.nombre)
-        producto.descripcion = request.POST.get("descripcion", producto.descripcion)
+        # Guardado general — campos según rol
+        if permisos["nombre"]:
+            producto.nombre = request.POST.get("nombre", producto.nombre)
+        if permisos["descripcion"]:
+            producto.descripcion = request.POST.get("descripcion", producto.descripcion)
 
-        precio_menudeo_raw = request.POST.get("precio_menudeo", "").strip()
-        if precio_menudeo_raw:
-            producto.precio_menudeo = precio_menudeo_raw
+        # Foto: cualquiera con permiso de edición puede actualizarla
+        if permisos["foto"] and "foto_url" in request.FILES:
+            producto.foto_url = request.FILES["foto_url"]
 
-        precio_mayoreo_raw = request.POST.get("precio_mayoreo", "").strip()
-        if precio_mayoreo_raw:
-            producto.precio_mayoreo = precio_mayoreo_raw
+        if permisos["precios"]:
+            precio_menudeo_raw = request.POST.get("precio_menudeo", "").strip()
+            if precio_menudeo_raw:
+                producto.precio_menudeo = precio_menudeo_raw
 
-        precio_docena_raw = request.POST.get("precio_docena", "").strip()
-        producto.precio_docena = precio_docena_raw if precio_docena_raw else None
+            precio_mayoreo_raw = request.POST.get("precio_mayoreo", "").strip()
+            if precio_mayoreo_raw:
+                producto.precio_mayoreo = precio_mayoreo_raw
 
-        # ⭐ Cambio de subcategoría (afecta también categoría_padre y atributos)
-        sub_id_raw = request.POST.get("subcategoria", "").strip()
+            precio_docena_raw = request.POST.get("precio_docena", "").strip()
+            producto.precio_docena = precio_docena_raw if precio_docena_raw else None
+
+        # ⭐ Cambio de subcategoría (solo dueño — afecta atributos)
         sub_cambio = False
-        if sub_id_raw and str(producto.categoria_id) != sub_id_raw:
-            try:
-                nueva_sub = Categoria.objects.select_related("padre").get(id=sub_id_raw)
-                if nueva_sub.padre_id is not None:
-                    producto.categoria = nueva_sub
-                    producto.categoria_padre = nueva_sub.padre
-                    sub_cambio = True
-            except (Categoria.DoesNotExist, ValueError):
-                pass
+        if permisos["categoria"]:
+            sub_id_raw = request.POST.get("subcategoria", "").strip()
+            if sub_id_raw and str(producto.categoria_id) != sub_id_raw:
+                try:
+                    nueva_sub = Categoria.objects.select_related("padre").get(id=sub_id_raw)
+                    if nueva_sub.padre_id is not None:
+                        producto.categoria = nueva_sub
+                        producto.categoria_padre = nueva_sub.padre
+                        sub_cambio = True
+                except (Categoria.DoesNotExist, ValueError):
+                    pass
 
-        # ⭐ Cambio de dueño
-        dueno_id_raw = request.POST.get("dueño", "").strip()
-        if dueno_id_raw and str(producto.dueño_id) != dueno_id_raw:
-            try:
-                producto.dueño = Empleado.objects.get(id=dueno_id_raw, rol="dueño")
-            except (Empleado.DoesNotExist, ValueError):
-                pass
+        # ⭐ Cambio de dueño (solo dueño)
+        if permisos["dueño"]:
+            dueno_id_raw = request.POST.get("dueño", "").strip()
+            if dueno_id_raw and str(producto.dueño_id) != dueno_id_raw:
+                try:
+                    producto.dueño = Empleado.objects.get(id=dueno_id_raw, rol="dueño")
+                except (Empleado.DoesNotExist, ValueError):
+                    pass
 
         producto.save()
 
@@ -221,20 +264,21 @@ def detalle_producto(request, producto_id):
                 for v in ValorAtributo.objects.filter(producto=producto)
             }
 
-        for attr in sub_atributos:
-            field_name = f"attr_{attr.nombre}"
-            if field_name in request.POST:
-                nuevo_valor = request.POST.get(field_name).strip()
-                if attr.id in valores:
-                    val_obj = valores[attr.id]
-                    val_obj.valor = nuevo_valor
-                    val_obj.save()
-                else:
-                    ValorAtributo.objects.create(
-                        producto=producto,
-                        atributo=attr,
-                        valor=nuevo_valor
-                    )
+        if permisos["atributos"]:
+            for attr in sub_atributos:
+                field_name = f"attr_{attr.nombre}"
+                if field_name in request.POST:
+                    nuevo_valor = request.POST.get(field_name).strip()
+                    if attr.id in valores:
+                        val_obj = valores[attr.id]
+                        val_obj.valor = nuevo_valor
+                        val_obj.save()
+                    else:
+                        ValorAtributo.objects.create(
+                            producto=producto,
+                            atributo=attr,
+                            valor=nuevo_valor
+                        )
 
         nueva_firma = ProductService._generar_firma(producto)
         conflicto = Producto.objects.filter(firma_unica=nueva_firma).exclude(pk=producto.pk).first()
@@ -297,6 +341,9 @@ def detalle_producto(request, producto_id):
         "inventarios": inventarios,
         "atributos": atributos,
         "puede_editar": puede_editar,
+        "es_dueno": es_dueno,
+        "es_cajero": es_cajero,
+        "permisos": permisos,
         "categorias_padre": categorias_padre,
         "subcategorias": subcategorias,
         "dueños": dueños,
@@ -613,53 +660,66 @@ def nuevo_producto(request):
 def buscar_producto_por_codigo(request):
     codigo = request.GET.get('codigo')
 
-    producto = (
+    productos = list(
         Producto.objects
-        .select_related('categoria', 'dueño')
-        .filter(codigo_barras=codigo)
-        .first()
+        .select_related('categoria', 'categoria__padre', 'dueño')
+        .prefetch_related('temporada')
+        .filter(codigo_barras=codigo, activo=True)
+        .order_by('nombre', 'id')
     )
 
-    if not producto:
-        return JsonResponse({'existe': False})
+    if not productos:
+        return JsonResponse({'existe': False, 'variantes': []})
 
-    # Categoría y subcategoría
-    subcategoria = producto.categoria
-    categoria_padre = subcategoria.padre if subcategoria else None
+    # Cargar todos los valores de atributo para todas las variantes en una sola query
+    valores = ValorAtributo.objects.filter(producto__in=productos).select_related('atributo')
+    valores_por_producto = {}
+    for v in valores:
+        valores_por_producto.setdefault(v.producto_id, []).append(v)
 
-    # Atributos definidos para la subcategoría
-    atributos_definidos = Atributo.objects.filter(categoria=subcategoria)
+    variantes = []
+    for producto in productos:
+        subcategoria = producto.categoria
+        categoria_padre = subcategoria.padre if subcategoria else None
 
-    # Cargar todos los valores del producto en una sola query
-    valores = ValorAtributo.objects.filter(producto=producto)
-    valores_dict = {v.atributo_id: v.valor for v in valores}
+        # Atributos definidos para la subcategoría (todos los slots)
+        atributos_definidos = Atributo.objects.filter(categoria=subcategoria)
 
-    atributos_list = [
-        {
-            'id': atributo.id,
-            'nombre': atributo.nombre,
-            'valor': valores_dict.get(atributo.id, '')
+        valores_dict = {
+            v.atributo_id: v.valor
+            for v in valores_por_producto.get(producto.id, [])
         }
-        for atributo in atributos_definidos
-    ]
+
+        atributos_list = [
+            {
+                'id': atributo.id,
+                'nombre': atributo.nombre,
+                'valor': valores_dict.get(atributo.id, '')
+            }
+            for atributo in atributos_definidos
+        ]
+
+        variantes.append({
+            'producto_id': producto.id,
+            'nombre': producto.nombre,
+            'descripcion': producto.descripcion,
+            'precio_menudeo': producto.precio_menudeo,
+            'precio_mayoreo': producto.precio_mayoreo,
+            'precio_docena': producto.precio_docena,
+            'tipo_codigo': producto.tipo_codigo,
+            'temporadas': list(producto.temporada.values_list("id", flat=True)),
+            'foto_url': producto.foto_url.url if producto.foto_url else None,
+            'duenio_id': producto.dueño_id,
+            'categoria_padre_id': categoria_padre.id if categoria_padre else None,
+            'categoria_padre_nombre': categoria_padre.nombre if categoria_padre else None,
+            'subcategoria_id': subcategoria.id if subcategoria else None,
+            'subcategoria_nombre': subcategoria.nombre if subcategoria else None,
+            'atributos': atributos_list,
+        })
 
     return JsonResponse({
         'existe': True,
-        'producto_id': producto.id,
-        'nombre': producto.nombre,
-        'descripcion': producto.descripcion,
-        'precio_menudeo': producto.precio_menudeo,
-        'precio_mayoreo': producto.precio_mayoreo,
-        'precio_docena': producto.precio_docena,
-        'tipo_codigo': producto.tipo_codigo,
-        'temporadas': list(producto.temporada.values_list("id", flat=True)),
-        'foto_url': producto.foto_url.url if producto.foto_url else None,
-        'duenio_id': producto.dueño_id,
-        'categoria_padre_id': categoria_padre.id if categoria_padre else None,
-        'categoria_padre_nombre': categoria_padre.nombre if categoria_padre else None,
-        'subcategoria_id': subcategoria.id if subcategoria else None,
-        'subcategoria_nombre': subcategoria.nombre if subcategoria else None,
-        'atributos': atributos_list,
+        'variantes': variantes,
     })
     
     
@@ -668,6 +728,133 @@ def buscar_producto_por_codigo(request):
     
 import logging
 _logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# AJAX: Cambiar el código de barras de un producto (solo dueño)
+# ============================================================
+@login_required
+def cambiar_codigo_barras_ajax(request, producto_id):
+    """
+    Endpoint inline para editar el código de barras desde detalle_producto.
+
+    Body JSON: {codigo: "...", confirmar_variante: bool}
+
+    Reglas (idénticas al diseño hablado):
+    - Si el código nuevo no pasa validar_codigo_real → 400 tipo=validacion.
+    - Si el código nuevo no existe en otros productos → guarda OK.
+    - Si pertenece a productos de OTRA categoría → bloquea siempre
+      (probable error humano).
+    - Si pertenece a productos de la MISMA categoría → exige confirmar_variante=true.
+
+    Solo el dueño puede ejecutar este endpoint.
+    """
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Método no permitido."}, status=405)
+
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse(
+            {"ok": False, "error": "Solo el dueño puede cambiar el código de barras."},
+            status=403,
+        )
+
+    producto = get_object_or_404(Producto, id=producto_id)
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "JSON inválido."}, status=400)
+
+    nuevo_codigo = (body.get("codigo") or "").strip()
+    confirmar_variante = bool(body.get("confirmar_variante"))
+
+    if not nuevo_codigo:
+        return JsonResponse(
+            {"ok": False, "tipo": "validacion", "error": "El código no puede estar vacío."},
+            status=400,
+        )
+
+    if nuevo_codigo == (producto.codigo_barras or ""):
+        return JsonResponse(
+            {"ok": False, "tipo": "validacion", "error": "El código es igual al actual."},
+            status=400,
+        )
+
+    try:
+        tipo_calc = CodigoService.validar_codigo_real(nuevo_codigo)
+    except ValueError as e:
+        return JsonResponse(
+            {"ok": False, "tipo": "validacion", "error": str(e)},
+            status=400,
+        )
+
+    otros = list(
+        Producto.objects
+        .filter(codigo_barras=nuevo_codigo, activo=True)
+        .exclude(pk=producto.pk)
+        .select_related("categoria")
+    )
+
+    if otros:
+        otros_distinto = [o for o in otros if o.categoria_id != producto.categoria_id]
+
+        if otros_distinto:
+            p = otros_distinto[0]
+            cat_nombre = p.categoria.nombre if p.categoria else "Sin categoría"
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "tipo": "otra_categoria",
+                    "error": (
+                        f"El código '{nuevo_codigo}' pertenece a "
+                        f"'{p.nombre}' (ID #{p.id}) de la categoría '{cat_nombre}'. "
+                        f"Intenta registrar otro código. "
+                        f"Recuerda que vas a tener que reetiquetar los productos."
+                    ),
+                    "variantes": [
+                        {
+                            "producto_id": o.id,
+                            "nombre": o.nombre,
+                            "subcategoria_nombre": o.categoria.nombre if o.categoria else None,
+                        }
+                        for o in otros
+                    ],
+                },
+                status=409,
+            )
+
+        if not confirmar_variante:
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "tipo": "necesita_confirmacion",
+                    "error": (
+                        f"El código '{nuevo_codigo}' ya pertenece a otros productos "
+                        f"de la misma categoría."
+                    ),
+                    "variantes": [
+                        {
+                            "producto_id": o.id,
+                            "nombre": o.nombre,
+                            "subcategoria_nombre": o.categoria.nombre if o.categoria else None,
+                        }
+                        for o in otros
+                    ],
+                },
+                status=409,
+            )
+
+    producto.codigo_barras = nuevo_codigo
+    producto.tipo_codigo = tipo_calc
+    producto.save(update_fields=["codigo_barras", "tipo_codigo"])
+
+    return JsonResponse({
+        "ok": True,
+        "codigo": producto.codigo_barras,
+        "tipo_codigo": producto.tipo_codigo,
+    })
+
 
 #VISTA API PARA VER LOS CODIGOS EN EL FRONT DE MANERA FLUIDA
 @login_required
@@ -699,7 +886,7 @@ def descargar_etiqueta_pdf(request, producto_id):
 
     # Dimensiones físicas por tamaño (ancho x alto en mm)
     TAMAÑOS = {
-        "chica":   (50, 20),
+        "chica":   (30, 15),
         "mediana": (100, 30),
         "grande":  (135, 32),
     }
