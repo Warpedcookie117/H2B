@@ -330,6 +330,17 @@ export function initProductoExistente({
         // Marcar el modo
         form.dataset.modoVariante = "nueva";
 
+        // Desbloquear todos los campos (pueden estar readonly si venimos del flujo N=1
+        // donde seleccionarVarianteExistente los bloqueó primero)
+        [nombreInput, mayoreoInput, menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
+            el.removeAttribute("readonly");
+            el.classList.remove("bg-gray-100");
+        });
+        [duenioSelect, categoriaPadreSelect, subcategoriaSelect].forEach(el => {
+            el.disabled = false;
+            el.classList.remove("bg-gray-100");
+        });
+
         // Prellenar los campos con la primera variante como base
         nombreInput.value      = plantilla.nombre        || "";
         mayoreoInput.value     = plantilla.precio_mayoreo ?? "";
@@ -344,7 +355,11 @@ export function initProductoExistente({
 
         document.getElementById("selector-variantes")?.remove();
 
-        mostrarMensaje("Edita lo que sea distinto y registra la nueva variante ✏️", "info");
+        mostrarMensaje("Cambia el nombre y/o atributos para diferenciar la variante ✏️", "info");
+
+        // Resaltar el campo nombre para que el usuario lo edite de inmediato
+        nombreInput.focus();
+        nombreInput.select();
 
         // Delegar al caller — ahí se cargan subcategorías y atributos editables
         onVarianteNueva(plantilla, todasLasVariantes);

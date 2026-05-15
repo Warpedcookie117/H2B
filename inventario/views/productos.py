@@ -119,24 +119,27 @@ def productos_por_ubicacion(request, ubicacion_id):
         lista_productos = productos[:200]
         page_obj = None
     else:
-        paginator = Paginator(productos, 20)
         page_number_raw = request.GET.get("page")
+        highlight_raw   = request.GET.get("highlight", "").strip()
+        is_new          = request.GET.get("new") == "1"
+        pinned_inv      = None
 
-        # Si no se pide página explícita y viene un highlight, ubicar al producto
-        # en la página correcta para que el resaltado y el scroll funcionen.
-        if not page_number_raw:
-            highlight_raw = request.GET.get("highlight")
-            if highlight_raw:
-                try:
-                    highlight_id = int(highlight_raw)
-                    ids = list(productos.values_list("producto_id", flat=True))
-                    if highlight_id in ids:
-                        page_number_raw = ids.index(highlight_id) // 20 + 1
-                except (ValueError, TypeError):
-                    pass
+        # Pin newly registered/variant product to the top of page 1 — only on the
+        # initial redirect (?new=1). The JS clears this param immediately via
+        # replaceState so going-back never shows the pin again.
+        if highlight_raw and is_new and not page_number_raw:
+            try:
+                highlight_id = int(highlight_raw)
+                found = productos.filter(producto_id=highlight_id).first()
+                if found:
+                    pinned_inv = found
+                    productos  = productos.exclude(producto_id=highlight_id)
+            except (ValueError, TypeError):
+                pass
 
-        page_obj = paginator.get_page(page_number_raw or 1)
-        lista_productos = page_obj
+        paginator = Paginator(productos, 20)
+        page_obj  = paginator.get_page(page_number_raw or 1)
+        lista_productos = ([pinned_inv] + list(page_obj)) if pinned_inv else list(page_obj)
 
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,

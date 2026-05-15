@@ -408,9 +408,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const params      = new URLSearchParams(window.location.search);
   const highlighted = document.querySelector(".highlight-yellow, .highlight-green");
 
+  // Limpiar ?highlight y ?new de la URL inmediatamente — así al dar "atrás" el
+  // navegador carga la URL limpia y no repite el highlight ni el pin.
+  if (params.has("highlight") || params.has("new")) {
+    params.delete("highlight");
+    params.delete("new");
+    const cleanUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+    history.replaceState(null, "", cleanUrl);
+  }
+
   if (highlighted) {
     highlighted.style.removeProperty("background-color");
-    highlighted.scrollIntoView({ behavior: "smooth", block: "center" });
+    // El producto nuevo está pinado arriba, así que el scroll baja al inicio de la página
+    highlighted.scrollIntoView({ behavior: "smooth", block: "start" });
     highlighted.addEventListener("animationend", () => {
       highlighted.classList.remove("highlight-yellow", "highlight-green");
       if (highlighted.dataset.color) {
@@ -429,6 +439,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   window.aplicarColoresCards();
+});
+
+// Cuando el navegador restaura la página desde el BFCache (botón atrás),
+// quitar cualquier clase de highlight que haya quedado en el DOM.
+window.addEventListener("pageshow", (e) => {
+  if (!e.persisted) return;
+  document.querySelectorAll(".highlight-yellow, .highlight-green").forEach(el => {
+    el.classList.remove("highlight-yellow", "highlight-green");
+    if (el.dataset.color) el.style.backgroundColor = el.dataset.color;
+  });
 });
 </script>
 
