@@ -99,11 +99,11 @@
           Ver
         </a>
 
-        <a href="{% url 'ventas:ticket_corte_termico' corte.id %}"
-           class="btn-90s border-4 border-black shadow-[3px_3px_0_0_black]
-                  bg-black text-white font-black text-xs uppercase tracking-widest px-3 py-2">
+        <button class="btn-reimprimir-corte btn-90s border-4 border-black shadow-[3px_3px_0_0_black]
+                       bg-black text-white font-black text-xs uppercase tracking-widest px-3 py-2"
+                data-url-texto="{% url 'ventas:ticket_corte_texto' corte.id %}">
           🖨 Reimprimir
-        </a>
+        </button>
 
       </div>
     </div>
@@ -120,4 +120,38 @@
   </div>
 
 </div>
+
+<script type="module">
+import { imprimirTicket } from "{% static 'js/pos/impresion.js' %}";
+
+document.querySelectorAll(".btn-reimprimir-corte").forEach(btn => {
+    btn.addEventListener("click", async () => {
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "⏳ Enviando...";
+        try {
+            const resp = await fetch(btn.dataset.urlTexto);
+            const data = await resp.json();
+            const res  = await imprimirTicket(data.ticket_texto, null);
+            if (res.ok) {
+                btn.textContent = "✓ Enviado";
+                setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2000);
+            } else if (res.noConfig) {
+                alert("No hay impresora térmica configurada.\nConfigúrala en el POS → Configuración.");
+                btn.disabled = false; btn.textContent = orig;
+            } else if (res.noAgent) {
+                alert("El agente POS (pos_agent.exe) no está corriendo.");
+                btn.disabled = false; btn.textContent = orig;
+            } else {
+                alert("Error al imprimir: " + (res.error || "desconocido"));
+                btn.disabled = false; btn.textContent = orig;
+            }
+        } catch {
+            alert("Error de conexión.");
+            btn.disabled = false; btn.textContent = orig;
+        }
+    });
+});
+</script>
+
 {% endblock %}

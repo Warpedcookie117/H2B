@@ -2,7 +2,7 @@ from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from ventas.models import CorteCaja
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from reportlab.pdfgen import canvas
 from ventas.services.ticket_service import generar_texto_ticket, imprimir_silencioso
 from sucursales.models import Sucursal
@@ -132,6 +132,17 @@ def ticket_corte_termico(request, corte_id):
     corte = get_object_or_404(CorteCaja, id=corte_id)
     imprimir_silencioso(generar_texto_ticket(corte))
     return redirect("ventas:ticket_corte", corte_id)
+
+
+@login_required
+def ticket_corte_texto_json(request, corte_id):
+    """Devuelve el texto del ticket de corte como JSON para que el agente POS lo imprima."""
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    corte = get_object_or_404(CorteCaja, id=corte_id)
+    return JsonResponse({"ticket_texto": generar_texto_ticket(corte)})
 
 
 

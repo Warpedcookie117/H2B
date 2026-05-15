@@ -44,6 +44,7 @@ from ventas.views.ticket_corte_views import (
     ticket_corte,
     ticket_corte_pdf,
     ticket_corte_termico,
+    ticket_corte_texto_json,
     tickets_cortes_caja,
     corte_del_dia,
 )
@@ -79,6 +80,7 @@ urlpatterns = [
     path("ticket-corte/<int:corte_id>/", ticket_corte, name="ticket_corte"),
     path("ticket-corte/<int:corte_id>/pdf/", ticket_corte_pdf, name="ticket_corte_pdf"),
     path("ticket-corte/<int:corte_id>/termico/", ticket_corte_termico, name="ticket_corte_termico"),
+    path("ticket-corte/<int:corte_id>/texto/", ticket_corte_texto_json, name="ticket_corte_texto"),
 
     # ============================
     # Ventas
