@@ -162,6 +162,20 @@ export function initProductoExistente({
     });
 
     // ============================
+    // KEYUP — fallback para Enter en Android
+    // En Android Chrome, keydown a veces llega con key:"Unidentified" desde
+    // el teclado virtual o un escáner Bluetooth. keyup es más confiable.
+    // ============================
+    codigoInput.addEventListener("keyup", (e) => {
+        if (e.key !== "Enter" && e.keyCode !== 13) return;
+        e.preventDefault();
+        const codigo = codigoInput.value.trim();
+        if (!codigo) return;
+        buscarYCompletar(codigo);
+        esperandoNuevoEscaneo = true;
+    });
+
+    // ============================
     // INPUT → si había producto cargado, limpiar todo
     // ============================
     codigoInput.addEventListener("input", () => {

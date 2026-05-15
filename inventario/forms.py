@@ -244,7 +244,15 @@ class ProductoForm(forms.ModelForm):
             }),
             'temporada': forms.CheckboxSelectMultiple(),
             'dueño': forms.Select(attrs={'class': 'form-control'}),
-            'codigo_barras': forms.TextInput(attrs={'class': 'form-control'}),
+            'codigo_barras': forms.TextInput(attrs={
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'autocorrect': 'off',
+                'autocapitalize': 'off',
+                'spellcheck': 'false',
+                'inputmode': 'text',
+                'style': 'font-size:16px',
+            }),
             'tipo_codigo': forms.HiddenInput(),
             'tamano_etiqueta': forms.HiddenInput(),
         }

@@ -66,6 +66,8 @@
              placeholder="Busca por nombre, código, atributo o ID..."
              value="{{ q }}"
              style="font-size: 16px;"
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+             inputmode="text"
              class="flex-1 px-4 py-3 font-semibold text-gray-900 outline-none bg-white">
       <button type="button" id="btn-escanear-camara"
               class="btn-90s border-l-4 border-black bg-[#FFBE0B] px-3 font-black text-xl flex items-center justify-center"
@@ -99,8 +101,8 @@
 
   <!-- PANEL FALTANTES -->
   {% if paired_ubicacion or piso_ubicaciones %}
-  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#8338EC] p-3 flex flex-wrap items-center gap-3">
-    <span class="text-white font-black text-xs uppercase tracking-widest whitespace-nowrap">
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#8338EC] p-3 flex flex-wrap items-center gap-3 overflow-hidden">
+    <span class="text-white font-black text-xs uppercase tracking-widest">
       {% if paired_ubicacion %}
         {% if ubicacion.tipo == 'piso' %}
           📦 Picale aquí para saber qué tienes aquí, pero no en bodega interna

@@ -9,7 +9,11 @@ if (!buscador) {
     console.warn("⚠️ No existe #buscadorProductos en inventario_ubicacion.");
 } else {
 
-    buscador.focus();
+    // Solo auto-enfocar en dispositivos con puntero (desktop). En móvil el foco
+    // automático dispara el teclado virtual antes de que el usuario lo pida.
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        buscador.focus();
+    }
 
     let esperandoNuevoEscaneo = false;
     let debounceTimer         = null;
@@ -52,8 +56,13 @@ if (!buscador) {
         }
     }
 
+    // Cuando el usuario toca el campo de nuevo, resetear el flag de escaneo
+    buscador.addEventListener("focus", () => {
+        esperandoNuevoEscaneo = false;
+    });
+
     // ============================
-    // KEYDOWN — Enter dispara búsqueda inmediata
+    // KEYDOWN — Enter dispara búsqueda inmediata (desktop / teclados físicos)
     // ============================
     buscador.addEventListener("keydown", function (e) {
 
@@ -68,6 +77,18 @@ if (!buscador) {
         if (esperandoNuevoEscaneo) {
             buscador.value = "";
             esperandoNuevoEscaneo = false;
+        }
+    });
+
+    // ============================
+    // KEYUP — Enter como fallback (Android Chrome a veces no dispara keydown
+    // con key:"Enter" desde teclado virtual o escáner Bluetooth)
+    // ============================
+    buscador.addEventListener("keyup", function (e) {
+        if (e.key === "Enter" || e.keyCode === 13) {
+            clearTimeout(debounceTimer);
+            fetchYActualizarGrid(buscador.value.trim());
+            esperandoNuevoEscaneo = true;
         }
     });
 
@@ -95,6 +116,13 @@ if (!buscador) {
         clearTimeout(debounceTimer);
         const texto = this.value.trim();
         debounceTimer = setTimeout(() => fetchYActualizarGrid(texto), 350);
+    });
+
+    // Fallback: si el campo pierde foco con texto (algunos scanners Bluetooth
+    // en Android terminan con Tab/blur en vez de Enter)
+    buscador.addEventListener("change", function () {
+        clearTimeout(debounceTimer);
+        fetchYActualizarGrid(this.value.trim());
     });
 
     // ============================
