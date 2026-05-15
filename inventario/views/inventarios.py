@@ -77,11 +77,26 @@ def dashboard_inventario(request):
 
 @login_required
 def agregar_inventario(request, producto_id, ubicacion_id):
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    def fallback_redirect(toast_msg=None, error=False):
+        """Para POST nativo (formulario tradicional), volver a la página
+        del producto/ubicación en lugar de devolver JSON crudo al navegador."""
+        if error and toast_msg:
+            messages.error(request, toast_msg)
+        elif toast_msg:
+            messages.success(request, toast_msg)
+        url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": ubicacion_id})
+        sep = "&" if "?" in url else "?"
+        return redirect(f"{url}{sep}highlight={producto_id}&new=1")
+
     if request.method != "POST":
-        return JsonResponse(
-            {"success": False, "errors": ["Método no permitido"]},
-            status=405
-        )
+        if is_ajax:
+            return JsonResponse(
+                {"success": False, "errors": ["Método no permitido"]},
+                status=405
+            )
+        return fallback_redirect("Método no permitido.", error=True)
 
     producto = get_object_or_404(Producto, id=producto_id)
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
@@ -101,10 +116,10 @@ def agregar_inventario(request, producto_id, ubicacion_id):
     form = AgregarInventarioForm(post_data)
 
     if not form.is_valid():
-        return JsonResponse({
-            "success": False,
-            "errors": sum(form.errors.values(), [])
-        })
+        errs = sum(form.errors.values(), [])
+        if is_ajax:
+            return JsonResponse({"success": False, "errors": errs})
+        return fallback_redirect(" ".join(errs) or "Datos inválidos.", error=True)
 
     cantidad = form.cleaned_data["cantidad"]
     empleado = getattr(request.user, "empleado", None)
@@ -117,18 +132,22 @@ def agregar_inventario(request, producto_id, ubicacion_id):
             empleado=empleado,
             motivo="reabastecimiento"
         )
+    except ValidationError as e:
+        if is_ajax:
+            return JsonResponse({"success": False, "errors": e.messages})
+        return fallback_redirect(" ".join(e.messages), error=True)
 
-        inventario.refresh_from_db()
+    inventario.refresh_from_db()
+
+    if is_ajax:
         return JsonResponse({
             "success": True,
             "cantidad_actual": inventario.cantidad_actual,
         })
 
-    except ValidationError as e:
-        return JsonResponse({
-            "success": False,
-            "errors": e.messages,
-        })
+    return fallback_redirect(
+        f"Se agregaron {cantidad} piezas. Total: {inventario.cantidad_actual}.",
+    )
 
 
 def puede_transferir(empleado, origen: Ubicacion, destino: Ubicacion):
