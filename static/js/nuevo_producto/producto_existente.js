@@ -379,11 +379,7 @@ export function initProductoExistente({
 
         mostrarMensaje("Cambia el nombre y/o atributos para diferenciar la variante ✏️", "info");
 
-        // Resaltar el campo nombre para que el usuario lo edite de inmediato
-        nombreInput.focus();
-        nombreInput.select();
-
-        // Delegar al caller — ahí se cargan subcategorías y atributos editables
+        // Delegar al caller — carga subcategorías y atributos editables
         onVarianteNueva(plantilla, todasLasVariantes);
     }
 
