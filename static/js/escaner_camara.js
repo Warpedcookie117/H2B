@@ -79,27 +79,17 @@ function initEscanerCamara(onDetectado) {
         const F = window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats;
         const config = {
             fps: isIOS ? 8 : 15,
-            // Caja más alta/ancha → el barcode completo entra aunque no esté
-            // perfectamente centrado (soluciona dígitos cortados en extremos).
             qrbox: { width: 310, height: 150 },
-            aspectRatio: 1.7777778,   // fuerza video 16:9, menos resolución desperdiciada
             formatsToSupport: F ? [
                 F.EAN_13, F.EAN_8,
                 F.UPC_A,  F.UPC_E,
                 F.CODE_128, F.CODE_39,
                 F.QR_CODE,
             ] : undefined,
-            // Usa BarcodeDetector nativo cuando está disponible (Android Chrome)
-            // → decodificación por hardware, mucho más rápida.
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        // En iOS pedimos 720p explícitamente para aligerar el procesamiento JS.
-        const camaraConfig = isIOS
-            ? { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
-            : { facingMode: "environment" };
-
-        scanner.start(camaraConfig, config, onEscaneado, () => {})
+        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
             console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
@@ -107,10 +97,7 @@ function initEscanerCamara(onDetectado) {
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            const camaraFrontal = isIOS
-                ? { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
-                : { facingMode: "user" };
-            scanner.start(camaraFrontal, config, onEscaneado, () => {})
+            scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
                 console.log("[escaner] Cámara frontal OK");
