@@ -29,10 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
     function setReadOnlyTrue(elements) {
         elements.forEach((el) => {
             if (!el) return;
-            // Usamos disabled para todos (inputs y selects) en lugar de readonly.
-            // iOS y algunos Android cachean el estado readonly y no liberan el
-            // teclado aunque se haga removeAttribute; disabled sí se libera bien.
-            el.disabled = true;
+            if (el.tagName === "SELECT") {
+                // Selects: disabled funciona bien en iOS/Android.
+                el.disabled = true;
+            }
+            // Inputs: solo estilo visual, sin disabled ni readonly.
+            // Ambos tienen un bug en iOS/Android donde el estado queda cacheado
+            // y no se libera al quitarlo dinámicamente.
             el.classList.add("bg-gray-100");
         });
     }

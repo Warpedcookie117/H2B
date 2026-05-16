@@ -100,8 +100,6 @@ export function initProductoExistente({
 
         [nombreInput, mayoreoInput,
          menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
-            el.disabled = false;
-            el.removeAttribute("readonly");
             el.classList.remove("bg-gray-100");
         });
 
@@ -353,13 +351,15 @@ export function initProductoExistente({
         // Marcar el modo
         form.dataset.modoVariante = "nueva";
 
-        // Desbloquear: setReadOnlyTrue usa disabled para todo, así que basta
-        // con disabled = false. iOS y Android manejan esto correctamente.
-        [nombreInput, mayoreoInput, menudeoInput, docenaInput, tipoCodigoInput,
-         duenioSelect, categoriaPadreSelect, subcategoriaSelect].forEach(el => {
+        // Inputs: solo tenían clase visual, basta quitar bg-gray-100.
+        // Selects: sí estaban disabled, hay que re-habilitarlos.
+        [nombreInput, mayoreoInput, menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
+            if (!el) return;
+            el.classList.remove("bg-gray-100");
+        });
+        [duenioSelect, categoriaPadreSelect, subcategoriaSelect].forEach(el => {
             if (!el) return;
             el.disabled = false;
-            el.removeAttribute("readonly");
             el.classList.remove("bg-gray-100");
         });
 
