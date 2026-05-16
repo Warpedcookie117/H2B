@@ -151,8 +151,12 @@ export function initBotonInventario({
             }
         }
 
+        // En modo "variante nueva" la foto es opcional en frontend:
+        // si el usuario no sube una nueva, el backend la rechazará con
+        // un mensaje claro en la barra de progreso.
         const fotoInputRojo = document.getElementById("id_foto_url");
-        if (fotoInputRojo && fotoInputRojo.files.length === 0) {
+        if (fotoInputRojo && fotoInputRojo.files.length === 0
+                && form.dataset.modoVariante !== "nueva") {
             marcarCampo(fotoInputRojo);
             erroresRojo = true;
         }
@@ -196,15 +200,31 @@ export function initBotonInventario({
     // ============================
     // VERIFICAR INVENTARIO
     // ============================
+    let verificarController = null;
+
     async function verificarInventario(productoId, ubicacionId) {
         if (!productoId || !ubicacionId) return;
+        // Guard temprano: si ya estamos en modo "variante nueva", no arrancar el fetch.
+        if (form.dataset.modoVariante === "nueva") return;
+
+        // Cancelar fetch anterior si aún está en vuelo.
+        if (verificarController) verificarController.abort();
+        verificarController = new AbortController();
 
         try {
             const url = `/inventario/verificar_estado_producto/?producto=${productoId}&ubicacion=${ubicacionId}`;
-            const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            const resp = await fetch(url, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                signal: verificarController.signal,
+            });
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
             const data = await resp.json();
+
+            // Guard post-await: el usuario puede haber elegido "variante nueva"
+            // mientras el fetch estaba en vuelo; en ese caso descartar el resultado.
+            if (form.dataset.modoVariante === "nueva") return;
+
             const { producto_existe, inventario_existe } = data;
 
             if (!producto_existe) {
@@ -212,10 +232,6 @@ export function initBotonInventario({
                 setBotonRojo();
                 return;
             }
-
-            // Si el usuario ya cambió a modo "variante nueva" mientras esperábamos
-            // la respuesta del servidor, no sobreescribir el estado del formulario.
-            if (form.dataset.modoVariante === "nueva") return;
 
             form.action = `/inventario/agregar_inventario/${productoId}/${ubicacionId}/`;
             form.method = "post";
@@ -227,6 +243,7 @@ export function initBotonInventario({
             }
 
         } catch (err) {
+            if (err.name === "AbortError") return;
             console.error("Error verificando inventario:", err);
         }
     }

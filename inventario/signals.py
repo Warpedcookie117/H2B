@@ -9,15 +9,19 @@ def _broadcast(ubicacion_id, producto_id, cantidad_actual):
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
-    async_to_sync(channel_layer.group_send)(
-        f"inventario_{ubicacion_id}",
-        {
-            "type": "stock_update",
-            "producto_id": producto_id,
-            "ubicacion_id": ubicacion_id,
-            "cantidad_actual": cantidad_actual,
-        }
-    )
+    try:
+        async_to_sync(channel_layer.group_send)(
+            f"inventario_{ubicacion_id}",
+            {
+                "type": "stock_update",
+                "producto_id": producto_id,
+                "ubicacion_id": ubicacion_id,
+                "cantidad_actual": cantidad_actual,
+            }
+        )
+    except Exception:
+        # Redis no disponible en este entorno — broadcast silenciado.
+        pass
 
 
 @receiver(post_save, sender=Inventario)

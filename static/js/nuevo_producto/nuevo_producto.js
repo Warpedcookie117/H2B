@@ -30,12 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.forEach((el) => {
             if (!el) return;
             if (el.tagName === "SELECT") {
-                // Selects: disabled funciona bien en iOS/Android.
                 el.disabled = true;
+            } else {
+                // pointer-events + tabIndex bloquean táctil y teclado en iOS/Android
+                // sin el bug de caché que tiene readonly/disabled en inputs.
+                el.tabIndex = -1;
+                el.classList.add("pointer-events-none", "select-none", "cursor-not-allowed");
             }
-            // Inputs: solo estilo visual, sin disabled ni readonly.
-            // Ambos tienen un bug en iOS/Android donde el estado queda cacheado
-            // y no se libera al quitarlo dinámicamente.
             el.classList.add("bg-gray-100");
         });
     }
@@ -141,7 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // mantiene como está (es el que comparten las variantes).
             actualizarTemporadasEditable(plantilla.temporadas || []);
 
-            // Foto: mostrar la plantilla pero permitir cambiarla
+            // Foto: mostrar la plantilla y cargarla en el input para heredarla.
+            // El usuario puede cambiarla abriendo el input normalmente.
             const fotoInput = document.getElementById("id_foto_url");
             if (fotoInput) {
                 fotoInput.style.pointerEvents = "auto";
@@ -149,10 +151,23 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             mostrarFoto(plantilla.foto_url);
 
-            // Botón: pasa a estado "registrar variante" (rojo)
+            if (plantilla.foto_url && fotoInput) {
+                fetch(plantilla.foto_url)
+                    .then(r => r.blob())
+                    .then(blob => {
+                        const ext  = (blob.type || "image/jpeg").split("/")[1] || "jpg";
+                        const file = new File([blob], `foto_variante.${ext}`, { type: blob.type });
+                        const dt   = new DataTransfer();
+                        dt.items.add(file);
+                        fotoInput.files = dt.files;
+                    })
+                    .catch(() => { /* CORS fallo — usuario sube manualmente */ });
+            }
+
+            // Botón: inline style para sobreescribir cualquier style.backgroundColor
+            // previo (setBotonVerde usa inline, classList no gana contra inline).
             submitBtn.textContent = "Registrar variante";
-            submitBtn.classList.remove("bg-[#06D6A0]", "bg-[#3A86FF]");
-            submitBtn.classList.add("bg-[#FF006E]");
+            submitBtn.style.backgroundColor = "#FF006E";
             submitBtn.dataset.estado = "rojo";
         },
 

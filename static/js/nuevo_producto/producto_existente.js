@@ -90,6 +90,8 @@ export function initProductoExistente({
         document.getElementById("id_producto_id")?.remove();
         document.getElementById("selector-variantes")?.remove();
         document.getElementById("link-variante-nueva")?.remove();
+        document.getElementById("banner-modo-variante")?.remove();
+        document.getElementById("btn-volver-normal")?.remove();
         form.dataset.modoVariante = "";
 
         nombreInput.value      = "";
@@ -100,7 +102,8 @@ export function initProductoExistente({
 
         [nombreInput, mayoreoInput,
          menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
-            el.classList.remove("bg-gray-100");
+            el.removeAttribute("tabindex");
+            el.classList.remove("bg-gray-100", "pointer-events-none", "select-none", "cursor-not-allowed");
         });
 
         duenioSelect.disabled = false;
@@ -132,8 +135,8 @@ export function initProductoExistente({
         form.action = originalFormAction;
 
         submitBtn.textContent = "Continuar para seleccionar etiqueta";
-        submitBtn.classList.remove("bg-[#06D6A0]", "bg-[#FF006E]");
-        submitBtn.classList.add("bg-[#3A86FF]");
+        submitBtn.style.backgroundColor = "#3A86FF";
+        submitBtn.dataset.estado = "azul";
 
         if (onLimpiar) onLimpiar();
 
@@ -343,6 +346,9 @@ export function initProductoExistente({
         // Quitar id de producto existente (se va a registrar uno nuevo)
         document.getElementById("id_producto_id")?.remove();
         document.getElementById("link-variante-nueva")?.remove();
+        document.getElementById("banner-modo-variante")?.remove();
+        document.getElementById("btn-volver-normal")?.remove();
+        document.getElementById("selector-variantes")?.remove();
 
         // Restaurar el action original para que el submit vaya a nuevo_producto,
         // no a agregar_inventario (que verificarInventario() pudo haber cambiado).
@@ -351,11 +357,12 @@ export function initProductoExistente({
         // Marcar el modo
         form.dataset.modoVariante = "nueva";
 
-        // Inputs: solo tenían clase visual, basta quitar bg-gray-100.
+        // Inputs: quitar bloqueo táctil/teclado (pointer-events + tabIndex).
         // Selects: sí estaban disabled, hay que re-habilitarlos.
         [nombreInput, mayoreoInput, menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
             if (!el) return;
-            el.classList.remove("bg-gray-100");
+            el.removeAttribute("tabindex");
+            el.classList.remove("bg-gray-100", "pointer-events-none", "select-none", "cursor-not-allowed");
         });
         [duenioSelect, categoriaPadreSelect, subcategoriaSelect].forEach(el => {
             if (!el) return;
@@ -375,9 +382,30 @@ export function initProductoExistente({
         if (plantilla.categoria_padre_id)
             categoriaPadreSelect.value = String(plantilla.categoria_padre_id);
 
-        document.getElementById("selector-variantes")?.remove();
+        // Banner persistente + botón "volver"
+        const ref = codigoInput.closest(".space-y-1");
 
-        mostrarMensaje("Cambia el nombre y/o atributos para diferenciar la variante ✏️", "info");
+        const banner = document.createElement("div");
+        banner.id = "banner-modo-variante";
+        banner.className =
+            "border-4 border-black shadow-[4px_4px_0_0_black] " +
+            "bg-[#FF006E] text-white font-black uppercase tracking-widest text-sm px-4 py-3";
+        banner.textContent = "Modo variante — mismo código de barras, producto distinto ✌️";
+        ref.insertAdjacentElement("afterend", banner);
+
+        const volverBtn = document.createElement("button");
+        volverBtn.type = "button";
+        volverBtn.id = "btn-volver-normal";
+        volverBtn.className =
+            "w-full border-4 border-black shadow-[4px_4px_0_0_black] " +
+            "bg-[#3A86FF] hover:bg-[#2563EB] text-white font-black uppercase tracking-widest text-xs " +
+            "px-3 py-2";
+        volverBtn.textContent = "← Volver a formulario normal";
+        volverBtn.addEventListener("click", () => {
+            codigoInput.value = "";
+            limpiarYDesbloquear();
+        });
+        banner.insertAdjacentElement("afterend", volverBtn);
 
         // Delegar al caller — carga subcategorías y atributos editables
         onVarianteNueva(plantilla, todasLasVariantes);
