@@ -353,10 +353,26 @@ export function initProductoExistente({
         form.dataset.modoVariante = "nueva";
 
         // Desbloquear todos los campos (pueden estar readonly si venimos del flujo N=1
-        // donde seleccionarVarianteExistente los bloqueó primero)
+        // donde seleccionarVarianteExistente los bloqueó primero).
+        //
+        // iOS Safari bug: aunque removeAttribute("readonly") actualiza el DOM,
+        // el navegador cachea internamente el estado "readonly" y no abre el
+        // teclado al picar el campo. Workaround: quitar y re-insertar el mismo
+        // nodo en el DOM fuerza a iOS a reevaluar la editabilidad. La referencia
+        // del objeto no cambia, así que los closures que apuntan al input siguen
+        // funcionando.
         [nombreInput, mayoreoInput, menudeoInput, docenaInput, tipoCodigoInput].forEach(el => {
+            if (!el) return;
             el.removeAttribute("readonly");
+            el.readOnly = false;
             el.classList.remove("bg-gray-100");
+
+            const parent = el.parentNode;
+            if (parent) {
+                const next = el.nextSibling;
+                parent.removeChild(el);
+                parent.insertBefore(el, next);
+            }
         });
         [duenioSelect, categoriaPadreSelect, subcategoriaSelect].forEach(el => {
             el.disabled = false;
