@@ -213,6 +213,10 @@ export function initBotonInventario({
                 return;
             }
 
+            // Si el usuario ya cambió a modo "variante nueva" mientras esperábamos
+            // la respuesta del servidor, no sobreescribir el estado del formulario.
+            if (form.dataset.modoVariante === "nueva") return;
+
             form.action = `/inventario/agregar_inventario/${productoId}/${ubicacionId}/`;
             form.method = "post";
 

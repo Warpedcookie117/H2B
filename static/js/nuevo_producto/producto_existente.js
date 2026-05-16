@@ -47,6 +47,8 @@ export function initProductoExistente({
     onLimpiar,
 }) {
 
+    const originalFormAction   = form.action;
+
     let buscando              = false;
     let limpiando             = false;
     let esperandoNuevoEscaneo = false;
@@ -127,6 +129,8 @@ export function initProductoExistente({
             fotoInput.style.pointerEvents = "auto";
             fotoInput.style.opacity       = "1";
         }
+
+        form.action = originalFormAction;
 
         submitBtn.textContent = "Continuar para seleccionar etiqueta";
         submitBtn.classList.remove("bg-[#06D6A0]", "bg-[#FF006E]");
@@ -340,6 +344,10 @@ export function initProductoExistente({
         // Quitar id de producto existente (se va a registrar uno nuevo)
         document.getElementById("id_producto_id")?.remove();
         document.getElementById("link-variante-nueva")?.remove();
+
+        // Restaurar el action original para que el submit vaya a nuevo_producto,
+        // no a agregar_inventario (que verificarInventario() pudo haber cambiado).
+        form.action = originalFormAction;
 
         // Marcar el modo
         form.dataset.modoVariante = "nueva";
