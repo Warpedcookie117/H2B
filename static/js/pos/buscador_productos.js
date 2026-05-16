@@ -495,7 +495,7 @@ function agregarDesdeCard(card, cantidad = 1) {
 // 5. SELECTOR DE VARIANTES — modal con paginación e input cantidad
 // ============================================================
 
-const VARIANTES_POR_PAGINA = 6;
+const VARIANTES_POR_PAGINA = 12;
 let _cardsActuales = [];
 let _cardsFiltradas = [];
 let _paginaActual = 0;
@@ -572,33 +572,49 @@ function renderPaginaActual() {
     const fin    = Math.min(inicio + VARIANTES_POR_PAGINA, total);
     const slice  = _cardsFiltradas.slice(inicio, fin);
 
+    const PALETA = ["#FFBE0B","#06D6A0","#3A86FF","#8338EC","#FF6B35","#FF006E"];
+    const PALETA_HOVER = ["#f5a800","#00b88a","#1a6fe0","#6620c7","#e05200","#cc004e"];
+
     slice.forEach((card, idx) => {
+        const colorBase  = PALETA[idx % PALETA.length];
+        const colorHover = PALETA_HOVER[idx % PALETA_HOVER.length];
+        const textoDark  = colorBase === "#FFBE0B" || colorBase === "#06D6A0";
+
         const btn = document.createElement("button");
         btn.type = "button";
         btn.dataset.idx = String(idx);
         btn.style.cssText = [
             "display:flex",
             "flex-direction:column",
-            "gap:.3rem",
-            "padding:.45rem",
-            "border:3px solid black",
-            "background:#FFBE0B",
+            "gap:.35rem",
+            "padding:.5rem",
+            `border:3px solid black`,
+            `background:${colorBase}`,
             "box-shadow:4px 4px 0 0 black",
             "cursor:pointer",
             "text-align:left",
             "min-width:0",
-            "min-height:160px",
+            "min-height:200px",
             "overflow:hidden",
+            "transition:transform .08s,box-shadow .08s",
         ].join(";");
-        btn.onmouseenter = () => { btn.style.background = "#06D6A0"; };
-        btn.onmouseleave = () => { btn.style.background = "#FFBE0B"; };
+        btn.onmouseenter = () => {
+            btn.style.background = colorHover;
+            btn.style.transform = "translate(-2px,-2px)";
+            btn.style.boxShadow = "6px 6px 0 0 black";
+        };
+        btn.onmouseleave = () => {
+            btn.style.background = colorBase;
+            btn.style.transform = "";
+            btn.style.boxShadow = "4px 4px 0 0 black";
+        };
 
-        // Foto (ligera, Cloudinary q_auto:low)
+        // Foto — q_auto:low para thumbnail barato en Cloudinary
         const fotoBox = document.createElement("div");
-        fotoBox.style.cssText = "width:100%;height:80px;border:2px solid black;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;";
+        fotoBox.style.cssText = "width:100%;height:120px;border:2px solid black;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;";
         const imgEl = card.querySelector("img");
         const srcOriginal = imgEl?.dataset?.src || imgEl?.src || "";
-        const srcLigera = urlImagenLigera(srcOriginal, 200);
+        const srcLigera = urlImagenLigera(srcOriginal, 240);
         if (srcLigera) {
             const img = document.createElement("img");
             img.src = srcLigera;
@@ -607,32 +623,37 @@ function renderPaginaActual() {
             img.style.cssText = "width:100%;height:100%;object-fit:cover;";
             fotoBox.appendChild(img);
         } else {
+            fotoBox.style.fontSize = "2rem";
             fotoBox.textContent = "📦";
         }
         btn.appendChild(fotoBox);
 
-        // Nombre (truncado a 2 líneas)
+        // Nombre
+        const colorTexto = textoDark ? "#000" : "#fff";
         const nombre = document.createElement("p");
-        nombre.style.cssText = "font-weight:900;font-size:.78rem;line-height:1.1;color:#000;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;";
+        nombre.style.cssText = `font-weight:900;font-size:.8rem;line-height:1.15;color:${colorTexto};margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;`;
         nombre.textContent = card.dataset.nombre || "";
         btn.appendChild(nombre);
 
-        // Atributos
+        // Atributos como pills individuales
         const atributos = card.dataset.atributos ? safeJsonParse(card.dataset.atributos) : null;
         if (atributos) {
-            const partes = Object.entries(atributos)
-                .filter(([_, v]) => v !== null && v !== undefined && String(v).trim() !== "")
-                .map(([k, v]) => `${k}: ${v}`);
-            if (partes.length) {
-                const p = document.createElement("p");
-                p.style.cssText = "font-weight:700;font-size:.62rem;line-height:1.2;color:#000;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;";
-                p.textContent = partes.join(" · ");
-                btn.appendChild(p);
-            }
+            const pillsWrap = document.createElement("div");
+            pillsWrap.style.cssText = "display:flex;flex-wrap:wrap;gap:3px;margin:0;";
+            Object.entries(atributos)
+                .filter(([_, v]) => v !== null && v !== undefined && String(v).trim() !== "" && String(v).toLowerCase() !== "n/a")
+                .forEach(([k, v]) => {
+                    const pill = document.createElement("span");
+                    pill.style.cssText = "background:rgba(0,0,0,0.75);color:#fff;font-size:.58rem;font-weight:900;letter-spacing:.04em;padding:2px 5px;text-transform:uppercase;line-height:1.3;";
+                    pill.textContent = `${k}: ${v}`;
+                    pillsWrap.appendChild(pill);
+                });
+            if (pillsWrap.children.length) btn.appendChild(pillsWrap);
         }
 
+        // Precio
         const precio = document.createElement("p");
-        precio.style.cssText = "font-weight:900;font-size:.75rem;color:#000;margin:0;";
+        precio.style.cssText = `font-weight:900;font-size:.85rem;color:${colorTexto};margin:0 0 0 0;margin-top:auto;`;
         precio.textContent = `$${card.dataset.men}`;
         btn.appendChild(precio);
 
