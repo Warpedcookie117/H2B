@@ -6,6 +6,20 @@ import { limpiarCarrito } from "./carrito.js";
 
 console.log("[POS:pago] Módulo cargado");
 
+// Idempotency key — se regenera ANTES de cada intento de pago.
+// Doble-tap o retry de red comparten el mismo UUID hasta que la venta
+// se confirme exitosa. Tras venta exitosa se genera uno nuevo para la
+// próxima venta del mismo turno (sin necesidad de recargar el POS).
+let _idempotencyKey = null;
+function nuevoIdempotencyKey() {
+    _idempotencyKey = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    return _idempotencyKey;
+}
+function obtenerIdempotencyKey() {
+    if (!_idempotencyKey) nuevoIdempotencyKey();
+    return _idempotencyKey;
+}
+
 export let onPagoError = () => {};
 export let onPagoExito = () => {};
 export let onPagoIniciado = () => {};
@@ -97,10 +111,12 @@ export async function procesarPago(efectivo, tarjeta) {
         }),
         pagado_efectivo: Number(efectivo) || 0,
         pagado_tarjeta: Number(tarjeta) || 0,
-        descuento_10: Boolean(descuentoActivo)
+        descuento_10: Boolean(descuentoActivo),
+        idempotency_key: obtenerIdempotencyKey(),
     };
 
     console.log("[POS:pago] payload a enviar:", payload);
+    console.log("[POS:pago] idempotency_key:", payload.idempotency_key);
 
     const csrftoken = getCookie("csrftoken");
 
@@ -124,6 +140,10 @@ export async function procesarPago(efectivo, tarjeta) {
         if (data.status === "ok") {
             console.log(`[POS:pago] ✅ VENTA EXITOSA — venta_id=${data.venta_id} total=${data.total_venta} cambio=${data.cambio}`);
             limpiarCarrito();
+            // Venta confirmada — generar nuevo UUID para la siguiente venta.
+            // Importante: regenerar SOLO en éxito; si hubo error queremos que
+            // el reintento use el mismo UUID (idempotente).
+            nuevoIdempotencyKey();
             onPagoExito(data);
         } else {
             console.warn(`[POS:pago] ❌ VENTA RECHAZADA — ${data.message}`);

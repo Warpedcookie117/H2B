@@ -7,6 +7,70 @@ from sucursales.models import Caja
 from inventario.models import Categoria
 
 
+class IdempotencyKey(models.Model):
+    """
+    Token único por operación para prevenir reintentos accidentales que
+    crearían registros duplicados (ej. doble-tap en 'Cobrar', reenvío de
+    formulario al volver con flecha del browser, retry de red).
+    """
+
+    OPERACION_CHOICES = [
+        ("venta", "Venta POS"),
+        ("nuevo_producto", "Registro de producto"),
+        ("agregar_inventario", "Agregar inventario"),
+    ]
+
+    key            = models.CharField(max_length=64, primary_key=True)
+    operacion      = models.CharField(max_length=32, choices=OPERACION_CHOICES)
+    empleado       = models.ForeignKey(Empleado, on_delete=models.SET_NULL, null=True, blank=True)
+    status_code    = models.IntegerField(default=200)
+    response_json  = models.JSONField(null=True, blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["operacion", "-created_at"]),
+        ]
+
+    @classmethod
+    def claim(cls, key, operacion, empleado=None):
+        """
+        Intenta reservar la llave. Devuelve (objeto, respuesta_cacheada):
+          - (obj, None) → llave nueva, procede a ejecutar la operación
+          - (None, dict) → ya existía; el dict es la respuesta a devolver
+                          (cacheada con éxito previo, o "en curso" con 409)
+        """
+        from django.db import IntegrityError, transaction
+        if not key:
+            return None, None
+        try:
+            with transaction.atomic():
+                obj = cls.objects.create(key=key, operacion=operacion, empleado=empleado)
+            return obj, None
+        except IntegrityError:
+            existing = cls.objects.filter(key=key).first()
+            if not existing or existing.response_json is None:
+                # En curso (otro request acaba de claim sin terminar todavía)
+                return None, {
+                    "__status": 409,
+                    "success": False,
+                    "errors": ["Operación duplicada en curso. Espera un momento."],
+                }
+            cached = dict(existing.response_json)
+            cached["__status"] = existing.status_code
+            return None, cached
+
+    def commit(self, response_data, status_code=200):
+        """Guarda la respuesta para devolverla en reintentos futuros."""
+        self.status_code = status_code
+        self.response_json = response_data
+        self.save(update_fields=["status_code", "response_json"])
+
+    def release(self):
+        """Borra la llave si la operación falló — permite reintento."""
+        self.delete()
+
 
 class Venta(models.Model):
     METODO_PAGO = [

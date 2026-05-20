@@ -106,15 +106,6 @@ class Producto(models.Model):
 
     foto_url = models.ImageField(upload_to='productos/', blank=True, null=True)
 
-    # Versión pequeña generada automáticamente al guardar.
-    # La foto_url original NUNCA se modifica.
-    foto_thumbnail = models.ImageField(
-        upload_to='productos/thumbs/',
-        blank=True,
-        null=True,
-        help_text="Versión pequeña auto-generada para listas y cards. No editar manualmente."
-    )
-
     codigo_barras = models.CharField(
         max_length=50,
         blank=True,

@@ -14,6 +14,7 @@ from inventario.services.correo import enviar_correo
 from django.urls import reverse
 from inventario.utils import color_from_name
 from main import settings
+from ventas.models import IdempotencyKey
 
 
 
@@ -98,6 +99,26 @@ def agregar_inventario(request, producto_id, ubicacion_id):
             )
         return fallback_redirect("Método no permitido.", error=True)
 
+    # ============================
+    # IDEMPOTENCY: claim del token antes de procesar
+    # ============================
+    idem_obj = None
+    if is_ajax:
+        idem_key = request.POST.get("idempotency_key")
+        empleado_idem = getattr(request.user, "empleado", None)
+        idem_obj, cached = IdempotencyKey.claim(idem_key, "agregar_inventario", empleado_idem)
+        if cached is not None:
+            status = cached.pop("__status", 200)
+            return JsonResponse(cached, status=status)
+
+    def respond_ajax(data, status=200):
+        if idem_obj:
+            if data.get("success"):
+                idem_obj.commit(data, status_code=status)
+            else:
+                idem_obj.release()
+        return JsonResponse(data, status=status)
+
     producto = get_object_or_404(Producto, id=producto_id)
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
 
@@ -118,7 +139,7 @@ def agregar_inventario(request, producto_id, ubicacion_id):
     if not form.is_valid():
         errs = sum(form.errors.values(), [])
         if is_ajax:
-            return JsonResponse({"success": False, "errors": errs})
+            return respond_ajax({"success": False, "errors": errs})
         return fallback_redirect(" ".join(errs) or "Datos inválidos.", error=True)
 
     cantidad = form.cleaned_data["cantidad"]
@@ -134,13 +155,13 @@ def agregar_inventario(request, producto_id, ubicacion_id):
         )
     except ValidationError as e:
         if is_ajax:
-            return JsonResponse({"success": False, "errors": e.messages})
+            return respond_ajax({"success": False, "errors": e.messages})
         return fallback_redirect(" ".join(e.messages), error=True)
 
     inventario.refresh_from_db()
 
     if is_ajax:
-        return JsonResponse({
+        return respond_ajax({
             "success": True,
             "cantidad_actual": inventario.cantidad_actual,
         })

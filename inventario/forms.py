@@ -1,10 +1,9 @@
+import re
 from django import forms
 from inventario.services.atributo_service import AtributoService
 from inventario.services.codigo_service import CodigoService
-from inventario.services.codigo_service import CodigoService
 from tienda_temp.models import Empleado
 from .models import Atributo, Categoria, Temporada, TransferenciaInventario, Producto, Categoria, Ubicacion, Inventario
-from tienda_temp.models import Empleado
 
 
 #ACCIONES DE INVENTARIO
@@ -348,7 +347,11 @@ class ProductoForm(forms.ModelForm):
         codigo = self.cleaned_data.get("codigo_barras")
 
         if codigo:
-            codigo = str(codigo).strip()
+            # Eliminar TODO whitespace (no solo edges): scanners y copy/paste
+            # a veces dejan tabs, espacios internos o saltos de línea.
+            # NOTA: solo whitespace — los ceros y demás caracteres se preservan
+            # exactamente como vienen (importante para EAN-13 que empieza con 0).
+            codigo = re.sub(r"\s+", "", str(codigo))
 
             try:
                 CodigoService.validar_codigo_real(codigo)
@@ -361,7 +364,19 @@ class ProductoForm(forms.ModelForm):
  
     def clean(self):
         cleaned = super().clean()
- 
+
+        # ============================================================
+        # NORMALIZACIÓN GTIN-13: UPC-A (12 dígitos) → EAN-13 (13 dígitos)
+        # El mismo producto físico puede leerse como UPC-A o EAN-13 según
+        # el ángulo/decoder. Almacenar siempre en formato 13 dígitos elimina
+        # duplicados accidentales. Solo aplica si pasa checksum de UPC-A.
+        # ============================================================
+        codigo = cleaned.get("codigo_barras")
+        if codigo and len(codigo) == 12 and codigo.isdigit():
+            if CodigoService._validar_ean13("0" + codigo):
+                cleaned["codigo_barras"] = "0" + codigo
+                cleaned["tipo_codigo"]   = "ean13"
+
         sub = cleaned.get("subcategoria")
         if not sub:
             return cleaned

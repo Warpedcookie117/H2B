@@ -69,6 +69,18 @@
     window.cajaActual = "{{ request.session.caja_actual|default:'' }}";
 </script>
 
+<!--
+  bfcache refresh — iOS Safari y Chrome móvil restauran la página tal cual
+  cuando el usuario pica "atrás" en el browser. Esto fuerza un reload con
+  datos frescos (inventarios, precios, carritos, etc.) al detectar restauración.
+  e.persisted = true solo cuando viene del bfcache, no en navegación normal.
+-->
+<script>
+    window.addEventListener("pageshow", (e) => {
+        if (e.persisted) window.location.reload();
+    });
+</script>
+
 <script src="{% static 'js/sidebar.js' %}" defer></script>
 <script src="{% static 'js/navbar.js' %}" defer></script>
 <script src="{% static 'js/form-handler.js' %}" defer></script>

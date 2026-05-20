@@ -1,5 +1,11 @@
 import { iniciarBarraProgreso } from "./barra_progreso.js";
 
+// Idempotency key — boleto único que identifica esta sesión del formulario.
+// Se genera UNA vez al cargar la página: doble-tap o reintentos por red
+// mandan el mismo UUID y el backend procesa solo la primera vez.
+// Tras un submit exitoso la página redirige → nueva carga → nuevo UUID.
+let idempotencyKey = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
 export function initBotonInventario({
     form,
     submitBtn,
@@ -167,6 +173,8 @@ export function initBotonInventario({
         }
 
         const formData = new FormData(form);
+        formData.set("idempotency_key", idempotencyKey);
+
         console.group("📦 nuevo_producto — payload enviado");
         for (const [key, val] of formData.entries()) {
             if (val instanceof File) {
@@ -176,6 +184,7 @@ export function initBotonInventario({
             }
         }
         console.log("action →", form.action || window.location.href);
+        console.log("idempotency_key →", idempotencyKey);
         console.groupEnd();
 
         const fetchPromise = fetch(form.action || window.location.href, {

@@ -36,9 +36,28 @@ function initEscanerCamara(onDetectado) {
 
     // ============================
     // CALLBACK: código escaneado
+    // Buffer de confirmación: el mismo código debe leerse 2 veces seguidas
+    // antes de aceptarlo. Suma ~130ms en Android (15fps) o ~250ms en iOS (8fps)
+    // pero filtra los falsos positivos del decoder cuando ve un código parcial.
     // ============================
+    let ultimoCodigoLeido = null;
+    let lecturasIguales = 0;
+    const LECTURAS_NECESARIAS = 2;
+
     function onEscaneado(codigo) {
-        console.log("[escaner] ✅ Código detectado:", codigo);
+        if (codigo === ultimoCodigoLeido) {
+            lecturasIguales++;
+        } else {
+            ultimoCodigoLeido = codigo;
+            lecturasIguales = 1;
+        }
+
+        if (lecturasIguales < LECTURAS_NECESARIAS) {
+            console.log(`[escaner] Lectura ${lecturasIguales}/${LECTURAS_NECESARIAS}: ${codigo} (esperando confirmación)`);
+            return;
+        }
+
+        console.log(`[escaner] ✅ Confirmado tras ${lecturasIguales} lecturas:`, codigo);
         detener().then(() => {
             modal.close();
             onDetectado(codigo);
@@ -199,6 +218,8 @@ function initEscanerCamara(onDetectado) {
             activo  = false;
             torchActivo = false;
             zoomActivo  = false;
+            ultimoCodigoLeido = null;
+            lecturasIguales = 0;
             document.getElementById("escaner-controles")?.remove();
             console.log("[escaner] Cámara detenida.");
         }

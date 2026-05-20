@@ -64,6 +64,26 @@ class ProductService:
 
         from inventario.models import Producto as Prod
 
+        # ============================================================
+        # ANTI-DUPLICADO: si el código ya existe y NO viene marcado como
+        # variante intencional, rechazar. Evita que un scan defectuoso
+        # cree productos "gemelos" sin que el usuario lo note.
+        # ============================================================
+        es_variante = request.POST.get("es_variante") == "true"
+        if not es_variante:
+            existente_codigo = (
+                Prod.objects
+                .filter(codigo_barras=producto.codigo_barras, activo=True)
+                .exclude(pk=producto.pk)
+                .first()
+            )
+            if existente_codigo:
+                raise ValidationError(
+                    f"Este código de barras ya está registrado en '{existente_codigo.nombre}'. "
+                    "Si es una variante distinta, escanea el código y pícale a "
+                    "'Registrar como variante nueva' en el banner que aparece."
+                )
+
         producto.save()
 
         # Guardar M2M

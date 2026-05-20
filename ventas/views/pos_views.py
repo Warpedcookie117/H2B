@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from inventario.models import Inventario, Producto, Ubicacion
 from sucursales.models import Sucursal
-from ventas.models import Oferta, Promocion
+from ventas.models import IdempotencyKey, Oferta, Promocion
 from ventas.services.pos_service import POSService
 
 logger = logging.getLogger(__name__)
@@ -150,10 +150,37 @@ def procesar_venta(request):
     if empleado.rol not in ["cajero", "dueno", "dueño"]:
         return JsonResponse({"status": "error", "message": "No tienes permiso"}, status=403)
 
-    # Guard contra doble envío: un solo request activo por empleado
+    # Parsear JSON una sola vez al inicio — necesitamos idempotency_key antes
+    # de cualquier otra cosa para reclamar la llave atómicamente.
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+
+    # ============================
+    # IDEMPOTENCY: claim del token antes de tocar nada
+    # ============================
+    idem_key = data.get("idempotency_key")
+    idem_obj = None
+    if idem_key:
+        idem_obj, cached = IdempotencyKey.claim(idem_key, "venta", empleado)
+        if cached is not None:
+            status = cached.pop("__status", 200)
+            return JsonResponse(cached, status=status)
+
+    def respond(payload, status=200):
+        """Devuelve JSON, commitea/libera la llave idempotente según éxito."""
+        if idem_obj:
+            if payload.get("status") == "ok":
+                idem_obj.commit(payload, status_code=status)
+            else:
+                idem_obj.release()
+        return JsonResponse(payload, status=status)
+
+    # Guard contra doble envío concurrente (defensa adicional al idempotency)
     lock_key = f"pos_lock_{empleado.id}"
     if cache.get(lock_key):
-        return JsonResponse({"status": "error", "message": "Venta en proceso, espera un momento."}, status=409)
+        return respond({"status": "error", "message": "Venta en proceso, espera un momento."}, status=409)
     cache.set(lock_key, True, timeout=15)
 
     try:
@@ -162,24 +189,18 @@ def procesar_venta(request):
         caja_id = request.session.get("caja_actual")
 
         if not sucursal_id or not caja_id:
-            return JsonResponse({"status": "error", "message": "Debes autenticarte en una caja."}, status=400)
+            return respond({"status": "error", "message": "Debes autenticarte en una caja."}, status=400)
 
         # 2) Obtener sucursal
         try:
             sucursal = Sucursal.objects.get(id=sucursal_id)
         except Sucursal.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Sucursal inválida."}, status=400)
+            return respond({"status": "error", "message": "Sucursal inválida."}, status=400)
 
         # Verificar que la caja pertenece a esta sucursal
         from sucursales.models import Caja
         if not Caja.objects.filter(id=caja_id, sucursal_id=sucursal_id).exists():
-            return JsonResponse({"status": "error", "message": "Caja no válida para esta sucursal."}, status=403)
-
-        # 3) Parsear JSON
-        try:
-            data = json.loads(request.body)
-        except Exception:
-            return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+            return respond({"status": "error", "message": "Caja no válida para esta sucursal."}, status=403)
 
         carrito = data.get("carrito", [])
         pagado_efectivo = data.get("pagado_efectivo")
@@ -188,7 +209,7 @@ def procesar_venta(request):
 
         # 4) Validación básica
         if not carrito:
-            return JsonResponse({"status": "error", "message": "Carrito vacío."}, status=400)
+            return respond({"status": "error", "message": "Carrito vacío."}, status=400)
 
         # 5) Convertir carrito
         carrito_real = []
@@ -205,7 +226,7 @@ def procesar_venta(request):
                     "promo_nombre":   item.get("promo_nombre", ""),
                 })
             except Exception:
-                return JsonResponse({"status": "error", "message": "Error en item del carrito."}, status=400)
+                return respond({"status": "error", "message": "Error en item del carrito."}, status=400)
 
         # 6) Crear venta con POSService
         try:
@@ -222,7 +243,7 @@ def procesar_venta(request):
             venta = resultado["venta"]
             ticket_texto = resultado["ticket_texto"]
 
-            return JsonResponse({
+            return respond({
                 "status": "ok",
                 "venta_id": venta.id,
                 "total_venta": float(venta.total),
@@ -239,7 +260,7 @@ def procesar_venta(request):
 
         except Exception as e:
             logger.error("Error en POSService.crear_venta: %s", e, exc_info=True)
-            return JsonResponse({"status": "error", "message": "Error al procesar la venta."}, status=400)
+            return respond({"status": "error", "message": "Error al procesar la venta."}, status=400)
 
     finally:
         cache.delete(lock_key)

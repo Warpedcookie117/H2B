@@ -22,6 +22,7 @@ from django.urls import reverse
 from rapidfuzz import process, fuzz
 from inventario.services.atributo_service import AtributoService
 from inventario.models import ValorAtributo, Atributo, Categoria
+from ventas.models import IdempotencyKey
 import re
 from django.views.decorators.http import require_POST
 
@@ -561,6 +562,27 @@ def nuevo_producto(request):
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
     sucursal_actual = request.session.get("sucursal_actual")
 
+    # ============================
+    # IDEMPOTENCY: claim del token antes de procesar
+    # ============================
+    idem_obj = None
+    if is_ajax:
+        idem_key = request.POST.get("idempotency_key")
+        empleado_idem = getattr(request.user, "empleado", None)
+        idem_obj, cached = IdempotencyKey.claim(idem_key, "nuevo_producto", empleado_idem)
+        if cached is not None:
+            status = cached.pop("__status", 200)
+            return JsonResponse(cached, status=status)
+
+    def respond_ajax(data, status=200):
+        """Devuelve JSON y commitea/libera la llave idempotente según éxito."""
+        if idem_obj:
+            if data.get("success"):
+                idem_obj.commit(data, status_code=status)
+            else:
+                idem_obj.release()
+        return JsonResponse(data, status=status)
+
     form = ProductoForm(
         request.POST,
         request.FILES,
@@ -571,7 +593,7 @@ def nuevo_producto(request):
     if not form.is_valid():
         if is_ajax:
             errores = [e for errs in form.errors.values() for e in errs]
-            return JsonResponse({"success": False, "errors": errores})
+            return respond_ajax({"success": False, "errors": errores})
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
     # ============================
@@ -594,19 +616,20 @@ def nuevo_producto(request):
             )
         except ValidationError as e:
             if is_ajax:
-                return JsonResponse({"success": False, "errors": e.messages})
+                return respond_ajax({"success": False, "errors": e.messages})
             messages.error(request, str(e))
             return render(request, "inventario/nuevo_producto.html", contexto(form))
-        except Exception:
+        except Exception as e:
+            import traceback; traceback.print_exc()
             if is_ajax:
-                return JsonResponse({"success": False, "errors": ["El servidor encontró un error interno. Intenta de nuevo."]})
+                return respond_ajax({"success": False, "errors": [f"Error interno: {type(e).__name__}: {e}"]})
             messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
             return render(request, "inventario/nuevo_producto.html", contexto(form))
 
         url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
         redirect_url = f"{url}?highlight={producto.id}&new=1"
         if is_ajax:
-            return JsonResponse({"success": True, "redirect": redirect_url})
+            return respond_ajax({"success": True, "redirect": redirect_url})
         return redirect(redirect_url)
 
     # ============================
@@ -616,7 +639,7 @@ def nuevo_producto(request):
     tam = form.cleaned_data.get("tamano_etiqueta")
     if not tam:
         if is_ajax:
-            return JsonResponse({"success": False, "errors": ["Debes seleccionar un tamaño de etiqueta."]})
+            return respond_ajax({"success": False, "errors": ["Debes seleccionar un tamaño de etiqueta."]})
         messages.error(request, "Debes seleccionar un tamaño de etiqueta.")
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
@@ -639,19 +662,19 @@ def nuevo_producto(request):
         )
     except ValidationError as e:
         if is_ajax:
-            return JsonResponse({"success": False, "errors": e.messages})
+            return respond_ajax({"success": False, "errors": e.messages})
         messages.error(request, str(e))
         return render(request, "inventario/nuevo_producto.html", contexto(form))
     except Exception:
         if is_ajax:
-            return JsonResponse({"success": False, "errors": ["El servidor encontró un error interno. Intenta de nuevo."]})
+            return respond_ajax({"success": False, "errors": ["El servidor encontró un error interno. Intenta de nuevo."]})
         messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
     url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
     redirect_url = f"{url}?highlight={producto.id}&new=1"
     if is_ajax:
-        return JsonResponse({"success": True, "redirect": redirect_url})
+        return respond_ajax({"success": True, "redirect": redirect_url})
     return redirect(redirect_url)
 
 
@@ -661,13 +684,23 @@ def nuevo_producto(request):
 #Ajax que trae los datos del producto dado un codigo de barras, para llenar el formulario de nuevo producto
 @login_required
 def buscar_producto_por_codigo(request):
-    codigo = request.GET.get('codigo')
+    codigo = (request.GET.get('codigo') or "").strip()
+
+    # Búsqueda dual: si el código es UPC-A de 12 dígitos, también buscar
+    # su forma EAN-13 (con 0 al frente), y viceversa. Esto encuentra
+    # productos viejos guardados en cualquiera de los dos formatos.
+    codigos_buscar = [codigo]
+    if codigo and codigo.isdigit():
+        if len(codigo) == 12:
+            codigos_buscar.append("0" + codigo)
+        elif len(codigo) == 13 and codigo.startswith("0"):
+            codigos_buscar.append(codigo[1:])
 
     productos = list(
         Producto.objects
         .select_related('categoria', 'categoria__padre', 'dueño')
         .prefetch_related('temporada')
-        .filter(codigo_barras=codigo, activo=True)
+        .filter(codigo_barras__in=codigos_buscar, activo=True)
         .order_by('nombre', 'id')
     )
 

@@ -92,6 +92,7 @@ export function initProductoExistente({
         document.getElementById("link-variante-nueva")?.remove();
         document.getElementById("banner-modo-variante")?.remove();
         document.getElementById("btn-volver-normal")?.remove();
+        document.getElementById("id_es_variante")?.remove();
         form.dataset.modoVariante = "";
 
         nombreInput.value      = "";
@@ -349,6 +350,18 @@ export function initProductoExistente({
         document.getElementById("banner-modo-variante")?.remove();
         document.getElementById("btn-volver-normal")?.remove();
         document.getElementById("selector-variantes")?.remove();
+
+        // Bandera para que el backend permita duplicar el código de barras
+        // intencionalmente (sin esta bandera el backend rechaza duplicados).
+        let esVariante = document.getElementById("id_es_variante");
+        if (!esVariante) {
+            esVariante = document.createElement("input");
+            esVariante.type = "hidden";
+            esVariante.id   = "id_es_variante";
+            esVariante.name = "es_variante";
+            form.appendChild(esVariante);
+        }
+        esVariante.value = "true";
 
         // Restaurar el action original para que el submit vaya a nuevo_producto,
         // no a agregar_inventario (que verificarInventario() pudo haber cambiado).

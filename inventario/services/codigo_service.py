@@ -14,10 +14,22 @@ class CodigoService:
         if len(codigo) < 6 or len(codigo) > 20:
             raise ValueError("La longitud del código no es válida para un código de barras.")
 
+        # EAN-13: validar checksum para rechazar lecturas erróneas del scanner
         if codigo.isdigit() and len(codigo) == 13:
+            if not CodigoService._validar_ean13(codigo):
+                raise ValueError(
+                    "EAN-13 inválido: el dígito de control no coincide. "
+                    "Re-escanea el código — puede que el scanner haya leído mal."
+                )
             return "ean13"
 
+        # UPC-A: usa el mismo algoritmo de checksum que EAN-13 con un cero al frente
         if codigo.isdigit() and len(codigo) == 12:
+            if not CodigoService._validar_ean13("0" + codigo):
+                raise ValueError(
+                    "UPC-A inválido: el dígito de control no coincide. "
+                    "Re-escanea el código — puede que el scanner haya leído mal."
+                )
             return "upca"
 
         try:
