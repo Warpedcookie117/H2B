@@ -44,7 +44,33 @@ function initEscanerCamara(onDetectado) {
     let lecturasIguales = 0;
     const LECTURAS_NECESARIAS = 2;
 
+    // Valida checksum UPC-A (12 dígitos). El algoritmo es idéntico al de
+    // EAN-13 cuando se prepende un "0" — eso permite tratar UPC-A como
+    // EAN-13 con leading zero según el estándar GS1 (GTIN-13).
+    function _checksumUPCA(codigo12) {
+        const conPrefijo = "0" + codigo12;
+        const base = conPrefijo.slice(0, -1);
+        const checkReal = parseInt(conPrefijo.slice(-1), 10);
+        let suma = 0;
+        for (let i = 0; i < base.length; i++) {
+            const n = parseInt(base[i], 10);
+            suma += (i % 2 === 0) ? n : n * 3;
+        }
+        const checkCalc = (10 - (suma % 10)) % 10;
+        return checkCalc === checkReal;
+    }
+
     function onEscaneado(codigo) {
+        // Normalización GTIN-13 en el momento del escaneo: si las barras
+        // codifican UPC-A (12 dígitos con checksum válido), prepende el "0"
+        // que la etiqueta SÍ muestra impreso pero las barras no codifican.
+        // Esto hace que el input muestre el código completo tal como el
+        // usuario lo ve en la etiqueta.
+        if (/^\d{12}$/.test(codigo) && _checksumUPCA(codigo)) {
+            console.log(`[escaner] UPC-A detectado → normalizado a EAN-13: 0${codigo}`);
+            codigo = "0" + codigo;
+        }
+
         if (codigo === ultimoCodigoLeido) {
             lecturasIguales++;
         } else {

@@ -14,24 +14,23 @@ class CodigoService:
         if len(codigo) < 6 or len(codigo) > 20:
             raise ValueError("La longitud del código no es válida para un código de barras.")
 
-        # EAN-13: validar checksum para rechazar lecturas erróneas del scanner
+        # EAN-13 con checksum válido → tipo formal "ean13"
+        # Si NO pasa checksum: NO rechazar; caen abajo como Code 128. Hay
+        # fabricantes (sobre todo importados baratos) que imprimen códigos
+        # numéricos de 13 dígitos sin seguir el estándar GS1, y son códigos
+        # legítimos del producto. Mejor aceptarlos como genéricos.
         if codigo.isdigit() and len(codigo) == 13:
-            if not CodigoService._validar_ean13(codigo):
-                raise ValueError(
-                    "EAN-13 inválido: el dígito de control no coincide. "
-                    "Re-escanea el código — puede que el scanner haya leído mal."
-                )
-            return "ean13"
+            if CodigoService._validar_ean13(codigo):
+                return "ean13"
 
-        # UPC-A: usa el mismo algoritmo de checksum que EAN-13 con un cero al frente
+        # UPC-A con checksum válido → tipo formal "upca"
+        # Misma lógica: si no cuadra el checksum, no es UPC-A real pero sí
+        # puede ser un código numérico legítimo del proveedor.
         if codigo.isdigit() and len(codigo) == 12:
-            if not CodigoService._validar_ean13("0" + codigo):
-                raise ValueError(
-                    "UPC-A inválido: el dígito de control no coincide. "
-                    "Re-escanea el código — puede que el scanner haya leído mal."
-                )
-            return "upca"
+            if CodigoService._validar_ean13("0" + codigo):
+                return "upca"
 
+        # Fallback: cualquier alfanumérico válido se acepta como Code 128
         try:
             Code128(codigo)
             return "code128"
