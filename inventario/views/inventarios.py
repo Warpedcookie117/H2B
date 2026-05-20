@@ -46,14 +46,29 @@ def dashboard_inventario(request):
             "productos_count": count,
         })
  
-    # Productos críticos (<= 5 piezas)
-    bajos = (
+    # Productos críticos (<= 5 piezas) — solo los 30 más críticos para
+    # que el dashboard se cargue rápido y sea legible. Para ver todos hay
+    # link al inventario global filtrado.
+    bajos_query = (
         Inventario.objects
         .select_related("producto", "ubicacion", "ubicacion__sucursal")
         .filter(cantidad_actual__lte=5, cantidad_actual__gt=0)
         .order_by("cantidad_actual")
     )
- 
+    bajos_total = bajos_query.count()
+    bajos = list(bajos_query[:30])
+
+    # Agregar conteo de críticos POR ubicación para el chart.
+    # En lugar de 224 barras ilegibles → un bar por ubicación con el total.
+    from django.db.models import Count
+    criticos_por_ubicacion = list(
+        Inventario.objects
+        .filter(cantidad_actual__lte=5, cantidad_actual__gt=0)
+        .values("ubicacion__id", "ubicacion__nombre", "ubicacion__tipo", "ubicacion__sucursal__nombre")
+        .annotate(total=Count("id"))
+        .order_by("-total")
+    )
+
     # Más vendidos
     mas_vendidos = (
         MovimientoInventario.objects
@@ -62,13 +77,15 @@ def dashboard_inventario(request):
         .annotate(total=Sum("cantidad"))
         .order_by("-total")[:10]
     )
- 
+
     context = {
-        "productos_total":  Producto.objects.filter(activo=True).count(),
-        "kpis_ubicaciones": kpis_ubicaciones,
-        "bajos":            bajos,
-        "mas_vendidos":     mas_vendidos,
-        "ahora":            now(),
+        "productos_total":       Producto.objects.filter(activo=True).count(),
+        "kpis_ubicaciones":      kpis_ubicaciones,
+        "bajos":                 bajos,
+        "bajos_total":           bajos_total,
+        "criticos_por_ubicacion": criticos_por_ubicacion,
+        "mas_vendidos":          mas_vendidos,
+        "ahora":                 now(),
     }
  
     return render(request, "inventario/dashboard_inventario.html", context)
@@ -78,18 +95,22 @@ def dashboard_inventario(request):
 
 @login_required
 def agregar_inventario(request, producto_id, ubicacion_id):
+    from urllib.parse import quote
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     def fallback_redirect(toast_msg=None, error=False):
         """Para POST nativo (formulario tradicional), volver a la página
-        del producto/ubicación en lugar de devolver JSON crudo al navegador."""
+        del producto/ubicación en lugar de devolver JSON crudo al navegador.
+        Pasa toast_msg como query param para que el JS lo muestre como
+        badge sobre la card específica (mostrarToastEnCard)."""
         if error and toast_msg:
             messages.error(request, toast_msg)
-        elif toast_msg:
-            messages.success(request, toast_msg)
         url = reverse("inventario:productos_por_ubicacion", kwargs={"ubicacion_id": ubicacion_id})
         sep = "&" if "?" in url else "?"
-        return redirect(f"{url}{sep}highlight={producto_id}&new=1")
+        redirect_url = f"{url}{sep}highlight={producto_id}&new=1"
+        if toast_msg and not error:
+            redirect_url += f"&toast={quote(toast_msg)}"
+        return redirect(redirect_url)
 
     if request.method != "POST":
         if is_ajax:

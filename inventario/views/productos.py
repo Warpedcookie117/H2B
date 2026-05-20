@@ -668,8 +668,11 @@ def nuevo_producto(request):
             messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
             return render(request, "inventario/nuevo_producto.html", contexto(form))
 
+        from urllib.parse import quote
+        cantidad_ini = form.cleaned_data.get("cantidad_inicial") or 0
         url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
-        redirect_url = f"{url}?highlight={producto.id}&new=1"
+        toast = quote(f"➕ Producto creado con {cantidad_ini} piezas iniciales")
+        redirect_url = f"{url}?highlight={producto.id}&new=1&toast={toast}"
         if is_ajax:
             return respond_ajax({"success": True, "redirect": redirect_url})
         return redirect(redirect_url)
@@ -713,8 +716,11 @@ def nuevo_producto(request):
         messages.error(request, "El servidor encontró un error interno. Intenta de nuevo.")
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
+    from urllib.parse import quote
+    cantidad_ini = form.cleaned_data.get("cantidad_inicial") or 0
     url = reverse("inventario:productos_por_ubicacion", args=[ubicacion.id])
-    redirect_url = f"{url}?highlight={producto.id}&new=1"
+    toast = quote(f"➕ Producto creado con {cantidad_ini} piezas iniciales")
+    redirect_url = f"{url}?highlight={producto.id}&new=1&toast={toast}"
     if is_ajax:
         return respond_ajax({"success": True, "redirect": redirect_url})
     return redirect(redirect_url)

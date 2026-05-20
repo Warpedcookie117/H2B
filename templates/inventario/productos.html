@@ -185,7 +185,7 @@
                    class="btn-90s w-full bg-[#8338EC] border-2 border-black text-white py-1 text-[9px] font-black uppercase flex items-center justify-center gap-0.5 mb-1">
                   🔍 Detalle
                 </a>
-                <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}"
+                <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}&toast={{ '📍 Aquí está el producto que buscaste'|urlencode }}"
                    class="btn-90s w-full bg-[#FFBE0B] border-2 border-black text-black py-1 text-[9px] font-black uppercase flex items-center justify-center gap-0.5">
                   📍 Ubicación
                 </a>
@@ -300,7 +300,7 @@
                         flex items-center justify-center gap-1 mb-2">
                 🔍 Ver detalle
               </a>
-              <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}"
+              <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ producto.id }}&toast={{ '📍 Aquí está el producto que buscaste'|urlencode }}"
                  class="btn-90s w-full bg-[#FFBE0B] border-4 border-black shadow-[4px_4px_0_0_black]
                         text-black py-2 text-xs font-black uppercase tracking-widest
                         flex items-center justify-center gap-1">

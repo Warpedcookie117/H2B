@@ -168,11 +168,11 @@
   </div>
 
   <!-- ALERTA CRÍTICOS -->
-  {% if bajos %}
+  {% if bajos_total %}
   <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 flex items-center gap-4">
     <span class="text-2xl">⚠️</span>
     <p class="font-black text-black uppercase tracking-widest text-sm">
-      {{ bajos|length }} producto{{ bajos|length|pluralize:"s" }} con inventario crítico — revísalos abajo.
+      {{ bajos_total }} producto{{ bajos_total|pluralize:"s" }} con inventario crítico — revísalos abajo.
     </p>
   </div>
   {% endif %}
@@ -184,22 +184,11 @@
       <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
         📉 Críticos por ubicación
       </h2>
+      <p class="text-xs font-bold text-gray-600 mb-3 uppercase tracking-widest">
+        Cantidad de productos con stock ≤ 5 en cada ubicación
+      </p>
       <div class="relative w-full h-72">
         <canvas id="chartBajoStock"></canvas>
-      </div>
-      <div class="flex gap-4 mt-4 flex-wrap">
-        <div class="flex items-center gap-2">
-          <div class="w-4 h-4 bg-[#00BBF9] border-2 border-black"></div>
-          <span class="text-xs font-black text-gray-700 uppercase">Piso de venta</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="w-4 h-4 bg-[#8338EC] border-2 border-black"></div>
-          <span class="text-xs font-black text-gray-700 uppercase">Bodega interna</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="w-4 h-4 bg-[#06D6A0] border-2 border-black"></div>
-          <span class="text-xs font-black text-gray-700 uppercase">Global</span>
-        </div>
       </div>
     </div>
 
@@ -214,48 +203,21 @@
 
   </div>
 
-  <!-- TABLA CRÍTICOS -->
-  <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
+  <!-- TABLA CRÍTICOS — única responsive (scroll horizontal en mobile) -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white">
 
-    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4">
+    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
       <h3 class="font-black text-white uppercase tracking-widest text-sm">
         📋 Productos críticos — ≤ 5 piezas
       </h3>
+      {% if bajos_total > bajos|length %}
+      <span class="font-black text-white/80 text-xs uppercase tracking-widest">
+        Top {{ bajos|length }} de {{ bajos_total }}
+      </span>
+      {% endif %}
     </div>
 
-    <!-- CARDS MOBILE -->
-    <div class="sm:hidden divide-y-4 divide-black bg-white">
-      {% for inv in bajos %}
-      <div class="p-4 flex items-center justify-between gap-3">
-        <div class="flex-1 min-w-0">
-          <p class="font-black text-black text-xs uppercase tracking-wide leading-tight truncate">
-            {{ inv.producto.nombre }}
-          </p>
-          <p class="text-xs text-gray-500 font-semibold mt-0.5">
-            {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso
-            {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega
-            {% else %}🏭 Almacén{% endif %}
-            · {{ inv.ubicacion.sucursal.nombre }}
-          </p>
-        </div>
-        <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1 flex-shrink-0">
-          🔴 {{ inv.cantidad_actual }}
-        </span>
-        <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
-           class="border-4 border-black shadow-[3px_3px_0_0_black] bg-[#3A86FF]
-                  text-white font-black text-xs uppercase px-3 py-2 flex-shrink-0">
-          Ver →
-        </a>
-      </div>
-      {% empty %}
-      <div class="p-8 text-center">
-        <p class="font-black text-gray-300 uppercase tracking-widest">Sin críticos 🎉</p>
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- TABLA DESKTOP -->
-    <div class="hidden sm:block overflow-x-auto bg-white">
+    <div class="overflow-x-auto">
       <table class="tabla-criticos w-full divide-y-4 divide-black">
         <thead class="bg-black">
           <tr>
@@ -268,13 +230,13 @@
         <tbody class="divide-y-4 divide-black">
           {% for inv in bajos %}
           <tr class="hover:bg-yellow-50 transition-colors">
-            <td class="px-4 py-4 font-black text-black text-sm uppercase">{{ inv.producto.nombre }}</td>
-            <td class="px-4 py-4">
-              <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1">
+            <td class="px-4 py-3 font-black text-black text-sm uppercase">{{ inv.producto.nombre }}</td>
+            <td class="px-4 py-3">
+              <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1 inline-block">
                 🔴 {{ inv.cantidad_actual }}
               </span>
             </td>
-            <td class="px-4 py-4 font-bold text-gray-800 text-sm">
+            <td class="px-4 py-3 font-bold text-gray-800 text-sm">
               {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso de Venta
               {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega Interna
               {% else %}🏭 Almacén Central{% endif %}
@@ -282,10 +244,10 @@
               <span class="block text-xs text-gray-500 font-semibold">{{ inv.ubicacion.sucursal.nombre }}</span>
               {% endif %}
             </td>
-            <td class="px-4 py-4 text-center">
+            <td class="px-4 py-3 text-center">
               <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
                  class="btn-ir bg-[#3A86FF] border-4 border-black shadow-[3px_3px_0_0_black]
-                        text-white font-black text-xs uppercase tracking-widest px-4 py-2">
+                        text-white font-black text-xs uppercase tracking-widest px-4 py-2 whitespace-nowrap">
                 Ver →
               </a>
             </td>
@@ -300,6 +262,15 @@
         </tbody>
       </table>
     </div>
+
+    {% if bajos_total > bajos|length %}
+    <div class="border-t-4 border-black bg-gray-50 px-6 py-3 text-center">
+      <a href="{% url 'inventario:lista_productos' %}"
+         class="font-black text-[#FF006E] text-xs uppercase tracking-widest hover:underline">
+        → Ver los {{ bajos_total }} críticos en inventario global
+      </a>
+    </div>
+    {% endif %}
   </div>
 
   <!-- BOTONES ACCESO RÁPIDO -->
@@ -329,46 +300,58 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const bajoStockData = [
-    {% for inv in bajos %}
+  // Datos agregados por ubicación — UN bar por ubicación con el conteo
+  // de productos críticos. Legible aunque haya 224 productos en total.
+  const criticosPorUbicacion = [
+    {% for u in criticos_por_ubicacion %}
     {
-      label: "{{ inv.producto.nombre|escapejs }} · {% if inv.ubicacion.tipo == 'piso' %}Piso{% elif inv.ubicacion.tipo == 'bodega' %}Bodega{% else %}Central{% endif %}",
-      value: {{ inv.cantidad_actual }},
-      color: "{% if inv.ubicacion.tipo == 'piso' %}#00BBF9{% elif inv.ubicacion.tipo == 'bodega' %}#8338EC{% else %}#06D6A0{% endif %}"
+      label: "{{ u.ubicacion__nombre|escapejs }}{% if u.ubicacion__sucursal__nombre %} · {{ u.ubicacion__sucursal__nombre|escapejs }}{% endif %}",
+      tipo:  "{{ u.ubicacion__tipo }}",
+      value: {{ u.total }}
     }{% if not forloop.last %},{% endif %}
     {% endfor %}
   ];
 
-  if (bajoStockData.length > 0) {
+  const COLOR_TIPO = {
+    piso:    "#00BBF9",
+    bodega:  "#8338EC",
+    central: "#06D6A0"
+  };
+
+  if (criticosPorUbicacion.length > 0) {
     new Chart(document.getElementById("chartBajoStock"), {
       type: "bar",
       data: {
-        labels: bajoStockData.map(d => d.label),
+        labels: criticosPorUbicacion.map(d => d.label),
         datasets: [{
-          label: "Piezas",
-          data: bajoStockData.map(d => d.value),
-          backgroundColor: bajoStockData.map(d => d.color),
+          label: "Productos críticos",
+          data: criticosPorUbicacion.map(d => d.value),
+          backgroundColor: criticosPorUbicacion.map(d => COLOR_TIPO[d.tipo] || "#06D6A0"),
           borderColor: "#000",
           borderWidth: 3,
           borderRadius: 0,
         }]
       },
       options: {
+        indexAxis: "y",   // barras horizontales — labels largos legibles
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { title: items => bajoStockData[items[0].dataIndex].label } }
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.x} producto${ctx.parsed.x === 1 ? "" : "s"} crítico${ctx.parsed.x === 1 ? "" : "s"}`
+            }
+          }
         },
         scales: {
-          y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111" } },
-          x: { ticks: {
-            font: { weight: "900" }, color: "#111", maxRotation: 0,
-            callback: function(val) {
-              const label = bajoStockData[val].label;
-              return label.length > 18 ? label.slice(0, 18) + "…" : label;
-            }
-          }}
+          x: {
+            beginAtZero: true,
+            ticks: { font: { weight: "900" }, color: "#111", precision: 0 }
+          },
+          y: {
+            ticks: { font: { weight: "900", size: 11 }, color: "#111" }
+          }
         }
       }
     });
