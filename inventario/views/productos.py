@@ -357,6 +357,8 @@ def detalle_producto(request, producto_id):
 
 @login_required
 def lista_productos(request):
+    from django.db.models import Case, When, IntegerField, Value
+
     productos = (
         Producto.objects
         .filter(activo=True)
@@ -380,6 +382,7 @@ def lista_productos(request):
     precio_tipo = request.GET.get('precio_tipo')
     precio_min = request.GET.get('precio_min')
     precio_max = request.GET.get('precio_max')
+    q = (request.GET.get('q') or "").strip()
 
     if dueño_id:
         productos = productos.filter(dueño__id=dueño_id)
@@ -394,6 +397,45 @@ def lista_productos(request):
             productos = productos.filter(**{f'precio_{precio_tipo}__gte': precio_min})
         if precio_max:
             productos = productos.filter(**{f'precio_{precio_tipo}__lte': precio_max})
+
+    # ============================
+    # BÚSQUEDA DE TEXTO LIBRE — con ranking por relevancia
+    # Match en nombre o código pesa más que match en atributo/categoría.
+    # ============================
+    if q:
+        from django.db.models import Max
+
+        codigos_exactos = [q]
+        if q.isdigit():
+            if len(q) == 12:
+                codigos_exactos.append("0" + q)
+            elif len(q) == 13 and q.startswith("0"):
+                codigos_exactos.append(q[1:])
+
+        productos = productos.filter(
+            Q(nombre__icontains=q)
+            | Q(codigo_barras__in=codigos_exactos)
+            | Q(codigo_barras__icontains=q)
+            | Q(categoria__nombre__icontains=q)
+            | Q(categoria__padre__nombre__icontains=q)
+            | Q(temporada__nombre__icontains=q)
+            | Q(valores_atributo__valor__icontains=q)
+        ).annotate(
+            # Max(Case()) agrega sobre joins M2M: si un producto matchea por
+            # múltiples rutas (nombre Y atributo), se queda con la relevancia
+            # más alta. Esto también colapsa duplicados sin necesidad de distinct().
+            relevancia=Max(Case(
+                When(codigo_barras__in=codigos_exactos,         then=Value(100)),
+                When(nombre__icontains=q,                       then=Value(90)),
+                When(codigo_barras__icontains=q,                then=Value(80)),
+                When(categoria__nombre__icontains=q,            then=Value(50)),
+                When(categoria__padre__nombre__icontains=q,     then=Value(40)),
+                When(temporada__nombre__icontains=q,            then=Value(30)),
+                When(valores_atributo__valor__icontains=q,      then=Value(20)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ))
+        ).order_by('-relevancia', 'nombre')
 
     paginator = Paginator(productos, 20)
     page_obj = paginator.get_page(request.GET.get('page', 1))
