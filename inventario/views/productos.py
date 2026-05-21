@@ -952,16 +952,18 @@ def codigo_base64(request, producto_id):
         # completa estilo Phomemo: nombre + precios + barcode + código en texto.
         # EAN-13/UPC-A vienen impresos del fabricante; mantenemos el barcode pelón.
         if (producto.tipo_codigo or "").lower() == "code128":
-            png_bytes = EtiquetaPhomemoService.generar(producto)
-            imagen = _b64.b64encode(png_bytes).decode("utf-8")
+            jpg_bytes = EtiquetaPhomemoService.generar(producto)
+            imagen = _b64.b64encode(jpg_bytes).decode("utf-8")
+            mime = "image/jpeg"
         else:
             imagen = BarcodeRenderService.generar(
                 codigo=producto.codigo_barras,
                 tipo=producto.tipo_codigo,
                 tamaño=producto.tamano_etiqueta,
             )
+            mime = "image/png"
 
-        return JsonResponse({'imagen': imagen})
+        return JsonResponse({'imagen': imagen, 'mime': mime})
 
     except Exception as e:
         _logger.error("Error generando código de barras para producto %s: %s", producto_id, e, exc_info=True)

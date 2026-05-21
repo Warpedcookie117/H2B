@@ -18,9 +18,10 @@ ANCHO_PX = round(ANCHO_MM * PX_POR_MM)   # 709
 ALTO_PX = round(ALTO_MM * PX_POR_MM)     # 354
 
 # Bandas verticales: cabecera (nombre+precios juntos) | barcode | código
-# Sin márgenes verticales sobrantes: 100 + 190 + 64 = 354
-H_CABECERA = 100
-H_BARCODE = 190
+# 120 + 170 + 64 = 354. Más alto para la cabecera permite fuente más grande
+# que sobrevive al downscale de Print Master en papel térmico.
+H_CABECERA = 120
+H_BARCODE = 170
 H_CODIGO = 64
 
 
@@ -56,12 +57,11 @@ def _fmt_precio(precio):
     return f"${f:.1f}"
 
 
-def _ajustar_nombre_precios(draw, nombre, precios_str, ancho_max, tamano_max=68, tamano_min=36, min_chars_nombre=5):
+def _ajustar_nombre_precios(draw, nombre, precios_str, ancho_max, tamano_max=82, tamano_min=44, min_chars_nombre=4):
     """
     Devuelve (nombre_truncado, precios, fuente) para una sola línea con los
     precios GRANDES y al menos `min_chars_nombre` caracteres legibles del
-    nombre. A tamaños >70px en bold las letras se aplastan visualmente
-    (BL → 'BI', CL → 'CI'), por eso el techo está en 68.
+    nombre. Tamaño alto para que sobreviva al downscale de la M110 (203 DPI).
     """
     sep = "  "
     nombre_strip = nombre.strip()
@@ -148,7 +148,7 @@ class EtiquetaPhomemoService:
         precios_str = f"{_fmt_precio(producto.precio_menudeo)}  {_fmt_precio(producto.precio_mayoreo)}"
         nombre_t, precios_t, font_cab = _ajustar_nombre_precios(
             draw, nombre, precios_str, ancho_util,
-            tamano_max=68, tamano_min=38, min_chars_nombre=5,
+            tamano_max=72, tamano_min=42, min_chars_nombre=5,
         )
 
         # Texto compuesto: si el nombre quedó vacío, solo precios centrados
@@ -192,9 +192,8 @@ class EtiquetaPhomemoService:
         # 6. Código en texto debajo del barcode
         # ============================
         codigo_texto = codigo
-        font_codigo = _cargar_fuente(46, bold=True)
-        # Auto-shrink si no cabe
-        while draw.textlength(codigo_texto, font=font_codigo) > ancho_util and font_codigo.size > 24:
+        font_codigo = _cargar_fuente(50, bold=True)
+        while draw.textlength(codigo_texto, font=font_codigo) > ancho_util and font_codigo.size > 26:
             font_codigo = _cargar_fuente(font_codigo.size - 2, bold=True)
         bbox = draw.textbbox((0, 0), codigo_texto, font=font_codigo)
         x = (ANCHO_PX - (bbox[2] - bbox[0])) // 2
@@ -202,8 +201,26 @@ class EtiquetaPhomemoService:
         draw.text((x, y), codigo_texto, fill="black", font=font_codigo)
 
         # ============================
-        # 7. PNG final
+        # 7. Conversión a 1-bit binario PURO antes de exportar.
+        #    Print Master / Phomemo M110 imprime con cabezal térmico binario:
+        #    cada dot es ON u OFF, no hay grises. Si entregamos una imagen con
+        #    antialiasing (grises en los bordes del texto), la app aplica
+        #    dithering Floyd-Steinberg → patrón de puntitos en el fondo.
+        #    Threshold manual evita el dithering: cada pixel queda blanco o
+        #    negro absoluto, listo para imprimir 1:1.
+        # ============================
+        # Threshold 128: estándar, mantiene grosor original de las letras.
+        # Subir el threshold engorda las letras y aplasta letras adyacentes
+        # (BL → "BI", CL → "CI") con la fuente bold.
+        etiqueta_gray = etiqueta.convert("L")
+        etiqueta_bw = etiqueta_gray.point(lambda p: 0 if p < 128 else 255, "L")
+
+        # ============================
+        # 8. JPEG final (Print Master detecta JPG en la galería de iOS sin
+        #    requerir conversiones internas que generan ruido).
         # ============================
         out = BytesIO()
-        etiqueta.save(out, format="PNG", dpi=(203, 203))
+        etiqueta_bw.convert("RGB").save(
+            out, format="JPEG", quality=95, dpi=(203, 203), optimize=True
+        )
         return out.getvalue()

@@ -35,7 +35,8 @@ window.mostrarEtiquetaInterna = function (button) {
       .then(res => res.json())
       .then(data => {
         if (data.imagen) {
-          img.src = `data:image/png;base64,${data.imagen}`;
+          const mime = data.mime || "image/png";
+          img.src = `data:${mime};base64,${data.imagen}`;
         } else {
           img.alt = "Etiqueta no disponible";
         }
@@ -152,9 +153,10 @@ window.configurarImpresoraEtiquetas = function () {
 };
 
 // ============================
-// Guardar etiqueta a Fotos (iOS) / Galería (Android)
-// Print Master de Phomemo solo lee imágenes de la galería, NO de Descargas.
-// Web Share API abre el sheet nativo donde "Guardar imagen" la manda a Fotos.
+// Guardar etiqueta a Galería (iOS Fotos / Android Galería)
+// Print Master detecta JPG/JPEG en la galería del dispositivo.
+// Usamos Web Share API para que iOS abra el sheet nativo donde el usuario
+// elige "Guardar imagen" (→ Fotos) o "Guardar en Archivos".
 // ============================
 window.descargarEtiqueta = async function (productoId, ubicacionId) {
   const img = document.getElementById(`img-${productoId}-${ubicacionId}`);
@@ -163,11 +165,17 @@ window.descargarEtiqueta = async function (productoId, ubicacionId) {
     return;
   }
 
-  // 1. Intentar Web Share API (iOS Safari soportado, abre el sheet con
-  //    "Guardar imagen" que la deposita directamente en Fotos).
+  // Determinar extensión y tipo MIME desde el data URL (JPG para code128,
+  // PNG para EAN/UPC).
+  const mimeMatch = img.src.match(/^data:([^;]+);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const ext = mime === "image/png" ? "png" : "jpg";
+
+  // 1. Web Share API: iOS Safari abre el sheet nativo con opciones
+  //    "Guardar imagen" (→ Fotos) y "Guardar en Archivos". El usuario elige.
   try {
     const blob = await (await fetch(img.src)).blob();
-    const file = new File([blob], `etiqueta_${productoId}.png`, { type: "image/png" });
+    const file = new File([blob], `etiqueta_${productoId}.${ext}`, { type: mime });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
@@ -180,8 +188,8 @@ window.descargarEtiqueta = async function (productoId, ubicacionId) {
     console.warn("[etiqueta] Web Share no disponible o cancelado:", e);
   }
 
-  // 2. Fallback: abrir la imagen sola en pantalla completa con instrucción.
-  //    Usuario hace long-press → "Guardar en Fotos".
+  // 2. Fallback: abrir la imagen sola en pantalla completa con instrucción
+  //    para long-press → "Guardar en Fotos".
   const ventana = window.open("", "_blank");
   if (!ventana) {
     alert("Activa los pop-ups para guardar la etiqueta.");
