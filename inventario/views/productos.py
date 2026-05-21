@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from inventario.forms import  ProductoForm, TemporadaForm
 from inventario.models import Atributo, Categoria, Inventario, MovimientoInventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
 from inventario.services.barcode_render_service import BarcodeRenderService
+from inventario.services.etiqueta_phomemo_service import EtiquetaPhomemoService
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
 from inventario.services.codigo_service import CodigoService
@@ -943,14 +944,22 @@ def cambiar_codigo_barras_ajax(request, producto_id):
 #VISTA API PARA VER LOS CODIGOS EN EL FRONT DE MANERA FLUIDA
 @login_required
 def codigo_base64(request, producto_id):
+    import base64 as _b64
     producto = get_object_or_404(Producto, id=producto_id)
 
     try:
-        imagen = BarcodeRenderService.generar(
-            codigo=producto.codigo_barras,
-            tipo=producto.tipo_codigo,
-            tamaño=producto.tamano_etiqueta,
-        )
+        # Code128 (generados por el sistema o manuales tipo GODETES01) → etiqueta
+        # completa estilo Phomemo: nombre + precios + barcode + código en texto.
+        # EAN-13/UPC-A vienen impresos del fabricante; mantenemos el barcode pelón.
+        if (producto.tipo_codigo or "").lower() == "code128":
+            png_bytes = EtiquetaPhomemoService.generar(producto)
+            imagen = _b64.b64encode(png_bytes).decode("utf-8")
+        else:
+            imagen = BarcodeRenderService.generar(
+                codigo=producto.codigo_barras,
+                tipo=producto.tipo_codigo,
+                tamaño=producto.tamano_etiqueta,
+            )
 
         return JsonResponse({'imagen': imagen})
 
@@ -980,21 +989,31 @@ def descargar_etiqueta_pdf(request, producto_id):
     if not producto.codigo_barras:
         return HttpResponse("Este producto no tiene código de barras.", status=404)
 
-    tamaño = producto.tamano_etiqueta or "mediana"
     tipo   = producto.tipo_codigo    or "code128"
-    ancho_mm, alto_mm = TAMAÑOS.get(tamaño, (100, 30))
+    es_phomemo = tipo.lower() == "code128"
+
+    # Code128 → etiqueta completa siempre en 30x15mm (papel real de la Phomemo).
+    # EAN-13/UPC-A respetan el tamaño físico del producto.
+    if es_phomemo:
+        ancho_mm, alto_mm = (30, 15)
+    else:
+        tamaño = producto.tamano_etiqueta or "mediana"
+        ancho_mm, alto_mm = TAMAÑOS.get(tamaño, (100, 30))
 
     try:
-        img_b64 = BarcodeRenderService.generar(
-            codigo=producto.codigo_barras,
-            tipo=tipo,
-            tamaño=tamaño,
-        )
+        if es_phomemo:
+            img_bytes = EtiquetaPhomemoService.generar(producto)
+        else:
+            img_b64 = BarcodeRenderService.generar(
+                codigo=producto.codigo_barras,
+                tipo=tipo,
+                tamaño=producto.tamano_etiqueta or "mediana",
+            )
+            img_bytes = _b64.b64decode(img_b64)
     except Exception as e:
         _logger.error("Error generando barcode PDF para producto %s: %s", producto_id, e, exc_info=True)
         return HttpResponse("Error generando el código de barras.", status=500)
 
-    img_bytes = _b64.b64decode(img_b64)
     page_w = ancho_mm * mm
     page_h = alto_mm * mm
 

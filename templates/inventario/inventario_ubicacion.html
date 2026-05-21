@@ -246,9 +246,13 @@
                   class="btn-90s flex-1 bg-[#3A86FF] border-4 border-black text-white py-1 text-[10px] font-black uppercase flex items-center justify-center">
             🖨 Imprimir
           </button>
+          <button onclick="descargarEtiqueta({{ inv.producto.id }}, {{ ubicacion.id }})"
+                  class="btn-90s flex-1 bg-[#FF006E] border-4 border-black text-white py-1 text-[10px] font-black uppercase flex items-center justify-center">
+            📱 PNG
+          </button>
           <button onclick="descargarEtiquetaPDF('{% url 'inventario:descargar_etiqueta_pdf' inv.producto.id %}', '{{ inv.producto.codigo_barras }}')"
                   class="btn-90s flex-1 bg-[#06D6A0] border-4 border-black text-black py-1 text-[10px] font-black uppercase flex items-center justify-center">
-            ⬇ Descargar PDF
+            ⬇ PDF
           </button>
         </div>
         <div id="codigo-{{ inv.producto.id }}-{{ ubicacion.id }}"
