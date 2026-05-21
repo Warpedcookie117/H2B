@@ -17,9 +17,17 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 30m
           script: |
+            set -e
             cd /root/H2B
+            echo "=== git pull ==="
             git pull
+            echo "=== HEAD ahora en: $(git rev-parse --short HEAD) ==="
+            echo "=== pip install ==="
             venv/bin/pip install -r requirements.txt
+            echo "=== migrate ==="
             venv/bin/python manage.py migrate
-            venv/bin/python manage.py collectstatic --noinput
+            echo "=== collectstatic (--clear: borra staticfiles antes para regenerar manifest hashes) ==="
+            venv/bin/python manage.py collectstatic --noinput --clear
+            echo "=== restart h2b ==="
             systemctl restart h2b
+            echo "=== DEPLOY OK ==="

@@ -1,3 +1,4 @@
+// build: 2026-05-21T01:00 — fuerza nuevo hash en ManifestStaticFilesStorage
 // ============================
 // Mostrar / ocultar etiqueta
 // ============================
