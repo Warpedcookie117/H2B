@@ -152,16 +152,74 @@ window.configurarImpresoraEtiquetas = function () {
 };
 
 // ============================
-// Descargar etiqueta
+// Guardar etiqueta a Fotos (iOS) / Galería (Android)
+// Print Master de Phomemo solo lee imágenes de la galería, NO de Descargas.
+// Web Share API abre el sheet nativo donde "Guardar imagen" la manda a Fotos.
 // ============================
-window.descargarEtiqueta = function (productoId, ubicacionId) {
+window.descargarEtiqueta = async function (productoId, ubicacionId) {
   const img = document.getElementById(`img-${productoId}-${ubicacionId}`);
-  if (!img || !img.src || img.src === window.location.href) return;
+  if (!img || !img.src || img.src === window.location.href) {
+    alert("Primero abre la etiqueta tocando 'Etiqueta'.");
+    return;
+  }
 
-  const enlace = document.createElement("a");
-  enlace.href     = img.src;
-  enlace.download = `etiqueta_${productoId}_${ubicacionId}.png`;
-  document.body.appendChild(enlace);
-  enlace.click();
-  document.body.removeChild(enlace);
+  // 1. Intentar Web Share API (iOS Safari soportado, abre el sheet con
+  //    "Guardar imagen" que la deposita directamente en Fotos).
+  try {
+    const blob = await (await fetch(img.src)).blob();
+    const file = new File([blob], `etiqueta_${productoId}.png`, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Etiqueta",
+        text: "Guarda en Fotos y ábrela con Print Master",
+      });
+      return;
+    }
+  } catch (e) {
+    console.warn("[etiqueta] Web Share no disponible o cancelado:", e);
+  }
+
+  // 2. Fallback: abrir la imagen sola en pantalla completa con instrucción.
+  //    Usuario hace long-press → "Guardar en Fotos".
+  const ventana = window.open("", "_blank");
+  if (!ventana) {
+    alert("Activa los pop-ups para guardar la etiqueta.");
+    return;
+  }
+  ventana.document.write(`
+    <html>
+      <head>
+        <title>Etiqueta</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>
+          body { margin:0; padding:1rem; background:#FFBE0B; font-family:system-ui,sans-serif; }
+          .instruccion {
+            background:#000; color:#fff;
+            padding:1rem; margin-bottom:1rem;
+            border:4px solid black;
+            box-shadow:6px 6px 0 0 #FF006E;
+            font-weight:900; text-align:center;
+            font-size:.95rem; line-height:1.4;
+            text-transform:uppercase; letter-spacing:.04em;
+          }
+          img {
+            width:100%; display:block;
+            border:4px solid black;
+            box-shadow:6px 6px 0 0 black;
+            background:white;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="instruccion">
+          📱 Mantén presionado la imagen<br>
+          → "Guardar en Fotos"<br>
+          luego ábrela desde Print Master
+        </div>
+        <img src="${img.src}" />
+      </body>
+    </html>
+  `);
+  ventana.document.close();
 };
