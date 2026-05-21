@@ -963,7 +963,11 @@ def codigo_base64(request, producto_id):
             )
             mime = "image/png"
 
-        return JsonResponse({'imagen': imagen, 'mime': mime})
+        response = JsonResponse({'imagen': imagen, 'mime': mime})
+        # Cuando cambiamos el layout de la etiqueta, los CDN no deben servir
+        # la versión vieja. no-store fuerza fetch fresh cada vez.
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        return response
 
     except Exception as e:
         _logger.error("Error generando código de barras para producto %s: %s", producto_id, e, exc_info=True)

@@ -29,9 +29,13 @@ window.mostrarEtiquetaInterna = function (button) {
   contenedor.style.opacity   = "1";
   contenedor.style.padding   = "8px";
 
-  // Solo fetch si la imagen no está cargada
+  // Solo fetch si la imagen no está cargada.
+  // Cache-busting con timestamp: forza al browser/CDN a pedir la versión
+  // fresca después de cada deploy en lugar de servir la imagen vieja cacheada.
   if (!img.src || img.src === window.location.href) {
-    fetch(url)
+    const separator = url.includes("?") ? "&" : "?";
+    const fetchUrl = `${url}${separator}t=${Date.now()}`;
+    fetch(fetchUrl, { cache: "no-store" })
       .then(res => res.json())
       .then(data => {
         if (data.imagen) {
