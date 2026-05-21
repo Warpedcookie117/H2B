@@ -1,4 +1,49 @@
-// build: 2026-05-21T01:00 — fuerza nuevo hash en ManifestStaticFilesStorage
+// build: 2026-05-21T01:30 — fuerza nuevo hash en ManifestStaticFilesStorage
+// ============================
+// Abrir etiqueta a pantalla completa (lightbox)
+// La etiqueta dentro del card es chiquita; aquí la mostramos al 95vw
+// para que el texto realmente se lea.
+// ============================
+window.abrirEtiquetaGrande = function (imgEl) {
+  if (!imgEl || !imgEl.src) return;
+
+  const overlay = document.createElement("div");
+  overlay.style.cssText = [
+    "position:fixed", "inset:0",
+    "background:rgba(0,0,0,0.92)",
+    "z-index:10000",
+    "display:flex", "flex-direction:column",
+    "align-items:center", "justify-content:center",
+    "padding:1rem", "cursor:zoom-out",
+  ].join(";");
+
+  const big = document.createElement("img");
+  big.src = imgEl.src;
+  big.style.cssText = [
+    "max-width:95vw", "max-height:75vh",
+    "background:white",
+    "border:6px solid white",
+    "box-shadow:0 0 0 4px #FF006E",
+    "image-rendering:pixelated",
+  ].join(";");
+
+  const hint = document.createElement("div");
+  hint.textContent = "Toca fuera para cerrar  ·  Mantén presionada la imagen para guardar";
+  hint.style.cssText = [
+    "color:#FFBE0B", "margin-top:1rem",
+    "font-weight:900", "font-size:.95rem",
+    "text-align:center", "padding:.5rem 1rem",
+    "background:#000", "border:3px solid #FFBE0B",
+  ].join(";");
+
+  overlay.appendChild(big);
+  overlay.appendChild(hint);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+};
+
 // ============================
 // Mostrar / ocultar etiqueta
 // ============================

@@ -237,7 +237,10 @@
 
       <div id="etiqueta-{{ inv.producto.id }}-{{ ubicacion.id }}"
            class="etiqueta-box bg-white border-4 border-black text-center mb-1.5">
-        <img id="img-{{ inv.producto.id }}-{{ ubicacion.id }}" src="" class="mx-auto w-full object-contain"/>
+        <img id="img-{{ inv.producto.id }}-{{ ubicacion.id }}" src=""
+             onclick="abrirEtiquetaGrande(this)"
+             class="mx-auto w-full object-contain cursor-zoom-in"
+             title="Toca para ver en grande"/>
         <p class="text-sm font-black font-mono text-gray-800 py-2 border-t-4 border-black tracking-widest">
           {{ inv.producto.codigo_barras }}
         </p>
