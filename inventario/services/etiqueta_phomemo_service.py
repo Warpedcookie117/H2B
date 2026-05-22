@@ -44,7 +44,7 @@ def _cargar_fuente(tamano_px, bold=True):
             return ImageFont.truetype(ruta, tamano_px)
         except (OSError, IOError):
             continue
-    return ImageFont.load_default()
+    return ImageFont.load_default(size=tamano_px)
 
 
 def _fmt_precio(precio):
