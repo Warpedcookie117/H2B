@@ -115,8 +115,11 @@ class EtiquetaPhomemoService:
         quiet_mm = 2.0
         ancho_para_barras_mm = ANCHO_MM - 2 * quiet_mm
         ideal = ancho_para_barras_mm / modules
-        # 0.25mm mínimo GS1, 0.55mm máximo (más grueso desperdicia espacio).
-        module_width_mm = min(0.55, max(0.25, ideal))
+        # Sin floor de 0.25mm: el ideal calcula exactamente el ancho para caber
+        # en ANCHO_PX tras ×2 NEAREST. Un floor alto fuerza módulos más gruesos
+        # de lo que cabe → el barcode se comprime con factor no-entero → barras
+        # de ancho irregular → scanner lento. 0.10mm como mínimo de seguridad.
+        module_width_mm = min(0.55, max(0.10, ideal))
 
         # ============================
         # 2. Generar barcode puro (sin texto debajo: lo dibujamos nosotros).
@@ -126,7 +129,7 @@ class EtiquetaPhomemoService:
             barcode_buffer,
             {
                 "module_width": module_width_mm,
-                "module_height": 18,
+                "module_height": 6.5,
                 "write_text": False,
                 "quiet_zone": quiet_mm,
             },
