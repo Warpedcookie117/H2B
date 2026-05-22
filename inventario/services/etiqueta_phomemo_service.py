@@ -115,11 +115,13 @@ class EtiquetaPhomemoService:
         quiet_mm = 2.0
         ancho_para_barras_mm = ANCHO_MM - 2 * quiet_mm
         ideal = ancho_para_barras_mm / modules
-        # El ideal calcula exactamente el ancho para que el barcode quepa en
-        # ANCHO_PX tras ×2 NEAREST sin compresión adicional. Un floor de 0.25mm
-        # fuerza módulos más anchos → compresión con factor no-entero → algunos
-        # espacios colapsan a 0px → barras empalmadas → scanner lento.
-        module_width_mm = min(0.55, max(0.10, ideal))
+        # 0.25mm mínimo: probamos 0.10mm para evitar la compresión NEAREST en
+        # códigos de 13+ chars, pero el cabezal térmico de la M110 a 203 DPI
+        # no resuelve barras tan delgadas — el calor de barras adyacentes se
+        # mezcla y la zona central se imprime como un blob negro sólido.
+        # 0.25mm es el mínimo práctico para que las barras se separen al
+        # imprimir, aun cuando obliga compresión NEAREST en códigos largos.
+        module_width_mm = min(0.55, max(0.25, ideal))
 
         # ============================
         # 2. Generar barcode puro (sin texto debajo: lo dibujamos nosotros).

@@ -11,7 +11,7 @@ class CodigoService:
         if not codigo.isalnum():
             raise ValueError("El código contiene caracteres inválidos.")
 
-        if len(codigo) < 6 or len(codigo) > 20:
+        if len(codigo) < 3 or len(codigo) > 20:
             raise ValueError("La longitud del código no es válida para un código de barras.")
 
         # EAN-13 con checksum válido → tipo formal "ean13"
