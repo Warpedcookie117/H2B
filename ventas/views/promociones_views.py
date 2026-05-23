@@ -130,16 +130,40 @@ def guardar_promocion_view(request, promocion_id=None):
         if n and v
     ]
 
+    disp_nombres = request.POST.getlist("filtro_disparador_nombre[]")
+    disp_valores = request.POST.getlist("filtro_disparador_valor[]")
+    filtros_disparador = [
+        {"nombre": n, "valor": v}
+        for n, v in zip(disp_nombres, disp_valores)
+        if n and v
+    ]
+    atributos_enlazados = [
+        n.strip() for n in request.POST.getlist("atributo_enlazado[]") if n.strip()
+    ]
+
+    # Filtros del disparador solo aplican cuando es por categoría
+    if tipo_condicion == "categoria":
+        promocion.filtros_disparador = filtros_disparador
+    else:
+        promocion.filtros_disparador = []
+
     if tipo_resultado == "regalo_fijo":
         promocion.categoria_regalo  = None
         promocion.filtros_atributos = []
+        promocion.atributos_enlazados = []
     else:
         promocion.producto_regalo = None
         if tipo_condicion == "monto_categoria":
             promocion.categoria_regalo  = promocion.categoria_disparadora
             promocion.filtros_atributos = []
+            promocion.atributos_enlazados = []
         else:
             promocion.filtros_atributos = filtros_atributos
+            # Enlazados solo si hay categoría disparadora real
+            if tipo_condicion == "categoria":
+                promocion.atributos_enlazados = atributos_enlazados
+            else:
+                promocion.atributos_enlazados = []
 
     promocion.save()
     return JsonResponse({"ok": True, "msg": "Promoción guardada."})
@@ -209,6 +233,31 @@ def productos_regalo_view(request, promo_id):
             Q(atributo__categoria=cat) | Q(atributo__categoria__padre=cat)
         ).values_list("producto_id", flat=True)
         productos_qs = productos_qs.filter(id__in=ids)
+
+    # Atributos enlazados: el regalo debe compartir el valor del disparador.
+    # Ej: si el disparador tenía marca=KOOL, solo regalos con marca=KOOL.
+    trigger_id = request.GET.get("trigger_producto_id")
+    if trigger_id and (promo.atributos_enlazados or []):
+        trigger_vals = {
+            va.atributo.nombre: va.valor
+            for va in ValorAtributo.objects.filter(producto_id=trigger_id)
+            .select_related("atributo")
+        }
+        for attr_name in promo.atributos_enlazados:
+            valor_trigger = trigger_vals.get(attr_name)
+            if not valor_trigger:
+                # El disparador no tiene este atributo definido → no filtrar
+                # por él (en vez de devolver nada). Decisión deliberada: el
+                # dueño puede equivocarse y marcar un atributo que no aplica
+                # a todos los productos; no queremos romper la promo.
+                continue
+            ids = ValorAtributo.objects.filter(
+                atributo__nombre__iexact=attr_name,
+                valor__iexact=valor_trigger,
+            ).filter(
+                Q(atributo__categoria=cat) | Q(atributo__categoria__padre=cat)
+            ).values_list("producto_id", flat=True)
+            productos_qs = productos_qs.filter(id__in=ids)
 
     if sucursal_id:
         productos_qs = productos_qs.annotate(

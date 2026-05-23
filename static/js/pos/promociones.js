@@ -45,6 +45,25 @@ export function initPromociones() {
 // Categoría
 // ============================================================
 
+// Comparación case-insensitive — los atributos pueden guardarse con
+// inconsistencias de capitalización (Kool vs KOOL) y la promo debe ser
+// permisiva: si el dueño marcó "marca=KOOL" en el filtro y el producto
+// está guardado como "Kool", igual debe disparar.
+function _attrMatch(productoAttrs, nombre, valor) {
+    if (!productoAttrs) return false;
+    const valorAttr = productoAttrs[nombre]
+        ?? productoAttrs[nombre?.toLowerCase()]
+        ?? Object.entries(productoAttrs).find(([k]) => k.toLowerCase() === nombre.toLowerCase())?.[1];
+    if (!valorAttr) return false;
+    return String(valorAttr).toLowerCase() === String(valor).toLowerCase();
+}
+
+function _productoPasaFiltros(item, filtros) {
+    if (!filtros?.length) return true;
+    const attrs = item.atributos || {};
+    return filtros.every(f => _attrMatch(attrs, f.nombre, f.valor));
+}
+
 function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
     if (!window.PROMOCIONES?.length) return;
 
@@ -55,7 +74,7 @@ function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
     );
     if (!promos.length) return;
 
-    console.log(`[POS:promociones] checkPromocionesCategoria → ${promos.length} promo(s) de categoría disparadas`);
+    console.log(`[POS:promociones] checkPromocionesCategoria → ${promos.length} promo(s) de categoría candidatas`);
 
     let itemIdx = -1;
     for (let i = carrito.length - 1; i >= 0; i--) {
@@ -66,9 +85,18 @@ function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
             break;
         }
     }
+    if (itemIdx < 0) {
+        console.log("[POS:promociones] no se encontró item disparador en carrito");
+        return;
+    }
+    const itemDisparador = carrito[itemIdx];
 
-    console.log(`[POS:promociones] itemIdx disparador: ${itemIdx}`);
+    console.log(`[POS:promociones] itemIdx disparador: ${itemIdx} (producto ${itemDisparador.id})`);
     promos.forEach(promo => {
+        if (!_productoPasaFiltros(itemDisparador, promo.filtros_disparador)) {
+            console.log(`[POS:promociones] promo "${promo.nombre}" descartada — no pasa filtros del disparador`);
+            return;
+        }
         console.log(`[POS:promociones] encolar promo: "${promo.nombre}" (${promo.tipo_resultado})`);
         encolarPromo(promo, itemIdx, 0);
     });
@@ -167,7 +195,11 @@ async function procesarPromo(promo, itemIdx, pendingCount) {
 async function autoAgregarRegalo(promo, itemIdx = -1) {
     console.log(`[POS:promociones] autoAgregarRegalo → promo="${promo.nombre}" itemIdx=${itemIdx}`);
     try {
-        const r    = await fetch(`/ventas/promociones/productos-regalo/${promo.id}/`);
+        const triggerId = (itemIdx >= 0 && carrito[itemIdx]) ? carrito[itemIdx].id : null;
+        const url = triggerId
+            ? `/ventas/promociones/productos-regalo/${promo.id}/?trigger_producto_id=${triggerId}`
+            : `/ventas/promociones/productos-regalo/${promo.id}/`;
+        const r    = await fetch(url);
         const data = await r.json();
         console.log(`[POS:promociones] productos regalo recibidos: ${data.productos.length}`);
         if (data.productos.length) {
@@ -220,7 +252,11 @@ async function mostrarModalRegalo(promo, itemIdx, pendingCount) {
     console.log("[POS:promociones] modal-regalo abierto ✓");
 
     try {
-        const r    = await fetch(`/ventas/promociones/productos-regalo/${promo.id}/`);
+        const triggerId = (itemIdx >= 0 && carrito[itemIdx]) ? carrito[itemIdx].id : null;
+        const url = triggerId
+            ? `/ventas/promociones/productos-regalo/${promo.id}/?trigger_producto_id=${triggerId}`
+            : `/ventas/promociones/productos-regalo/${promo.id}/`;
+        const r    = await fetch(url);
         const data = await r.json();
         console.log(`[POS:promociones] opciones de regalo: ${data.productos.length}`);
 

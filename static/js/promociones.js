@@ -530,8 +530,11 @@
     const secProdReg   = document.getElementById('sec_producto_regalo');
     const secCatReg    = document.getElementById('sec_categoria_regalo');
     const secFiltro    = document.getElementById('sec_filtro_atributo');
+    const secFiltroDisp = document.getElementById('sec_filtro_disparador');
+    const secEnlazados  = document.getElementById('sec_atributos_enlazados');
     const notaCatHer   = document.getElementById('nota_cat_heredada');
     const catRegSelect = document.getElementById('id_categoria_regalo');
+    const catDispSelect = document.getElementById('id_categoria_disparadora');
     if (!condSelect || !resSelect) return;
 
     function show(el, visible) { if (el) el.style.display = visible ? '' : 'none'; }
@@ -540,29 +543,38 @@
       const val = condSelect.value;
       show(secCatDisp, val === 'categoria' || val === 'monto_categoria');
       show(secMonto,   val === 'monto'     || val === 'monto_categoria');
+      // Filtros del disparador solo tienen sentido cuando el disparador es
+      // un producto específico (tipo 'categoria'). En 'monto_categoria' el
+      // disparador es la suma del carrito, no un producto.
+      show(secFiltroDisp, val === 'categoria');
       actualizarResultado();
     }
 
     function actualizarResultado() {
       const valRes     = resSelect.value;
       const esMontoCat = condSelect.value === 'monto_categoria';
+      const esCategoria = condSelect.value === 'categoria';
       show(secProdReg, valRes === 'regalo_fijo');
       if (valRes === 'regalo_variante' && esMontoCat) {
         show(secCatReg,  false);
         show(secFiltro,  false);
+        show(secEnlazados, false);
         show(notaCatHer, true);
       } else if (valRes === 'regalo_variante') {
         show(secCatReg,  true);
         show(secFiltro,  true);
+        // Enlazados solo si hay categoría disparadora (tipo categoria)
+        show(secEnlazados, esCategoria);
         show(notaCatHer, false);
       } else {
         show(secCatReg,  false);
         show(secFiltro,  false);
+        show(secEnlazados, false);
         show(notaCatHer, false);
       }
     }
 
-    // ── Gestor de filtros atributos para paquete ───────────────
+    // ── Gestor de filtros atributos para REGALO ────────────────
     const gestor = crearGestorFiltros(
       document.getElementById('promo_filtros_rows'),
       document.getElementById('btn_agregar_filtro_promo'),
@@ -572,11 +584,70 @@
     );
     catRegSelect?.addEventListener('change', () => gestor.cargarAtributos());
 
+    // ── Gestor de filtros atributos para DISPARADOR ────────────
+    const gestorDisp = crearGestorFiltros(
+      document.getElementById('disp_filtros_rows'),
+      document.getElementById('btn_agregar_filtro_disp'),
+      () => catDispSelect?.value,
+      'disp-filtro-nombre',
+      'disp-filtro-valor',
+    );
+    catDispSelect?.addEventListener('change', () => {
+      gestorDisp.cargarAtributos();
+      cargarEnlazados();
+    });
+
+    // ── Checkboxes de atributos enlazados ──────────────────────
+    const enlazadosBox = document.getElementById('enlazados_checks');
+    const form = condSelect.closest('form');
+    const enlazadosIniciales = (form?.dataset.enlazadosIniciales || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+
+    async function cargarEnlazados() {
+      if (!enlazadosBox) return;
+      const catId = catDispSelect?.value;
+      if (!catId) {
+        enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Selecciona primero una categoría disparadora.</p>';
+        return;
+      }
+      const res  = await fetch(`/ventas/promociones/atributos-categoria/${catId}/`);
+      const data = await res.json();
+      const atributos = data.atributos || [];
+      if (!atributos.length) {
+        enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Esta categoría no tiene atributos.</p>';
+        return;
+      }
+      enlazadosBox.innerHTML = '';
+      atributos.forEach(a => {
+        const id = `enl_${a.nombre.replace(/\s+/g, '_')}`;
+        const wrap = document.createElement('label');
+        wrap.htmlFor = id;
+        wrap.className = 'flex items-center gap-2 border-2 border-black px-2 py-1 bg-white cursor-pointer hover:bg-black hover:text-white transition-colors';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.id = id;
+        chk.name = 'atributo_enlazado[]';
+        chk.value = a.nombre;
+        chk.className = 'accent-black';
+        if (enlazadosIniciales.includes(a.nombre)) chk.checked = true;
+        const txt = document.createElement('span');
+        txt.className = 'text-xs font-black uppercase tracking-widest';
+        txt.textContent = a.nombre;
+        wrap.appendChild(chk);
+        wrap.appendChild(txt);
+        enlazadosBox.appendChild(wrap);
+      });
+    }
+
     condSelect.addEventListener('change', actualizarCondicion);
     resSelect.addEventListener('change',  actualizarResultado);
     actualizarCondicion();
 
     if (catRegSelect?.value) gestor.cargarAtributos();
+    if (catDispSelect?.value) {
+      gestorDisp.cargarAtributos();
+      cargarEnlazados();
+    }
   }
 
   // ── Init ───────────────────────────────────────────────────────

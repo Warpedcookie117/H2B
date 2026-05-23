@@ -172,6 +172,14 @@ class Promocion(models.Model):
         related_name='promociones_categoria_regalo',
     )
     filtros_atributos = models.JSONField(default=list, blank=True)
+    # Filtros sobre el producto que DISPARA la promoción (ej. tamaño=350g).
+    # Solo aplica cuando tipo_condicion == 'categoria'. Misma forma:
+    # [{"nombre": ..., "valor": ...}]
+    filtros_disparador = models.JSONField(default=list, blank=True)
+    # Nombres de atributos que deben COINCIDIR entre disparador y regalo
+    # (ej. ["marca"] = el regalo debe ser de la misma marca del disparador).
+    # Solo aplica con tipo_condicion='categoria' + tipo_resultado='regalo_variante'.
+    atributos_enlazados = models.JSONField(default=list, blank=True)
 
     creado_en = models.DateTimeField(auto_now_add=True)
 

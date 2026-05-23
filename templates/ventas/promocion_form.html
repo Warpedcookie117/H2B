@@ -1,4 +1,5 @@
 <form method="POST"
+      data-enlazados-iniciales="{% for nombre in promocion.atributos_enlazados %}{{ nombre }}{% if not forloop.last %},{% endif %}{% endfor %}"
       onsubmit="enviarPromocion(event, {% if promocion %}{{ promocion.id }}{% else %}null{% endif %})">
 
   {% csrf_token %}
@@ -88,6 +89,44 @@
         </optgroup>
         {% endfor %}
       </select>
+    </div>
+  </div>
+
+  <!-- FILTROS DEL DISPARADOR (solo cuando tipo_condicion == 'categoria') -->
+  <div id="sec_filtro_disparador" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-white shadow-[3px_3px_0_0_black] p-3 space-y-2">
+      <p class="text-xs font-black uppercase tracking-widest text-gray-700">
+        Filtrar productos que disparan
+        <span class="font-normal normal-case text-gray-400">(opcional — la promo solo se activa si el producto cumple todos los filtros)</span>
+      </p>
+      <div id="disp_filtros_rows" class="space-y-2">
+        {% for f in promocion.filtros_disparador %}
+        <div class="filtro-fila flex gap-2 items-center">
+          <div class="flex-1">
+            <select name="filtro_disparador_nombre[]"
+                    class="disp-filtro-nombre w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-nombre="{{ f.nombre }}">
+              <option value="">— Atributo —</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <select name="filtro_disparador_valor[]"
+                    class="disp-filtro-valor w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white"
+                    data-pre-valor="{{ f.valor }}">
+              <option value="{{ f.valor }}">{{ f.valor }}</option>
+            </select>
+          </div>
+          <button type="button"
+                  class="border-2 border-black px-2 py-1 font-black text-sm bg-white hover:bg-black hover:text-white transition-colors flex-shrink-0"
+                  onclick="this.closest('.filtro-fila').remove()">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="btn_agregar_filtro_disp"
+              class="text-xs font-black uppercase tracking-widest border-4 border-black px-3 py-1 bg-black text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black transition-colors shadow-[3px_3px_0_0_rgba(0,0,0,0.3)]">
+        + Agregar filtro
+      </button>
+      <p class="text-xs text-gray-400">Sin filtros, cualquier producto de la categoría dispara la promoción.</p>
     </div>
   </div>
 
@@ -214,6 +253,20 @@
         + Agregar filtro
       </button>
       <p class="text-xs text-gray-400">Sin filtros, el cajero verá todos los productos de esa categoría.</p>
+    </div>
+  </div>
+
+  <!-- ATRIBUTOS ENLAZADOS (regalo_variante + categoria) -->
+  <div id="sec_atributos_enlazados" class="mb-4" style="display:none">
+    <div class="border-4 border-black bg-[#FFE5B4] shadow-[3px_3px_0_0_black] p-3 space-y-2">
+      <p class="text-xs font-black uppercase tracking-widest text-gray-700">
+        Enlazar atributos con el disparador
+        <span class="font-normal normal-case text-gray-400">(opcional — el regalo debe compartir el valor del producto que disparó)</span>
+      </p>
+      <div id="enlazados_checks" class="flex flex-wrap gap-2">
+        <p class="text-xs text-gray-400 italic">Selecciona primero una categoría disparadora.</p>
+      </div>
+      <p class="text-xs text-gray-500 font-semibold">Ej: marca enlazada → si compra polvo de marca KOOL, el modal solo muestra peróxidos KOOL.</p>
     </div>
   </div>
 

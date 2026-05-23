@@ -110,7 +110,7 @@ def pos_view(request):
             "id", "nombre", "tipo_condicion", "tipo_resultado",
             "categoria_disparadora_id", "monto_minimo",
             "producto_regalo_id", "categoria_regalo_id",
-            "filtros_atributos",
+            "filtros_atributos", "filtros_disparador", "atributos_enlazados",
         )
     )
 
