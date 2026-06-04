@@ -14,6 +14,8 @@ export function initConsultaPrecios() {
     console.log(`[POS:consulta_precios] initConsultaPrecios — modal=${!!modal} input=${!!input}`);
     if (!modal || !input) return;
 
+    window.abrirConsultaPrecios = abrirModal;
+
     document.addEventListener("keydown", (e) => {
         if (e.key === "e" || e.key === "E") {
             const active = document.activeElement;

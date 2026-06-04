@@ -150,6 +150,7 @@
    ============================ */
 .pos-atajos {
   display: flex;
+  align-items: center;
   gap: 1rem;
   border: 2px solid #d1d5db;
   background: #f9fafb;
@@ -157,6 +158,15 @@
   font-size: .62rem;
   font-weight: 600;
   color: #374151;
+}
+.pos-atajos-titulo {
+  font-size: .6rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: #6b7280;
+  text-transform: uppercase;
+  padding-right: .4rem;
+  border-right: 2px solid #d1d5db;
 }
 .pos-atajos kbd {
   background: #111;
@@ -377,6 +387,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+@keyframes pos-nuevo-flash {
+  0%   { background: #facc15; box-shadow: 0 0 0 3px #facc15; }
+  60%  { background: #fef9c3; box-shadow: 0 0 0 3px #fef9c3; }
+  100% { background: var(--pos-blanco); box-shadow: 3px 3px 0 0 var(--pos-negro); }
+}
+.pos-carrito-item--nuevo {
+  animation: pos-nuevo-flash 0.8s ease-out forwards;
 }
 .pos-carrito-item-header {
   display: flex;

@@ -83,3 +83,18 @@ export function setOnCarritoActualizado(fn) {
     console.log("[POS:core] setOnCarritoActualizado registrado");
     onCarritoActualizado = fn;
 }
+
+
+// ============================================================
+// 7. ID del último producto NUEVO agregado (para highlight)
+// ============================================================
+
+export let lastAddedId = null;
+
+export function setLastAddedId(id) {
+    lastAddedId = id;
+}
+
+export function clearLastAddedId() {
+    lastAddedId = null;
+}

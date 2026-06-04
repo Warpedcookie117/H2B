@@ -312,6 +312,20 @@ export function initEscaneo() {
     if (scanInput) {
         // Atajo *N en el propio scan-input
         scanInput.addEventListener("keydown", (e) => {
+            // ── Atajos de modal: interceptar antes de que se escriban en el input ──
+            if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+                if (e.key === "s" || e.key === "S") {
+                    e.preventDefault();
+                    window.abrirModalServicio?.();
+                    return;
+                }
+                if (e.key === "e" || e.key === "E") {
+                    e.preventDefault();
+                    window.abrirConsultaPrecios?.();
+                    return;
+                }
+            }
+
             // Si la tecla es parte del atajo y la consumimos, prevent y salir.
             // Excepción: Enter no se consume; cae al handler de abajo.
             if (atajoKeydown(e)) {
@@ -431,6 +445,10 @@ export function initEscaneo() {
         }
 
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            // Teclas reservadas para atajos de modal — no acumular en buffer
+            if (e.key === "s" || e.key === "S") return;
+            if (e.key === "e" || e.key === "E") return;
+
             e.preventDefault();
             scanBuffer += e.key;
 

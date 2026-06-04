@@ -3,7 +3,7 @@
 import { aplicarPreciosGlobales } from "./precios.js";
 import { aplicarOfertas } from "./ofertas.js";
 import { actualizarTotales } from "./totales.js";
-import { onCarritoActualizado } from "./core.js";
+import { onCarritoActualizado, setLastAddedId } from "./core.js";
 
 // Estado global del carrito (viene de core.js)
 import { carrito } from "./core.js";
@@ -29,6 +29,7 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, s
         existente.cantidad++;
         console.log(`[POS:carrito] producto existente, nueva cantidad: ${existente.cantidad}`);
     } else {
+        setLastAddedId(id);
         carrito.push({
             id,
             nombre,

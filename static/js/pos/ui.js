@@ -7,7 +7,9 @@ import {
     descuentoActivo,
     setDescuentoActivo,
     setOnCarritoActualizado,
-    totalConDescuento
+    totalConDescuento,
+    lastAddedId,
+    clearLastAddedId,
 } from "./core.js";
 
 import {
@@ -78,6 +80,8 @@ function initModalServicio() {
         if (m) { m.style.display = "flex"; setTimeout(() => document.getElementById("srv-nombre").focus(), 50); }
     }
 
+    window.abrirModalServicio = abrirModalServicio;
+
     window.cerrarModalServicio = function () {
         console.log("[POS:ui] cerrarModalServicio");
         const m = document.getElementById("modal-servicio");
@@ -128,12 +132,16 @@ function renderCarritoUI() {
     if (!cont) return;
     console.log(`[POS:ui] renderCarritoUI — ${carrito.length} items`);
 
-    const scrollTop = cont.scrollTop;
     cont.innerHTML = "";
 
-    carrito.forEach((item, index) => {
+    const highlightId = lastAddedId;
+    clearLastAddedId();
+
+    for (let index = carrito.length - 1; index >= 0; index--) {
+        const item = carrito[index];
         const div = document.createElement("div");
         div.className = "pos-carrito-item";
+        if (item.id === highlightId) div.classList.add("pos-carrito-item--nuevo");
 
         if (item.es_regalo) {
             div.innerHTML = `
@@ -209,10 +217,9 @@ function renderCarritoUI() {
         }
 
         cont.appendChild(div);
-    });
+    }
 
     bindCarritoListeners();
-    cont.scrollTop = scrollTop;
 }
 
 

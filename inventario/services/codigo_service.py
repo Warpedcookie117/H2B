@@ -62,6 +62,7 @@ class CodigoService:
         - chica: 6 caracteres
         - mediana: 8 caracteres
         - grande: 12 caracteres
+        Itera hasta encontrar un código que no exista en la BD.
         """
 
         prefijo_dueño = dueño.user.username.upper().replace(" ", "")
@@ -72,36 +73,24 @@ class CodigoService:
             categoria=subcategoria
         ).count() + 1
 
-        consecutivo = str(count).zfill(4)  # 4 dígitos para flexibilidad
+        for _ in range(50000):
+            consecutivo = str(count).zfill(4)
 
-        # --- CHICA (6) ---
-        if tamaño == "chica":
-            # 2 dueño + 1 sub + 3 del consecutivo
-            d = prefijo_dueño[:2]
-            s = prefijo_sub[:1]
-            c = consecutivo[-3:]
-            codigo = f"{d}{s}{c}"
-            return codigo, "code128"
+            if tamaño == "chica":
+                codigo = f"{prefijo_dueño[:2]}{prefijo_sub[:1]}{consecutivo[-3:]}"
+            elif tamaño == "mediana":
+                codigo = f"{prefijo_dueño[:2]}{prefijo_sub[:2]}{consecutivo[-4:]}"
+            elif tamaño == "grande":
+                codigo = f"{prefijo_dueño[:4]}{prefijo_sub[:4]}{consecutivo[-4:]}"
+            else:
+                raise ValueError("Tamaño de etiqueta inválido.")
 
-        # --- MEDIANA (8) ---
-        if tamaño == "mediana":
-            # 2 dueño + 2 sub + 4 consecutivo = 8 exactos
-            d = prefijo_dueño[:2]
-            s = prefijo_sub[:2]
-            c = consecutivo[-4:]
-            codigo = f"{d}{s}{c}"
-            return codigo, "code128"
+            if not Producto.objects.filter(codigo_barras=codigo).exists():
+                return codigo, "code128"
 
-        # --- GRANDE (12) ---
-        if tamaño == "grande":
-            # 4 dueño + 4 sub + 4 consecutivo = 12 exactos
-            d = prefijo_dueño[:4]
-            s = prefijo_sub[:4]
-            c = consecutivo[-4:]
-            codigo = f"{d}{s}{c}"
-            return codigo, "code128"
+            count += 1
 
-        raise ValueError("Tamaño de etiqueta inválido.")
+        raise ValueError("No se pudo generar un código interno único. Contacta al administrador.")
     
     @staticmethod
     def tamano_por_tipo(tipo_codigo):
