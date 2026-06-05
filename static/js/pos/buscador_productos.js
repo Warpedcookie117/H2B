@@ -29,6 +29,10 @@ let _cantPendiente  = null;   // entero o null
 const TIMEOUT_ATAJO = 5000;
 let _atajoTimer     = null;
 
+// Debounce para S/E: si llega otro char en <80ms era código, no atajo
+let _pendingShortcutKey   = null;
+let _pendingShortcutTimer = null;
+
 function badge() {
     return document.getElementById("atajo-cantidad-badge");
 }
@@ -202,9 +206,6 @@ export function initBuscador() {
     buscarInput.addEventListener("input", () => {
         console.log(`[POS:buscador] input en buscar-producto: "${buscarInput.value}"`);
         filtrarProductos(buscarInput.value);
-        if (!buscarInput.value) {
-            document.getElementById("scan-input")?.focus();
-        }
     });
 
     buscarInput.addEventListener("keydown", (e) => {
@@ -312,16 +313,45 @@ export function initEscaneo() {
     if (scanInput) {
         // Atajo *N en el propio scan-input
         scanInput.addEventListener("keydown", (e) => {
-            // ── Atajos de modal: interceptar antes de que se escriban en el input ──
+            // ── Flush de atajo pendiente ──
+            // Si hay una S o E esperando y llega cualquier otra tecla, era parte
+            // de un código de barras → añadirla al input y seguir normal.
+            if (_pendingShortcutKey) {
+                if (e.key === "Escape") {
+                    clearTimeout(_pendingShortcutTimer);
+                    _pendingShortcutTimer = null;
+                    _pendingShortcutKey = null;
+                    return;
+                }
+                clearTimeout(_pendingShortcutTimer);
+                _pendingShortcutTimer = null;
+                scanInput.value += _pendingShortcutKey;
+                _pendingShortcutKey = null;
+                // Seguir procesando la tecla actual normalmente (no return)
+            }
+
+            // ── Atajos de modal con debounce ──
+            // S o E solos (sin seguidor en <80 ms) abren el modal.
+            // Si llega otro char antes de 80 ms, se tratan como inicio de código.
             if (!e.ctrlKey && !e.altKey && !e.metaKey) {
                 if (e.key === "s" || e.key === "S") {
                     e.preventDefault();
-                    window.abrirModalServicio?.();
+                    _pendingShortcutKey = e.key;
+                    _pendingShortcutTimer = setTimeout(() => {
+                        _pendingShortcutKey = null;
+                        _pendingShortcutTimer = null;
+                        window.abrirModalServicio?.();
+                    }, 80);
                     return;
                 }
                 if (e.key === "e" || e.key === "E") {
                     e.preventDefault();
-                    window.abrirConsultaPrecios?.();
+                    _pendingShortcutKey = e.key;
+                    _pendingShortcutTimer = setTimeout(() => {
+                        _pendingShortcutKey = null;
+                        _pendingShortcutTimer = null;
+                        window.abrirConsultaPrecios?.();
+                    }, 80);
                     return;
                 }
             }
