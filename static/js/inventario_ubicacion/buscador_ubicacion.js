@@ -32,6 +32,14 @@ if (!buscador) {
         else    url.searchParams.delete("q");
         url.searchParams.delete("page");
 
+        // Incluir filtros de categoría activos
+        const catVal    = document.getElementById("filtro-cat-padre")?.value || "";
+        const subcatVal = document.getElementById("filtro-subcat")?.value    || "";
+        if (catVal)    url.searchParams.set("cat",    catVal);
+        else           url.searchParams.delete("cat");
+        if (subcatVal) url.searchParams.set("subcat", subcatVal);
+        else           url.searchParams.delete("subcat");
+
         const grid = document.getElementById("gridProductos");
 
         try {
@@ -51,10 +59,18 @@ if (!buscador) {
                 const imgs = grid.querySelectorAll("img");
                 if (imgs.length) window.precargarImagenesEnIdle?.(Array.from(imgs));
             }
+            // Actualizar paginación para que sus links conserven los filtros activos
+            const nuevaPag = doc.getElementById("paginacion-ubicacion");
+            const pagEl    = document.getElementById("paginacion-ubicacion");
+            if (nuevaPag && pagEl) pagEl.innerHTML = nuevaPag.innerHTML;
         } catch (e) {
             if (e.name !== "AbortError") console.error("Error buscando productos:", e);
         }
     }
+
+    // Exponer para que el IIFE de filtros pueda llamarla
+    // (async function en bloque es block-scoped, no se eleva al scope global)
+    window.fetchYActualizarGrid = fetchYActualizarGrid;
 
     // Cuando el usuario toca el campo de nuevo, resetear el flag de escaneo
     buscador.addEventListener("focus", () => {
@@ -137,3 +153,92 @@ if (!buscador) {
     }
 
 }
+
+// ============================
+// FILTROS DE CATEGORÍA
+// ============================
+(function () {
+    const filtroCategoria = document.getElementById("filtro-cat-padre");
+    const filtroSubcat    = document.getElementById("filtro-subcat");
+    const btnLimpiar      = document.getElementById("btn-limpiar-filtros");
+    const buscadorInput   = document.getElementById("buscadorProductos");
+
+    const categoriasEl = document.getElementById("categorias-json");
+    if (!categoriasEl || !filtroCategoria || !filtroSubcat) return;
+
+    const categoriasMap = JSON.parse(categoriasEl.textContent);
+
+    function poblarCatPadre() {
+        Object.keys(categoriasMap).forEach(cat => {
+            const opt = document.createElement("option");
+            opt.value = cat;
+            opt.textContent = cat;
+            filtroCategoria.appendChild(opt);
+        });
+    }
+
+    function poblarSubcat(catPadre) {
+        if (!catPadre) {
+            filtroSubcat.innerHTML = '<option value="">— Elige categoría primero —</option>';
+            filtroSubcat.disabled = true;
+            filtroSubcat.style.opacity = "0.4";
+            filtroSubcat.style.cursor  = "not-allowed";
+            filtroSubcat.style.boxShadow = "2px 2px 0 0 black";
+            return;
+        }
+        filtroSubcat.disabled = false;
+        filtroSubcat.style.opacity = "1";
+        filtroSubcat.style.cursor  = "pointer";
+        filtroSubcat.style.boxShadow = "4px 4px 0 0 black";
+        filtroSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+        const subcats = (categoriasMap[catPadre] || []).filter(Boolean);
+        subcats.forEach(s => {
+            const opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s;
+            filtroSubcat.appendChild(opt);
+        });
+    }
+
+    function actualizarBtnLimpiar() {
+        const activo = filtroCategoria.value || filtroSubcat.value;
+        btnLimpiar?.classList.toggle("hidden", !activo);
+    }
+
+    function dispararFetch() {
+        window.fetchYActualizarGrid?.(buscadorInput?.value?.trim() || "");
+    }
+
+    // Inicializar dropdowns
+    poblarCatPadre();
+    poblarSubcat("");
+
+    // Pre-seleccionar si la URL ya trae ?cat= o ?subcat=
+    const params = new URLSearchParams(window.location.search);
+    const initCat    = params.get("cat")    || "";
+    const initSubcat = params.get("subcat") || "";
+    if (initCat)    { filtroCategoria.value = initCat; poblarSubcat(initCat); }
+    if (initSubcat) { filtroSubcat.value = initSubcat; }
+    actualizarBtnLimpiar();
+
+    // Eventos
+    filtroCategoria.addEventListener("change", () => {
+        poblarSubcat(filtroCategoria.value);
+        filtroSubcat.value = "";
+        actualizarBtnLimpiar();
+        dispararFetch();
+    });
+
+    filtroSubcat.addEventListener("change", () => {
+        actualizarBtnLimpiar();
+        dispararFetch();
+    });
+
+    btnLimpiar?.addEventListener("click", () => {
+        filtroCategoria.value = "";
+        poblarSubcat("");
+        filtroSubcat.value = "";
+        actualizarBtnLimpiar();
+        dispararFetch();
+    });
+})();

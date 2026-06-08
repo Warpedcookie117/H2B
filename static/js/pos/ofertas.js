@@ -112,6 +112,30 @@ function _aplicarTipoItem(item, oferta) {
     const base = item.precio_aplicado;
     const q    = item.cantidad;
 
+    // nxprecio: solo aplica si hay al menos un grupo completo de N unidades
+    if (oferta.tipo === "nxprecio") {
+        const N          = parseInt(oferta.cantidad_n);
+        const precioUnit = parseFloat(oferta.valor) / N;
+        const conDesc    = Math.floor(q / N) * N;   // unidades en grupos completos
+
+        if (conDesc === 0) {
+            console.log(`[POS:ofertas]   "${item.nombre}" nxprecio: qty=${q} < N=${N}, no aplica`);
+            return;
+        }
+
+        item.oferta_activa     = oferta;
+        item.precio_sin_oferta = base;
+
+        // Si todas las unidades caben en grupos completos → precio unitario promocional
+        // Si sobran unidades → precio ponderado entre las con descuento y las sin descuento
+        item.precio_aplicado = conDesc === q
+            ? precioUnit
+            : (conDesc * precioUnit + (q - conDesc) * base) / q;
+
+        console.log(`[POS:ofertas]   "${item.nombre}" nxprecio ${conDesc}/${q} uds: $${base.toFixed(2)} → $${item.precio_aplicado.toFixed(2)}`);
+        return;
+    }
+
     item.oferta_activa     = oferta;
     item.precio_sin_oferta = base;
 
@@ -127,9 +151,6 @@ function _aplicarTipoItem(item, oferta) {
             item.precio_aplicado = (pagados * base) / q;
             break;
         }
-        case "nxprecio":
-            item.precio_aplicado = parseFloat(oferta.valor) / parseInt(oferta.cantidad_n);
-            break;
     }
 
     console.log(`[POS:ofertas]   "${item.nombre}" ${oferta.tipo}: $${base.toFixed(2)} → $${item.precio_aplicado.toFixed(2)}`);

@@ -82,8 +82,44 @@
     </a>
   </div>
 
+  <!-- FILTROS DE CATEGORÍA -->
+  <div class="flex flex-col sm:flex-row gap-3 w-full items-center">
+
+    <div class="relative flex-1 min-w-[180px]">
+      <select id="filtro-cat-padre"
+              style="appearance:none;-webkit-appearance:none;background:#FFBE0B;"
+              class="w-full border-4 border-black shadow-[4px_4px_0_0_black]
+                     px-4 py-3 pr-8 font-black text-xs uppercase text-black
+                     outline-none cursor-pointer">
+        <option value="">Todas las categorías</option>
+      </select>
+      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2
+                   text-[0.55rem] font-black select-none">▼</span>
+    </div>
+
+    <div class="relative flex-1 min-w-[180px]">
+      <select id="filtro-subcat"
+              style="appearance:none;-webkit-appearance:none;background:#06D6A0;opacity:0.4;"
+              class="w-full border-4 border-black shadow-[2px_2px_0_0_black]
+                     px-4 py-3 pr-8 font-black text-xs uppercase text-black
+                     outline-none cursor-not-allowed"
+              disabled>
+        <option value="">— Elige categoría primero —</option>
+      </select>
+      <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2
+                   text-[0.55rem] font-black select-none">▼</span>
+    </div>
+
+    <button id="btn-limpiar-filtros" type="button"
+            class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black]
+                   px-4 py-3 font-black text-xs uppercase
+                   bg-[#FF006E] text-white hidden whitespace-nowrap">
+      ✕ Limpiar
+    </button>
+  </div>
+
   <!-- ANUNCIO SIN RESULTADOS -->
-  {% if q and not page_obj %}
+  {% if hay_filtros and not page_obj %}
   <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 text-center">
     <p class="font-black text-black uppercase tracking-widest text-base">
       😬 No encontré nada con "{{ q }}" en esta ubicación, checa otras ubicaciones padrino.
@@ -300,6 +336,7 @@
 </div>
 
 {{ inventario_todas_json|json_script:"inventarioTodas" }}
+{{ categorias_json|json_script:"categorias-json" }}
 <script>
   window.inventarioTodas    = JSON.parse(document.getElementById("inventarioTodas").textContent);
   window.ubicacionActualId  = {{ ubicacion.id }};

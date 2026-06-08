@@ -1,4 +1,6 @@
 import json
+from collections import defaultdict
+from urllib.parse import urlencode
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.views.decorators.http import require_http_methods
@@ -36,7 +38,9 @@ from django.views.decorators.http import require_POST
 @login_required
 def productos_por_ubicacion(request, ubicacion_id):
     ubicacion = get_object_or_404(Ubicacion, id=ubicacion_id)
-    q = request.GET.get("q", "").strip()
+    q      = request.GET.get("q",      "").strip()
+    cat    = request.GET.get("cat",    "").strip()
+    subcat = request.GET.get("subcat", "").strip()
 
     productos = (
         Inventario.objects
@@ -44,6 +48,21 @@ def productos_por_ubicacion(request, ubicacion_id):
         .select_related("producto", "producto__categoria", "producto__categoria_padre")
         .order_by("producto__nombre")
     )
+
+    # Mapa de categorías para poblar los dropdowns — usa el queryset base (sin filtros)
+    cat_rows = (
+        Inventario.objects
+        .filter(ubicacion=ubicacion, producto__activo=True)
+        .values("producto__categoria_padre__nombre", "producto__categoria__nombre")
+        .distinct()
+    )
+    cat_map = defaultdict(set)
+    for row in cat_rows:
+        padre = row["producto__categoria_padre__nombre"] or ""
+        sub   = row["producto__categoria__nombre"] or ""
+        if padre:
+            cat_map[padre].add(sub)
+    categorias_json = {k: sorted(v) for k, v in sorted(cat_map.items())}
 
     if q:
         filtro = (
@@ -56,6 +75,11 @@ def productos_por_ubicacion(request, ubicacion_id):
         except ValueError:
             pass
         productos = productos.filter(filtro).distinct()
+
+    if cat:
+        productos = productos.filter(producto__categoria_padre__nombre__iexact=cat)
+    if subcat:
+        productos = productos.filter(producto__categoria__nombre__iexact=subcat)
 
     # Filtro "¿Qué falta?" — excluye productos que ya tienen stock en la ubicación paired
     falta_en_id = None
@@ -152,8 +176,16 @@ def productos_por_ubicacion(request, ubicacion_id):
         "paired_ubicacion": paired_ubicacion,
         "piso_ubicaciones": piso_ubicaciones,
         "color_header": color_from_name(ubicacion.nombre),
-        "q": q,
-        "falta_en_id": falta_en_id,
+        "q":               q,
+        "cat":             cat,
+        "subcat":          subcat,
+        "hay_filtros":     bool(q or cat or subcat),
+        "categorias_json": categorias_json,
+        "falta_en_id":     falta_en_id,
+        "query_string":    urlencode({k: v for k, v in [
+                               ("q", q), ("cat", cat), ("subcat", subcat),
+                               ("falta_en", falta_en_id or ""),
+                           ] if v}),
     })
 
 
