@@ -332,9 +332,25 @@
      style="display:none;position:fixed;top:.75rem;right:.75rem;z-index:10000;
             background:#FB5607;color:#fff;border:3px solid black;box-shadow:4px 4px 0 0 black;
             padding:.4rem .75rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
-            font-size:.85rem;flex-direction:column;align-items:flex-end;gap:.1rem;">
-    <span id="atajo-cantidad-texto" style="font-size:1rem;">×1</span>
-    <span id="atajo-cantidad-sub" style="font-size:.62rem;opacity:.9;">escanea ahora (Esc para cancelar)</span>
+            font-size:.85rem;flex-direction:column;align-items:flex-end;gap:.25rem;">
+
+    <!-- Modo entrada: input dedicado (aislado del scan-input) -->
+    <div id="atajo-entrada" style="display:none;align-items:center;gap:.4rem;">
+        <span style="font-size:1.1rem;">×</span>
+        <input id="atajo-cantidad-input" type="number" min="1" step="1" placeholder="N"
+               style="width:3.5rem;font-size:1.1rem;font-weight:900;
+                      background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.7);
+                      color:#fff;text-align:center;padding:.1rem .3rem;outline:none;
+                      -moz-appearance:textfield;">
+        <span style="font-size:.55rem;opacity:.85;letter-spacing:.06em;">↵ OK · ESC cancela</span>
+    </div>
+
+    <!-- Modo pendiente: muestra ×N listo para escanear -->
+    <div id="atajo-pendiente" style="display:none;flex-direction:column;align-items:flex-end;gap:.1rem;">
+        <span id="atajo-cantidad-texto" style="font-size:1rem;">×1</span>
+        <span id="atajo-cantidad-sub" style="font-size:.62rem;opacity:.9;">escanea ahora (Esc cancela)</span>
+    </div>
+
 </div>
 
 <!-- ========================================================= -->

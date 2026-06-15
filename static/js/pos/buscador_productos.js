@@ -28,7 +28,6 @@ let _cantBuffer     = "";
 let _cantPendiente  = null;   // entero o null
 const TIMEOUT_ATAJO = 5000;
 let _atajoTimer     = null;
-let _lastAtajoKeyTs = 0;      // timestamp del último key consumido en modo cantidad
 
 // Debounce para S/E: si llega otro char en <80ms era código, no atajo
 let _pendingShortcutKey   = null;
@@ -39,30 +38,45 @@ function badge() {
 }
 
 function refrescarBadge() {
-    const el = badge();
-    if (!el) return;
+    const el      = document.getElementById("atajo-cantidad-badge");
+    const entrada = document.getElementById("atajo-entrada");
+    const pendDiv = document.getElementById("atajo-pendiente");
+    const texto   = document.getElementById("atajo-cantidad-texto");
+    const sub     = document.getElementById("atajo-cantidad-sub");
+
     if (!_modoCantidad && _cantPendiente == null) {
-        el.style.display = "none";
+        if (el) el.style.display = "none";
         return;
     }
-    const texto = document.getElementById("atajo-cantidad-texto");
-    const sub   = document.getElementById("atajo-cantidad-sub");
+    if (el) el.style.display = "flex";
+
     if (_modoCantidad) {
-        if (texto) texto.textContent = `×${_cantBuffer || "?"}`;
-        if (sub)   sub.textContent   = "escanea o Enter para confirmar (Esc cancela)";
+        // En modo entrada, el input ya está visible (activarModoCantidad lo muestra)
     } else {
-        if (texto) texto.textContent = `×${_cantPendiente}`;
-        if (sub)   sub.textContent   = "escanea ahora (Esc para cancelar)";
+        // Modo pendiente: mostrar ×N, ocultar input
+        if (entrada) entrada.style.display = "none";
+        if (pendDiv) pendDiv.style.display  = "flex";
+        if (texto)   texto.textContent      = `×${_cantPendiente}`;
+        if (sub)     sub.textContent        = "escanea ahora (Esc cancela)";
     }
-    el.style.display = "flex";
 }
 
 function activarModoCantidad() {
     _modoCantidad = true;
-    _cantBuffer = "";
+    _cantBuffer   = "";
     _cantPendiente = null;
-    _lastAtajoKeyTs = Date.now();
-    refrescarBadge();
+
+    // Mostrar badge en modo entrada y enfocar el input dedicado
+    const badge   = document.getElementById("atajo-cantidad-badge");
+    const entrada = document.getElementById("atajo-entrada");
+    const pendDiv = document.getElementById("atajo-pendiente");
+    const input   = document.getElementById("atajo-cantidad-input");
+
+    if (badge)   { badge.style.display   = "flex"; }
+    if (entrada) { entrada.style.display = "flex"; }
+    if (pendDiv) { pendDiv.style.display = "none"; }
+    if (input)   { input.value = ""; input.focus(); }
+
     reiniciarTimerAtajo();
 }
 
@@ -81,6 +95,23 @@ function cancelarAtajo() {
     _cantPendiente = null;
     if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
     refrescarBadge();
+    // Devolver foco al scan-input
+    document.getElementById("scan-input")?.focus();
+}
+
+function confirmarCantidadDesdeInput() {
+    const input = document.getElementById("atajo-cantidad-input");
+    const val   = input ? (parseInt(input.value, 10) || null) : null;
+    if (val && val > 0) {
+        _cantPendiente = val;
+        _modoCantidad  = false;
+        _cantBuffer    = "";
+        if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
+        refrescarBadge();
+        document.getElementById("scan-input")?.focus();
+    } else {
+        cancelarAtajo();
+    }
 }
 
 function confirmarBufferComoPendiente() {
@@ -116,49 +147,8 @@ function atajoKeydown(e) {
         return true;
     }
     if (_modoCantidad) {
-        const now   = Date.now();
-        const delta = now - _lastAtajoKeyTs;
-
-        if (e.key >= "0" && e.key <= "9") {
-            // Si el dígito llegó en < 80 ms desde el key anterior Y ya hay buffer
-            // → velocidad de scanner → auto-confirmar la cantidad y dejar pasar el dígito
-            if (delta < 80 && _cantBuffer.length > 0) {
-                console.log(`[POS:atajo] scanner detectado (delta=${delta}ms) → auto-confirmar ×${_cantBuffer}`);
-                _cantPendiente = parseInt(_cantBuffer, 10) || null;
-                if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
-                _modoCantidad = false;
-                _cantBuffer   = "";
-                refrescarBadge();
-                return false; // el dígito pasa normal al scanInput / scanBuffer
-            }
-            // Velocidad humana → acumular como cantidad
-            _lastAtajoKeyTs = now;
-            _cantBuffer += e.key;
-            refrescarBadge();
-            reiniciarTimerAtajo();
-            return true;
-        }
-        if (e.key === "Backspace") {
-            _lastAtajoKeyTs = now;
-            _cantBuffer = _cantBuffer.slice(0, -1);
-            refrescarBadge();
-            reiniciarTimerAtajo();
-            return true;
-        }
-        if (e.key === "Enter") {
-            if (_cantBuffer) confirmarBufferComoPendiente();
-            else             cancelarAtajo();
-            return true;
-        }
-        // Cualquier otra tecla no-dígito (primera letra del barcode):
-        // auto-confirmar si hay buffer, luego dejar pasar la tecla
-        if (_cantBuffer) {
-            _cantPendiente = parseInt(_cantBuffer, 10) || null;
-            if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
-        }
-        _modoCantidad = false;
-        _cantBuffer   = "";
-        refrescarBadge();
+        // El input dedicado (#atajo-cantidad-input) tiene el foco y maneja las teclas.
+        // Aquí solo capturamos Escape para cancelar desde el scan-input o global.
         return false;
     }
     return false;
@@ -465,11 +455,28 @@ export function initEscaneo() {
     let scanBuffer = "";
     let scanTimer = null;
 
+    // ── Listener del input dedicado de cantidad ──
+    const atajoInput = document.getElementById("atajo-cantidad-input");
+    if (atajoInput) {
+        atajoInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                confirmarCantidadDesdeInput();
+            }
+            if (e.key === "Escape") {
+                e.preventDefault();
+                cancelarAtajo();
+            }
+            // Todos los demás chars (dígitos, backspace) van al input naturalmente
+        });
+    }
+
     document.addEventListener("keydown", (e) => {
         const active = document.activeElement;
 
         if (active && active.id === "buscar-producto") return;
         if (active && active.id === "scan-input") return; // su propio handler ya lo maneja
+        if (active && active.id === "atajo-cantidad-input") return; // input dedicado de cantidad
         if (active && active.id === "modal-variantes-buscar") return;
         if (active && active.id === "modal-variantes-cantidad") return;
 
