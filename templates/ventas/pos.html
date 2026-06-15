@@ -9,8 +9,11 @@
 
 <script>
     const sucursal_id = {{ ubicacion_pos.id }};
-    window.PROMOCIONES = {{ promociones_json|safe }};
-    window.OFERTAS     = {{ ofertas_json|safe }};
+    window.PROMOCIONES          = {{ promociones_json|safe }};
+    window.OFERTAS              = {{ ofertas_json|safe }};
+    window.ES_DUENO             = {{ es_dueno|yesno:"true,false" }};
+    window.DUENOS               = {{ duenos_json|safe }};
+    window.DUENO_SERVICIOS_ID   = {{ dueno_servicios_id|default:"null" }};
 </script>
 
 <!-- WRAPPER POS -->
@@ -70,6 +73,7 @@
             <span class="pos-atajos-titulo">ATAJOS</span>
             <span><kbd>E</kbd> Consultar precio</span>
             <span><kbd>S</kbd> Cobrar servicio</span>
+            <span><kbd>R</kbd> Cobro rápido</span>
             <span><kbd>*</kbd><kbd>N</kbd><kbd>↵</kbd> Cantidad</span>
         </div>
 
@@ -463,6 +467,107 @@
 </div>
 
 
+<!-- MODAL COBRO RÁPIDO — sumadora integrada -->
+<div id="modal-cobro-rapido" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:.75rem;">
+    <div style="background:#fff;border:4px solid black;box-shadow:10px 10px 0 0 black;width:100%;max-width:360px;padding:1.25rem;position:relative;">
+
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:4px solid black;padding-bottom:.6rem;margin-bottom:.75rem;">
+            <h2 style="font-size:1.2rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;margin:0;">⚡ Cobro rápido</h2>
+            <span style="font-size:.65rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;">Prod. sin registro</span>
+        </div>
+
+        <!-- Cinta / tape -->
+        <div id="cr-tape"
+             style="height:80px;overflow-y:auto;border:3px solid black;background:#f9fafb;
+                    padding:.3rem .5rem;margin-bottom:.5rem;font-family:monospace;font-size:.82rem;
+                    box-shadow:inset 2px 2px 0 rgba(0,0,0,.1);">
+        </div>
+
+        <!-- Display row -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.6rem;">
+            <!-- Input actual -->
+            <div id="cr-display"
+                 style="flex:1;border:3px solid black;background:#1a1a2e;color:#00ff9f;
+                        font-family:monospace;font-size:1.4rem;font-weight:900;
+                        padding:.3rem .6rem;text-align:right;letter-spacing:.04em;
+                        box-shadow:inset 0 2px 6px rgba(0,0,0,.5);user-select:none;">
+                0
+            </div>
+            <!-- Total acumulado -->
+            <div style="border:3px solid black;background:#3A86FF;color:#fff;font-weight:900;
+                        padding:.3rem .6rem;text-align:center;display:flex;flex-direction:column;
+                        align-items:center;justify-content:center;min-width:86px;">
+                <span style="font-size:.5rem;text-transform:uppercase;letter-spacing:.12em;opacity:.85;">TOTAL</span>
+                <span id="cr-total" style="font-size:1rem;letter-spacing:.02em;">$0.00</span>
+            </div>
+        </div>
+
+        <!-- Teclado numérico 4×5 con multiplicación -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:.75rem;">
+            <!-- Fila 1 -->
+            <button data-cr="7"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">7</button>
+            <button data-cr="8"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">8</button>
+            <button data-cr="9"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">9</button>
+            <button data-cr="C"  style="border:3px solid black;background:#FF006E;color:#fff;font-weight:900;font-size:.8rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;text-transform:uppercase;">C</button>
+            <!-- Fila 2 -->
+            <button data-cr="4"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">4</button>
+            <button data-cr="5"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">5</button>
+            <button data-cr="6"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">6</button>
+            <button data-cr="+"  style="border:3px solid black;background:#06D6A0;font-weight:900;font-size:1.2rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">+</button>
+            <!-- Fila 3 -->
+            <button data-cr="1"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">1</button>
+            <button data-cr="2"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">2</button>
+            <button data-cr="3"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">3</button>
+            <button data-cr="-"  style="border:3px solid black;background:#FFBE0B;font-weight:900;font-size:1.2rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">−</button>
+            <!-- Fila 4 -->
+            <button data-cr="x"  style="border:3px solid black;background:#FF6B35;color:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">×</button>
+            <button data-cr="0"  style="border:3px solid black;background:#fff;font-weight:900;font-size:1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">0</button>
+            <button data-cr="00" style="border:3px solid black;background:#fff;font-weight:900;font-size:.85rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">00</button>
+            <button data-cr="."  style="border:3px solid black;background:#fff;font-weight:900;font-size:1.1rem;padding:.5rem 0;box-shadow:3px 3px 0 black;cursor:pointer;">.</button>
+            <!-- Fila 5: = ocupa todo el ancho -->
+            <button data-cr="="
+                    style="grid-column:1/-1;border:3px solid black;background:#8338EC;color:#fff;font-weight:900;
+                           font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;padding:.5rem 0;
+                           box-shadow:3px 3px 0 black;cursor:pointer;">
+                =&nbsp;&nbsp;subtotal
+            </button>
+        </div>
+
+        <!-- Input de precio (destino final de la sumadora) -->
+        <div style="border-top:3px solid black;padding-top:.65rem;margin-bottom:.65rem;">
+            <label style="font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:.25rem;color:#111;">
+                Precio a cobrar ($)
+            </label>
+            <input id="cr-precio" type="number" min="0.01" step="0.01" placeholder="0.00"
+                   style="width:100%;border:4px solid black;padding:.4rem .65rem;font-weight:700;
+                          font-size:1.25rem;outline:none;box-shadow:4px 4px 0 0 black;background:#fffbe6;">
+        </div>
+
+        <!-- Error -->
+        <div id="cr-error" style="display:none;background:#FF006E;color:white;font-weight:900;font-size:.8rem;
+                                   text-transform:uppercase;padding:.4rem .75rem;margin-bottom:.6rem;border:3px solid black;"></div>
+
+        <!-- Botones finales -->
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+            <button onclick="cerrarCobroRapido()"
+                    style="border:4px solid black;background:#e5e7eb;font-weight:900;font-size:.75rem;
+                           text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1rem;
+                           box-shadow:4px 4px 0 0 black;cursor:pointer;">
+                Cancelar
+            </button>
+            <button onclick="confirmarCobroRapido()"
+                    style="border:4px solid black;background:#FB5607;color:white;font-weight:900;font-size:.75rem;
+                           text-transform:uppercase;letter-spacing:.08em;padding:.5rem 1.25rem;
+                           box-shadow:4px 4px 0 0 black;cursor:pointer;">
+                ⚡ Agregar
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
 <!-- ========================================================= -->
 <!-- MODAL CONFIGURACIÓN POS                                 -->
 <!-- ========================================================= -->
@@ -574,6 +679,21 @@
       </button>
     </div>
 
+    <!-- Responsable de servicios (solo dueños) -->
+    {% if request.user.empleado.rol == "dueño" %}
+    <div style="border-top:3px solid black;padding-top:.75rem;margin-bottom:1rem;">
+        <p style="font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.4rem;color:#111">
+            🔧 ¿A quién van los servicios cobrados?
+        </p>
+        <select id="select-dueno-servicios"
+                style="width:100%;border:3px solid black;padding:.4rem .6rem;font-weight:700;font-size:.9rem;
+                       background:white;outline:none;box-shadow:2px 2px 0 0 black;cursor:pointer;margin-bottom:.4rem;">
+            <option value="">— Sin asignar —</option>
+        </select>
+        <p id="dueno-svc-status" style="font-size:.7rem;font-weight:700;color:#6b7280;min-height:1rem;"></p>
+    </div>
+    {% endif %}
+
     <!-- Botón formato de ticket (solo dueños) -->
     {% if request.user.empleado.rol == "dueño" %}
     <a href="{% url 'ventas:config_ticket' %}"
@@ -680,6 +800,51 @@ async function abrirConfigImpresora() {
 function cerrarConfigImpresora() {
     document.getElementById("modal-config-impresora").classList.add("pos-modal--hidden");
 }
+
+// ── Select dueño servicios (solo visible para dueños) ──
+(function () {
+    if (!window.ES_DUENO) return;
+    const sel    = document.getElementById("select-dueno-servicios");
+    const status = document.getElementById("dueno-svc-status");
+    if (!sel) return;
+
+    // Poblar opciones
+    (window.DUENOS || []).forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.nombre;
+        sel.appendChild(opt);
+    });
+
+    // Pre-seleccionar el configurado actualmente
+    if (window.DUENO_SERVICIOS_ID) sel.value = String(window.DUENO_SERVICIOS_ID);
+
+    sel.addEventListener("change", async () => {
+        status.textContent = "Guardando…";
+        try {
+            const resp = await fetch("{% url 'ventas:set_dueno_servicios' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || "",
+                },
+                body: JSON.stringify({ dueno_id: sel.value || null }),
+            });
+            const data = await resp.json();
+            if (data.status === "ok") {
+                status.textContent = "✓ Guardado";
+                status.style.color = "#16a34a";
+            } else {
+                status.textContent = "Error: " + (data.message || "?");
+                status.style.color = "#dc2626";
+            }
+        } catch {
+            status.textContent = "Error de conexión";
+            status.style.color = "#dc2626";
+        }
+        setTimeout(() => { status.textContent = ""; }, 3000);
+    });
+})();
 
 function guardarConfigImpresora() {
     const termica  = document.getElementById("config-printer-name").value.trim();

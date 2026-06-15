@@ -17,6 +17,7 @@ import {
     eliminarProducto,
     cambiarModoPrecio,
     agregarServicio,
+    agregarCobroRapido,
 } from "./carrito.js";
 
 import {
@@ -66,6 +67,7 @@ export function initUI() {
     initModalPago();
     initModalResultado();
     initModalServicio();
+    initModalCobroRapido();
     console.log("[POS:ui] initUI completo ✓");
 }
 
@@ -158,6 +160,19 @@ function renderCarritoUI() {
                 </div>
                 <div class="pos-precio-aplicado" style="color:#16a34a;">
                     $<span>0.00</span>
+                </div>
+            `;
+        } else if (item.es_cobro_rapido) {
+            div.innerHTML = `
+                <div class="pos-carrito-item-header">
+                    <span class="pos-carrito-item-nombre">⚡ ${item.nombre}</span>
+                    <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
+                </div>
+                <div>
+                    <span class="pos-stock-badge" style="background:#FB5607;color:white;">Sin registro</span>
+                </div>
+                <div class="pos-precio-aplicado">
+                    $<span>${item.precio_aplicado.toFixed(2)}</span>
                 </div>
             `;
         } else if (item.es_servicio) {
@@ -547,6 +562,13 @@ function initModalPago() {
     inputEfectivo.addEventListener("input", actualizarInfoPago);
     inputTarjeta.addEventListener("input",  actualizarInfoPago);
 
+    // Enter en cualquier campo del modal → confirmar pago
+    [inputEfectivo, inputTarjeta].forEach(inp => {
+        inp.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); btnConfirmar.click(); }
+        });
+    });
+
     // Inicializa el modal con valores limpios cada vez que se abre
     abrirModalPago = () => {
         const total = totalConDescuento();
@@ -646,11 +668,254 @@ function initModalResultado() {
     });
 
     btnCerrar.onclick = () => modal.classList.add("pos-modal--hidden");
+
+    // Enter cuando el modal de resultado está abierto → cerrar (Aceptar)
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        if (modal.classList.contains("pos-modal--hidden")) return;
+        e.preventDefault();
+        btnCerrar.click();
+    });
 }
 
 
 // ============================================================
-// 10. Alertas UI
+// 10. Modal de cobro rápido — sumadora integrada
+// ============================================================
+
+function initModalCobroRapido() {
+    console.log("[POS:ui] initModalCobroRapido");
+
+    // ── Estado de la sumadora ──
+    let _buf        = "";   // número que se está tecleando
+    let _accum      = 0;    // acumulador (total corriente)
+    let _lastOp     = "+";  // operación pendiente para aplicar al próximo buffer
+    let _multiplier = null; // factor × pendiente (5 × 12.50 → se guarda 5 aquí)
+
+    function _display() { return document.getElementById("cr-display"); }
+    function _totalEl() { return document.getElementById("cr-total"); }
+    function _tape()    { return document.getElementById("cr-tape"); }
+
+    function _syncDisplay() {
+        const d = _display();
+        if (d) d.textContent = _buf || "0";
+    }
+    function _syncTotal() {
+        const t = _totalEl();
+        if (t) t.textContent = `$${_accum.toFixed(2)}`;
+    }
+
+    function _addTapeLine(val, op, isTotal = false, label = null) {
+        const tape = _tape();
+        if (!tape) return;
+        const row = document.createElement("div");
+        if (isTotal) {
+            row.style.cssText = "display:flex;justify-content:space-between;font-weight:900;border-top:2px solid #000;margin-top:3px;padding-top:2px;";
+            row.innerHTML = `<span>TOTAL</span><span>$${val.toFixed(2)}</span>`;
+        } else {
+            const color = op === "−" ? "#dc2626" : "#16a34a";
+            const leftText = label ?? op;
+            row.style.cssText = `display:flex;justify-content:space-between;color:${color};`;
+            row.innerHTML = `<span>${leftText}</span><span>$${val.toFixed(2)}</span>`;
+        }
+        tape.appendChild(row);
+        tape.scrollTop = tape.scrollHeight;
+    }
+
+    function _pressKey(key) {
+        // ── Dígitos ──
+        if (key >= "0" && key <= "9") {
+            if (_buf.replace(".", "").length >= 10) return;
+            _buf = (_buf === "0" || _buf === "") ? key : _buf + key;
+            _syncDisplay();
+            return;
+        }
+        if (key === "00") {
+            if (!_buf || _buf === "0") return;
+            if (_buf.replace(".", "").length >= 9) return;
+            _buf += "00";
+            _syncDisplay();
+            return;
+        }
+        if (key === ".") {
+            if (_buf.includes(".")) return;
+            _buf = (_buf || "0") + ".";
+            _syncDisplay();
+            return;
+        }
+        if (key === "Backspace") {
+            _buf = _buf.slice(0, -1);
+            _syncDisplay();
+            return;
+        }
+
+        // ── C: si hay buffer lo limpia; si no, limpia todo ──
+        if (key === "C") {
+            if (_buf || _multiplier !== null) {
+                _buf = "";
+                _multiplier = null;
+                _syncDisplay();
+            } else {
+                _accum  = 0;
+                _lastOp = "+";
+                const tape = _tape();
+                if (tape) tape.innerHTML = "";
+                _syncDisplay();
+                _syncTotal();
+            }
+            return;
+        }
+
+        // ── Multiplicación: guarda el factor y espera el precio ──
+        if (key === "x") {
+            _multiplier = parseFloat(_buf || "1");
+            _buf = "";
+            // Muestra el factor en el display para que el usuario sepa que está en modo ×
+            const d = _display();
+            if (d) d.textContent = `${_multiplier} ×`;
+            return;
+        }
+
+        // ── Operaciones +  −  = ──
+        if (key === "+" || key === "-" || key === "=") {
+            let val = parseFloat(_buf || "0");
+
+            // Si hay un multiplicador pendiente, aplicarlo al precio unitario
+            const tapeLabel = _multiplier !== null
+                ? `${_multiplier}×$${val.toFixed(2)}`
+                : null;
+            if (_multiplier !== null) {
+                val = val * _multiplier;
+                _multiplier = null;
+            }
+
+            // Aplicar operación pendiente al acumulador
+            if (_lastOp === "+") _accum += val;
+            else                 _accum -= val;
+
+            // Agregar línea a la cinta si había algo en el buffer
+            if (_buf !== "") {
+                _addTapeLine(val, _lastOp === "+" ? "+" : "−", false, tapeLabel);
+            }
+
+            _buf    = "";
+            _lastOp = key === "=" ? "+" : key;
+            _syncDisplay();
+            _syncTotal();
+
+            // = imprime línea de total en la cinta (el input de precio es independiente)
+            if (key === "=") {
+                _addTapeLine(_accum, null, true);
+            }
+            return;
+        }
+    }
+
+    // Exponer para botones del HTML
+    window._crPressKey = _pressKey;
+
+    // ── Abrir / cerrar ──
+    function abrirCobroRapido() {
+        console.log("[POS:ui] abrirCobroRapido");
+        _buf = ""; _accum = 0; _lastOp = "+"; _multiplier = null;
+        _syncDisplay();
+        _syncTotal();
+        const tape = _tape();
+        if (tape) tape.innerHTML = "";
+        const err = document.getElementById("cr-error");
+        if (err) err.style.display = "none";
+        const precioInput = document.getElementById("cr-precio");
+        if (precioInput) precioInput.value = "";
+        const m = document.getElementById("modal-cobro-rapido");
+        if (m) {
+            m.style.display = "flex";
+            setTimeout(() => precioInput?.focus(), 50);
+        }
+    }
+
+    window.abrirCobroRapido = abrirCobroRapido;
+
+    window.cerrarCobroRapido = function () {
+        console.log("[POS:ui] cerrarCobroRapido");
+        const m = document.getElementById("modal-cobro-rapido");
+        if (m) m.style.display = "none";
+        document.getElementById("scan-input")?.focus();
+    };
+
+    // ── Confirmar: lee el campo de precio (independiente de la calculadora) ──
+    window.confirmarCobroRapido = function () {
+        console.log("[POS:ui] confirmarCobroRapido");
+        const precioInput = document.getElementById("cr-precio");
+        const precio = parseFloat(precioInput?.value || "0");
+
+        const err = document.getElementById("cr-error");
+        if (!precio || precio <= 0) {
+            err.textContent = "Escribe un precio mayor a $0 en el campo de precio";
+            err.style.display = "block";
+            precioInput?.focus();
+            return;
+        }
+        err.style.display = "none";
+        agregarCobroRapido(Math.round(precio * 100) / 100);
+        window.cerrarCobroRapido();
+    };
+
+    // Enter en el input de precio confirma
+    document.getElementById("cr-precio")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter")  { e.preventDefault(); window.confirmarCobroRapido(); }
+        if (e.key === "Escape") { e.preventDefault(); window.cerrarCobroRapido(); }
+    });
+
+    // ── Clicks en los botones [data-cr] ──
+    document.querySelectorAll("[data-cr]").forEach(btn => {
+        btn.addEventListener("mousedown", (e) => e.preventDefault()); // evita perder foco
+        btn.addEventListener("click", () => _pressKey(btn.dataset.cr));
+    });
+
+    // ── Teclado físico → calculadora (solo cuando el foco NO está en el input de precio) ──
+    document.addEventListener("keydown", (e) => {
+        const m = document.getElementById("modal-cobro-rapido");
+        if (m?.style.display !== "flex") return;
+        // Si el foco está en el input de precio → dejar que el input maneje todo
+        if (document.activeElement?.id === "cr-precio") return;
+
+        const map = {
+            "0":"0","1":"1","2":"2","3":"3","4":"4",
+            "5":"5","6":"6","7":"7","8":"8","9":"9",
+            ".":".","+":" +","-":"-","=":"=","*":"x",
+        };
+        const numpadMap = {
+            "Numpad0":"0","Numpad1":"1","Numpad2":"2","Numpad3":"3","Numpad4":"4",
+            "Numpad5":"5","Numpad6":"6","Numpad7":"7","Numpad8":"8","Numpad9":"9",
+            "NumpadDecimal":".","NumpadAdd":"+","NumpadSubtract":"-",
+            "NumpadEnter":"=","NumpadEqual":"=","NumpadMultiply":"x",
+        };
+
+        if (e.key === "Escape") { e.preventDefault(); window.cerrarCobroRapido(); return; }
+        if (e.key === "Backspace") { e.preventDefault(); _pressKey("Backspace"); return; }
+        if (e.key === "Delete")    { e.preventDefault(); _pressKey("C");         return; }
+
+        const mapped = map[e.key] ?? numpadMap[e.code];
+        if (mapped !== undefined) {
+            e.preventDefault();
+            _pressKey(mapped.trim());
+        }
+    });
+
+    // ── R desde teclado fuera de inputs ──
+    document.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+        if (e.key === "r" || e.key === "R") { e.preventDefault(); abrirCobroRapido(); }
+    });
+
+    document.getElementById("modal-cobro-rapido")?.addEventListener("click", function (e) {
+        if (e.target === this) window.cerrarCobroRapido();
+    });
+}
+
+
+// ============================================================
+// 11. Alertas UI
 // ============================================================
 
 export function mostrarAlertaUI(msg, tipo = "ok") {

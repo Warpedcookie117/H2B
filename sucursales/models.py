@@ -8,6 +8,12 @@ class Sucursal(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     direccion = models.CharField(max_length=255, blank=True, null=True)
     activa = models.BooleanField(default=True)
+    dueño_servicios = models.ForeignKey(
+        "tienda_temp.Empleado",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sucursales_como_responsable_servicios",
+    )
 
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 

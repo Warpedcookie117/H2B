@@ -133,9 +133,16 @@ function atajoKeydown(e) {
             else             cancelarAtajo();
             return true;
         }
-        // Cualquier otra tecla cancela el modo cantidad sin confirmar
-        // (probablemente la cajera cambió de idea o tecleó por error).
-        cancelarAtajo();
+        // Cualquier otra tecla: si hay cantidad en buffer, auto-confirmarla para que
+        // *5<escaneo> funcione sin Enter intermedio. Solo falla para códigos que
+        // empiezan con dígitos (ahí sí se necesita *N↵ antes de escanear).
+        if (_cantBuffer) {
+            _cantPendiente = parseInt(_cantBuffer, 10) || null;
+            if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
+        }
+        _modoCantidad = false;
+        _cantBuffer   = "";
+        refrescarBadge();
         return false;
     }
     return false;
@@ -330,10 +337,10 @@ export function initEscaneo() {
                 // Seguir procesando la tecla actual normalmente (no return)
             }
 
-            // ── Atajos de modal con debounce ──
-            // S o E solos (sin seguidor en <80 ms) abren el modal.
-            // Si llega otro char antes de 80 ms, se tratan como inicio de código.
-            if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+            // ── Atajos de modal con debounce (solo cuando el campo está vacío) ──
+            // Si el campo tiene contenido (barcode en curso), S/E/R son chars normales.
+            // Si está vacío: 80 ms → si no llega otro char = atajo; si llega = inicio de barcode.
+            if (!e.ctrlKey && !e.altKey && !e.metaKey && scanInput.value === "") {
                 if (e.key === "s" || e.key === "S") {
                     e.preventDefault();
                     _pendingShortcutKey = e.key;
@@ -351,6 +358,16 @@ export function initEscaneo() {
                         _pendingShortcutKey = null;
                         _pendingShortcutTimer = null;
                         window.abrirConsultaPrecios?.();
+                    }, 80);
+                    return;
+                }
+                if (e.key === "r" || e.key === "R") {
+                    e.preventDefault();
+                    _pendingShortcutKey = e.key;
+                    _pendingShortcutTimer = setTimeout(() => {
+                        _pendingShortcutKey = null;
+                        _pendingShortcutTimer = null;
+                        window.abrirCobroRapido?.();
                     }, 80);
                     return;
                 }
@@ -392,8 +409,9 @@ export function initEscaneo() {
                 consumirCantidadPendiente();
                 scanInput.value = "";
             } else {
-                console.warn(`[POS:buscador] scan-input: PRODUCTO NO ENCONTRADO para "${texto}"`);
-                alert("Producto no encontrado");
+                console.warn(`[POS:buscador] scan-input: PRODUCTO NO ENCONTRADO para "${texto}" → abriendo cobro rápido`);
+                scanInput.value = "";
+                window.abrirCobroRapido?.();
             }
         });
     }
@@ -416,7 +434,8 @@ export function initEscaneo() {
             !document.getElementById("modal-config-impresora")?.classList.contains("pos-modal--hidden") ||
             !document.getElementById("modal-variantes")?.classList.contains("pos-modal--hidden") ||
             document.getElementById("modal-servicio")?.style.display === "flex" ||
-            document.getElementById("modal-regalo")?.style.display === "flex";
+            document.getElementById("modal-regalo")?.style.display === "flex" ||
+            document.getElementById("modal-cobro-rapido")?.style.display === "flex";
 
         if (modalAbierto) return;
 
@@ -452,8 +471,12 @@ export function initEscaneo() {
         const modalServicio = document.getElementById("modal-servicio");
         if (modalServicio && modalServicio.style.display === "flex") return;
 
+        const modalCobroRapido = document.getElementById("modal-cobro-rapido");
+        if (modalCobroRapido && modalCobroRapido.style.display === "flex") return;
+
         if (e.key === "Enter") {
             e.preventDefault();
+            if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
             const texto = normalizar(scanBuffer.trim());
             scanBuffer = "";
 
@@ -469,21 +492,31 @@ export function initEscaneo() {
                 abrirSelectorVariantes(matches, texto, cant);
                 consumirCantidadPendiente();
             } else {
-                console.warn(`[POS:buscador] SCAN GLOBAL: NO encontrado para "${texto}"`);
+                console.warn(`[POS:buscador] SCAN GLOBAL: NO encontrado para "${texto}" → abriendo cobro rápido`);
+                window.abrirCobroRapido?.();
             }
             return;
         }
 
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-            // Teclas reservadas para atajos de modal — no acumular en buffer
-            if (e.key === "s" || e.key === "S") return;
-            if (e.key === "e" || e.key === "E") return;
-
             e.preventDefault();
+            const esPrimeraLetra = scanBuffer === "";
             scanBuffer += e.key;
 
             if (scanTimer) clearTimeout(scanTimer);
-            scanTimer = setTimeout(() => { scanBuffer = ""; }, 500);
+
+            // Timer corto (80ms) cuando la primera letra puede ser un atajo (S/E/R solos).
+            // Timer largo (500ms) como fallback de limpieza para barcodes largos sin Enter.
+            const delay = (esPrimeraLetra && "serSER".includes(e.key)) ? 80 : 500;
+            scanTimer = setTimeout(() => {
+                scanTimer = null;
+                const buf = scanBuffer;
+                scanBuffer = "";
+                if (buf === "s" || buf === "S") { window.abrirModalServicio?.(); return; }
+                if (buf === "e" || buf === "E") { window.abrirConsultaPrecios?.(); return; }
+                if (buf === "r" || buf === "R") { window.abrirCobroRapido?.(); return; }
+                // Buffer multi-char sin Enter: ignorar (barcode incompleto)
+            }, delay);
         }
     });
 

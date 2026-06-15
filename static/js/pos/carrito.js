@@ -206,6 +206,28 @@ export function agregarRegalo(id, nombre, promo_nombre, promo_id = null, parent_
 }
 
 
+// ============================================================
+// 7. Cobro rápido (producto sin registro en sistema)
+// ============================================================
+
+export function agregarCobroRapido(precio) {
+    console.log(`[POS:carrito] agregarCobroRapido → precio=${precio}`);
+    carrito.push({
+        id:              `cr_${Date.now()}`,
+        es_cobro_rapido: true,
+        es_servicio:     true,   // reutiliza la ruta de servicio en el backend
+        nombre:          "Prod. sin registro",
+        cantidad:        1,
+        precio_aplicado: precio,
+        stock_piso:      Infinity,
+        stock_bodega:    Infinity,
+    });
+    console.log(`[POS:carrito] cobro rápido agregado. Total items: ${carrito.length}`);
+    actualizarTotales();
+    onCarritoActualizado();
+}
+
+
 export function limpiarCarrito() {
     console.log(`[POS:carrito] limpiarCarrito — limpiando ${carrito.length} items`);
     carrito.length = 0;

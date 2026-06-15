@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from inventario.models import Inventario, Producto, Ubicacion
 from sucursales.models import Sucursal
+from tienda_temp.models import Empleado
 from ventas.models import IdempotencyKey, Oferta, Promocion
 from ventas.services.pos_service import POSService
 
@@ -126,15 +127,35 @@ def pos_view(request):
         "filtros_atributos",
     ))
 
+    es_dueno = empleado.rol == "dueño"
+
+    sucursal_obj = Sucursal.objects.select_related("dueño_servicios__user").get(id=sucursal_id)
+    dueno_servicios_id = sucursal_obj.dueño_servicios_id or ""
+
+    duenos_json = "[]"
+    if es_dueno:
+        duenos = list(
+            Empleado.objects.filter(rol="dueño")
+            .select_related("user")
+            .values("id", "user__first_name", "user__last_name", "user__username")
+        )
+        for d in duenos:
+            nombre = f"{d['user__first_name']} {d['user__last_name']}".strip()
+            d["nombre"] = nombre or d["user__username"]
+        duenos_json = json.dumps(duenos, cls=DjangoJSONEncoder)
+
     return render(
         request,
         "ventas/pos.html",
         {
-            "productos":      productos_list,
-            "ubicacion_pos":  ubicacion_pos,
-            "caja_nombre":    caja_nombre,
-            "promociones_json": json.dumps(promociones_data, cls=DjangoJSONEncoder),
-            "ofertas_json":     json.dumps(ofertas_data,    cls=DjangoJSONEncoder),
+            "productos":          productos_list,
+            "ubicacion_pos":      ubicacion_pos,
+            "caja_nombre":        caja_nombre,
+            "promociones_json":   json.dumps(promociones_data, cls=DjangoJSONEncoder),
+            "ofertas_json":       json.dumps(ofertas_data,    cls=DjangoJSONEncoder),
+            "es_dueno":           es_dueno,
+            "duenos_json":        duenos_json,
+            "dueno_servicios_id": dueno_servicios_id,
         },
     )
 
@@ -264,6 +285,42 @@ def procesar_venta(request):
 
     finally:
         cache.delete(lock_key)
+
+
+@login_required
+@require_POST
+def set_dueno_servicios(request):
+    empleado = request.user.empleado
+    if empleado.rol != "dueño":
+        return JsonResponse({"status": "error", "message": "Solo los dueños pueden cambiar esto."}, status=403)
+
+    sucursal_id = request.session.get("sucursal_actual")
+    if not sucursal_id:
+        return JsonResponse({"status": "error", "message": "Sin sucursal activa."}, status=400)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "JSON inválido."}, status=400)
+
+    dueno_id = data.get("dueno_id") or None
+
+    try:
+        sucursal = Sucursal.objects.get(id=sucursal_id)
+    except Sucursal.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Sucursal no encontrada."}, status=404)
+
+    if dueno_id:
+        try:
+            nuevo_dueno = Empleado.objects.get(id=dueno_id, rol="dueño")
+            sucursal.dueño_servicios = nuevo_dueno
+        except Empleado.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Dueño inválido."}, status=400)
+    else:
+        sucursal.dueño_servicios = None
+
+    sucursal.save(update_fields=["dueño_servicios"])
+    return JsonResponse({"status": "ok"})
 
 
 @login_required
