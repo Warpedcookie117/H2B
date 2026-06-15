@@ -28,6 +28,7 @@ let _cantBuffer     = "";
 let _cantPendiente  = null;   // entero o null
 const TIMEOUT_ATAJO = 5000;
 let _atajoTimer     = null;
+let _lastAtajoKeyTs = 0;      // timestamp del último key consumido en modo cantidad
 
 // Debounce para S/E: si llega otro char en <80ms era código, no atajo
 let _pendingShortcutKey   = null;
@@ -48,7 +49,7 @@ function refrescarBadge() {
     const sub   = document.getElementById("atajo-cantidad-sub");
     if (_modoCantidad) {
         if (texto) texto.textContent = `×${_cantBuffer || "?"}`;
-        if (sub)   sub.textContent   = "ENTER para confirmar (Esc cancela)";
+        if (sub)   sub.textContent   = "escanea o Enter para confirmar (Esc cancela)";
     } else {
         if (texto) texto.textContent = `×${_cantPendiente}`;
         if (sub)   sub.textContent   = "escanea ahora (Esc para cancelar)";
@@ -60,6 +61,7 @@ function activarModoCantidad() {
     _modoCantidad = true;
     _cantBuffer = "";
     _cantPendiente = null;
+    _lastAtajoKeyTs = Date.now();
     refrescarBadge();
     reiniciarTimerAtajo();
 }
@@ -114,28 +116,42 @@ function atajoKeydown(e) {
         return true;
     }
     if (_modoCantidad) {
+        const now   = Date.now();
+        const delta = now - _lastAtajoKeyTs;
+
         if (e.key >= "0" && e.key <= "9") {
+            // Si el dígito llegó en < 80 ms desde el key anterior Y ya hay buffer
+            // → velocidad de scanner → auto-confirmar la cantidad y dejar pasar el dígito
+            if (delta < 80 && _cantBuffer.length > 0) {
+                console.log(`[POS:atajo] scanner detectado (delta=${delta}ms) → auto-confirmar ×${_cantBuffer}`);
+                _cantPendiente = parseInt(_cantBuffer, 10) || null;
+                if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
+                _modoCantidad = false;
+                _cantBuffer   = "";
+                refrescarBadge();
+                return false; // el dígito pasa normal al scanInput / scanBuffer
+            }
+            // Velocidad humana → acumular como cantidad
+            _lastAtajoKeyTs = now;
             _cantBuffer += e.key;
             refrescarBadge();
             reiniciarTimerAtajo();
             return true;
         }
         if (e.key === "Backspace") {
+            _lastAtajoKeyTs = now;
             _cantBuffer = _cantBuffer.slice(0, -1);
             refrescarBadge();
             reiniciarTimerAtajo();
             return true;
         }
         if (e.key === "Enter") {
-            // Enter confirma la cantidad y NO debe ejecutar el handler de
-            // escaneo (no hay código aún) → consumir.
             if (_cantBuffer) confirmarBufferComoPendiente();
             else             cancelarAtajo();
             return true;
         }
-        // Cualquier otra tecla: si hay cantidad en buffer, auto-confirmarla para que
-        // *5<escaneo> funcione sin Enter intermedio. Solo falla para códigos que
-        // empiezan con dígitos (ahí sí se necesita *N↵ antes de escanear).
+        // Cualquier otra tecla no-dígito (primera letra del barcode):
+        // auto-confirmar si hay buffer, luego dejar pasar la tecla
         if (_cantBuffer) {
             _cantPendiente = parseInt(_cantBuffer, 10) || null;
             if (_atajoTimer) { clearTimeout(_atajoTimer); _atajoTimer = null; }
