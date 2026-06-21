@@ -102,26 +102,68 @@
     <div class="pos-panel pos-panel--productos">
 
         <div class="pos-header-producto">
+            <button id="btn-descuento" class="pos-btn-descuento">
+                10% OFF
+            </button>
+
             <h3 class="pos-titulo-productos">PRODUCTOS EN PISO</h3>
-            <div class="pos-header-botones">
-                <a href="{% url 'sucursales:salir_caja' %}"
-                   class="pos-btn-header pos-btn-header--salir">
-                    Salir de caja
-                </a>
-                <a href="{% url 'ventas:corte_caja' %}"
-                   class="pos-btn-header pos-btn-header--corte">
-                    Corte de caja
-                </a>
-                <button onclick="abrirConfigImpresora()"
-                        class="pos-btn-header"
-                        title="Configurar impresora térmica">
-                    🖨 Config
+
+            <div class="pos-menu-acciones">
+                <button type="button"
+                        id="pos-menu-trigger"
+                        class="pos-menu-trigger"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                    ¿Estresao?
                 </button>
-                <button id="btn-descuento" class="pos-btn-descuento">
-                    10% OFF
-                </button>
+                <div id="pos-menu-dropdown" class="pos-menu-dropdown" hidden>
+                    <button onclick="abrirConfigImpresora()"
+                            class="pos-menu-item"
+                            title="Configurar impresora térmica">
+                        Config impresora
+                    </button>
+                    <a href="{% url 'ventas:corte_caja' %}"
+                       class="pos-menu-item pos-menu-item--corte">
+                        Corte de caja
+                    </a>
+                    <a href="{% url 'sucursales:salir_caja' %}"
+                       class="pos-menu-item pos-menu-item--salir">
+                        Salir de caja
+                    </a>
+                </div>
             </div>
         </div>
+
+        <script>
+        (function () {
+            const trigger = document.getElementById("pos-menu-trigger");
+            const menu    = document.getElementById("pos-menu-dropdown");
+            if (!trigger || !menu) return;
+
+            function cerrar() {
+                menu.setAttribute("hidden", "");
+                trigger.setAttribute("aria-expanded", "false");
+            }
+            function alternar(e) {
+                e.stopPropagation();
+                if (menu.hasAttribute("hidden")) {
+                    menu.removeAttribute("hidden");
+                    trigger.setAttribute("aria-expanded", "true");
+                } else {
+                    cerrar();
+                }
+            }
+
+            trigger.addEventListener("click", alternar);
+            // Click fuera o Escape → cerrar (evita dejarlo abierto estorbando)
+            document.addEventListener("click", (e) => {
+                if (!menu.contains(e.target) && e.target !== trigger) cerrar();
+            });
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") cerrar();
+            });
+        })();
+        </script>
 
         <!-- BUSCADOR / ESCANEO DE PRODUCTOS -->
         <input
@@ -169,6 +211,10 @@
 
                     <p class="pos-producto-precio-may">
                         ${{ p.precio_mayoreo }} <span class="pos-producto-sub">(MAY)</span>
+                    </p>
+
+                    <p class="pos-producto-stock" data-stock-label>
+                        {{ p.stock_piso }} disponibles en piso
                     </p>
                 </div>
             </div>
