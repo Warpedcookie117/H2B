@@ -254,13 +254,18 @@ export function initBuscador() {
         }
     });
 
-    document.querySelectorAll(".producto-item").forEach(card => {
-        card.onclick = () => {
+    // Delegación: un solo listener en el contenedor cubre las cards actuales
+    // y cualquiera que se inserte en vivo via WebSocket (productos nuevos).
+    const listaProductos = document.getElementById("lista-productos");
+    if (listaProductos) {
+        listaProductos.addEventListener("click", (e) => {
+            const card = e.target.closest(".producto-item");
+            if (!card || !listaProductos.contains(card)) return;
             console.log(`[POS:buscador] click en card → id=${card.dataset.id} nombre="${card.dataset.nombre}"`);
             agregarDesdeCard(card, cantidadParaEsteEscaneo());
             consumirCantidadPendiente();
-        };
-    });
+        });
+    }
 
     console.log(`[POS:buscador] initBuscador completo — ${document.querySelectorAll(".producto-item").length} cards`);
 }
@@ -277,23 +282,23 @@ export function initDragDrop() {
 
     if (!listaProductos || !carritoLista) return;
 
-    listaProductos.querySelectorAll(".producto-item").forEach(item => {
-        item.setAttribute("draggable", "true");
-
-        item.addEventListener("dragstart", (e) => {
-            e.dataTransfer.setData("producto_id", item.dataset.id);
-            e.dataTransfer.setData("producto_nombre", item.dataset.nombre);
-            e.dataTransfer.setData("precios", JSON.stringify({
-                men: parseFloat(item.dataset.men),
-                may: parseFloat(item.dataset.may),
-                doc: parseFloat(item.dataset.doc),
-                stock_piso: parseInt(item.dataset.stockPiso),
-                stock_bodega: parseInt(item.dataset.stockBodega),
-                subcategoria_id: item.dataset.subcategoria ? parseInt(item.dataset.subcategoria) : null,
-                cat_padre_id:    item.dataset.catPadre     ? parseInt(item.dataset.catPadre)     : null,
-                atributos:       item.dataset.atributos ? JSON.parse(item.dataset.atributos) : {},
-            }));
-        });
+    // Delegación: dragstart en el contenedor cubre cards actuales y las que
+    // se inserten en vivo. La card ya trae draggable="true" desde el template.
+    listaProductos.addEventListener("dragstart", (e) => {
+        const item = e.target.closest(".producto-item");
+        if (!item) return;
+        e.dataTransfer.setData("producto_id", item.dataset.id);
+        e.dataTransfer.setData("producto_nombre", item.dataset.nombre);
+        e.dataTransfer.setData("precios", JSON.stringify({
+            men: parseFloat(item.dataset.men),
+            may: parseFloat(item.dataset.may),
+            doc: parseFloat(item.dataset.doc),
+            stock_piso: parseInt(item.dataset.stockPiso),
+            stock_bodega: parseInt(item.dataset.stockBodega),
+            subcategoria_id: item.dataset.subcategoria ? parseInt(item.dataset.subcategoria) : null,
+            cat_padre_id:    item.dataset.catPadre     ? parseInt(item.dataset.catPadre)     : null,
+            atributos:       item.dataset.atributos ? JSON.parse(item.dataset.atributos) : {},
+        }));
     });
 
     carritoLista.addEventListener("dragover", (e) => e.preventDefault());

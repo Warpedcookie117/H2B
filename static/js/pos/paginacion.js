@@ -158,6 +158,22 @@ export function clearFiltro() {
     renderPagina(1);
 }
 
+// ============================================================
+// REFRESCO EN VIVO (usado por stock.js al insertar/quitar cards via WS)
+// ============================================================
+
+export function refrescarGrid() {
+    // Si hay una búsqueda activa, descartar del filtro las cards que ya
+    // no estén en el DOM (p. ej. una que se agotó mientras se buscaba).
+    if (filteredItems !== null) {
+        filteredItems = filteredItems.filter(el => el.isConnected);
+    }
+    // Reajustar la página actual por si se redujo el total de páginas.
+    paginaActual = Math.min(paginaActual, getTotalPaginas());
+    console.log("[POS:paginacion] refrescarGrid → re-render");
+    renderPagina(paginaActual);
+}
+
 // Alias de compatibilidad — no hacen nada, la paginación ahora funciona en ambos modos
 export const activarBusqueda  = () => {};
 export const desactivarBusqueda = clearFiltro;

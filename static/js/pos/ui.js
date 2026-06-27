@@ -505,12 +505,12 @@ function initDescuentoUI() {
             aplicarDescuento10();
             setDescuentoActivo(true);
             btn.classList.add("pos-btn-descuento--activo");
-            btn.textContent = "10% ON";
+            btn.textContent = "15% ON";
         } else {
             quitarDescuento10();
             setDescuentoActivo(false);
             btn.classList.remove("pos-btn-descuento--activo");
-            btn.textContent = "10% OFF";
+            btn.textContent = "15% OFF";
         }
 
         actualizarTotales();

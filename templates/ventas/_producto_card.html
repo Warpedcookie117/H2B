@@ -1,0 +1,42 @@
+{% load static %}
+{% load cloudinary_helpers %}
+<div
+    class="producto-item pos-producto-card"
+    data-id="{{ p.id }}"
+    data-nombre="{{ p.nombre }}"
+    data-codigo="{{ p.codigo_barras }}"
+    data-sku="{{ p.id }}"
+    data-men="{{ p.precio_menudeo }}"
+    data-may="{{ p.precio_mayoreo }}"
+    data-doc="{{ p.precio_docena }}"
+    data-stock-piso="{{ p.stock_piso }}"
+    data-stock-bodega="{{ p.stock_bodega }}"
+    data-subcategoria="{{ p.categoria_id }}"
+    data-cat-padre="{{ p.categoria_padre_id }}"
+    data-atributos="{{ p.atributos_json }}"
+    draggable="true"
+>
+    <div class="pos-producto-img">
+        {% if p.foto_url %}
+            <img data-src="{% foto_card p.foto_url %}" alt="{{ p.nombre }}">
+        {% else %}
+            <img data-src="{% static 'img/no-image.png' %}" alt="{{ p.nombre }}" class="object-contain">
+        {% endif %}
+    </div>
+
+    <div>
+        <p class="pos-producto-nombre">{{ p.nombre }}</p>
+
+        <p class="pos-producto-precio">
+            ${{ p.precio_menudeo }} <span class="pos-producto-sub">(MEN)</span>
+        </p>
+
+        <p class="pos-producto-precio-may">
+            ${{ p.precio_mayoreo }} <span class="pos-producto-sub">(MAY)</span>
+        </p>
+
+        <p class="pos-producto-stock" data-stock-label>
+            {{ p.stock_piso }} disponibles en piso
+        </p>
+    </div>
+</div>

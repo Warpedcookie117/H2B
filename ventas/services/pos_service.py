@@ -107,7 +107,7 @@ class POSService:
                 })
 
         # 2) Descuento
-        descuento = subtotal * 0.10 if descuento_10 else 0
+        descuento = subtotal * 0.15 if descuento_10 else 0
         total = subtotal - descuento
 
         # 3) Validar pagos

@@ -37,7 +37,7 @@ export function totalSinDescuento() {
 
 export function totalConDescuento() {
     let total = totalSinDescuento();
-    if (descuentoActivo) total *= 0.90;
+    if (descuentoActivo) total *= 0.85;
     return total;
 }
 

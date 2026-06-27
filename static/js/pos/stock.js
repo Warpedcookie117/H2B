@@ -1,11 +1,56 @@
 // stock.js — Stock en tiempo real via WebSocket + polling de respaldo
 
 import { carrito } from "./core.js";
+import { cargarImagenCard, refrescarGrid } from "./paginacion.js";
 
 console.log("[POS:stock] Módulo cargado");
 
 const URL_STOCK = "/ventas/stock-productos/";
+const URL_CARD  = "/ventas/pos/producto-card/"; // + <id>/
 const FALLBACK_MS = 5 * 60_000; // polling cada 5 min solo como respaldo
+
+// IDs con un fetch de card en curso, para no insertar duplicados
+const cardsEnVuelo = new Set();
+
+// ============================================================
+// Insertar en vivo una card que aún no existe en el POS
+// (producto nuevo, trasladado a piso, o restock de algo agotado)
+// ============================================================
+
+async function insertarCardNueva(productoId) {
+    const id = parseInt(productoId);
+    if (document.querySelector(`.producto-item[data-id="${id}"]`)) return; // ya existe
+    if (cardsEnVuelo.has(id)) return; // ya se está pidiendo
+
+    cardsEnVuelo.add(id);
+    try {
+        const resp = await fetch(`${URL_CARD}${id}/`);
+        if (resp.status !== 200) return; // 204 = no va en piso / inactivo
+
+        const html = (await resp.text()).trim();
+        if (!html) return;
+
+        // Revalidar tras el await por si otro mensaje ya la creó
+        if (document.querySelector(`.producto-item[data-id="${id}"]`)) return;
+
+        const lista = document.getElementById("lista-productos");
+        if (!lista) return;
+
+        const tmp = document.createElement("template");
+        tmp.innerHTML = html;
+        const card = tmp.content.firstElementChild;
+        if (!card) return;
+
+        lista.appendChild(card);
+        cargarImagenCard(card); // carga la imagen de inmediato
+        refrescarGrid();        // recalcula paginación
+        console.log(`[POS:stock] card NUEVA insertada id=${id}`);
+    } catch (e) {
+        console.warn(`[POS:stock] error insertando card nueva id=${id}:`, e);
+    } finally {
+        cardsEnVuelo.delete(id);
+    }
+}
 
 // ============================================================
 // Aplicar un cambio de stock a la card y al carrito
@@ -19,6 +64,7 @@ function aplicarCambioStock(productoId, pisoNuevo, bodegaNuevo = null) {
         if (pisoNuevo <= 0) {
             console.log(`[POS:stock] producto id=${id} sin stock en piso → removido`);
             card.remove();
+            refrescarGrid();
         } else {
             card.dataset.stockPiso = pisoNuevo;
             if (bodegaNuevo !== null) card.dataset.stockBodega = bodegaNuevo;
@@ -29,6 +75,9 @@ function aplicarCambioStock(productoId, pisoNuevo, bodegaNuevo = null) {
 
             console.log(`[POS:stock] producto id=${id} piso=${pisoNuevo}${bodegaNuevo !== null ? ` bodega=${bodegaNuevo}` : ""}`);
         }
+    } else if (pisoNuevo > 0) {
+        // No hay card y ahora hay stock en piso → producto nuevo / trasladado / restock
+        insertarCardNueva(id);
     }
 
     const itemCarrito = carrito.find(i => i.id === id);
@@ -46,6 +95,17 @@ function aplicarCambioStock(productoId, pisoNuevo, bodegaNuevo = null) {
 function aplicarCambioProducto(d) {
     const id = parseInt(d.producto_id);
     const card = document.querySelector(`.producto-item[data-id="${id}"]`);
+
+    // Producto desactivado → quitarlo del POS (igual que si se agotara)
+    if (d.activo === false) {
+        if (card) {
+            card.remove();
+            refrescarGrid();
+            console.log(`[POS:stock] producto id=${id} desactivado → removido del POS`);
+        }
+        return;
+    }
+
     if (!card) return;
 
     // dataset — lo que lee el buscador (nombre/código) y el carrito (precios/atributos)

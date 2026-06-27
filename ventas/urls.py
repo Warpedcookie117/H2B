@@ -1,7 +1,7 @@
 from django.urls import path
 
 # POS
-from ventas.views.pos_views import pos_view, procesar_venta, stock_productos, set_dueno_servicios
+from ventas.views.pos_views import pos_view, procesar_venta, stock_productos, set_dueno_servicios, producto_card
 
 # Promociones
 from ventas.views.promociones_views import (
@@ -62,6 +62,7 @@ urlpatterns = [
     path("pos/", pos_view, name="pos"),
     path("procesar-venta/", procesar_venta, name="procesar_venta"),
     path("stock-productos/", stock_productos, name="stock_productos"),
+    path("pos/producto-card/<int:producto_id>/", producto_card, name="producto_card"),
     path("pos/set-dueno-servicios/", set_dueno_servicios, name="set_dueno_servicios"),
 
 

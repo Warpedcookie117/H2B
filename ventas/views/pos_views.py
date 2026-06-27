@@ -359,3 +359,70 @@ def stock_productos(request):
             data[pid]["bodega"] = inv["cantidad_actual"]
 
     return JsonResponse(data)
+
+
+@login_required
+def producto_card(request, producto_id):
+    """
+    Renderiza UNA card de producto para el Piso de la sucursal activa.
+    El POS lo usa para insertar en vivo un producto que apareció en piso
+    (nuevo, trasladado desde bodega, o restock de algo que se había agotado)
+    sin recargar la página.
+
+    Devuelve 204 si el producto no debe mostrarse (sin stock en piso o inactivo),
+    lo que mantiene la misma regla que la carga inicial del POS.
+    """
+    # Mismo candado que pos_view: solo cajero/dueño operan el POS.
+    empleado = getattr(request.user, "empleado", None)
+    if empleado is None or empleado.rol not in ["cajero", "dueño"]:
+        return HttpResponse(status=204)
+
+    sucursal_id = request.session.get("sucursal_actual")
+    if not sucursal_id:
+        return HttpResponse(status=204)
+
+    try:
+        piso = Ubicacion.objects.get(sucursal_id=sucursal_id, tipo="piso")
+    except Ubicacion.DoesNotExist:
+        return HttpResponse(status=204)
+
+    stock_piso = (
+        Inventario.objects
+        .filter(ubicacion=piso, producto_id=producto_id)
+        .values_list("cantidad_actual", flat=True)
+        .first()
+    ) or 0
+
+    # Misma regla que pos_view: solo se muestran productos con existencia en piso.
+    if stock_piso <= 0:
+        return HttpResponse(status=204)
+
+    try:
+        p = (
+            Producto.objects
+            .prefetch_related("valores_atributo__atributo")
+            .get(id=producto_id, activo=True)
+        )
+    except Producto.DoesNotExist:
+        return HttpResponse(status=204)
+
+    ubicacion_bodega = Ubicacion.objects.filter(
+        sucursal_id=sucursal_id, tipo="bodega"
+    ).first()
+    stock_bodega = 0
+    if ubicacion_bodega:
+        stock_bodega = (
+            Inventario.objects
+            .filter(ubicacion=ubicacion_bodega, producto_id=producto_id)
+            .values_list("cantidad_actual", flat=True)
+            .first()
+        ) or 0
+
+    p.stock_piso = stock_piso
+    p.stock_bodega = stock_bodega
+    p.atributos_json = json.dumps(
+        {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
+        cls=DjangoJSONEncoder,
+    )
+
+    return render(request, "ventas/_producto_card.html", {"p": p})
