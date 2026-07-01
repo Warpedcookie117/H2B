@@ -59,7 +59,7 @@ class POSService:
 
     @staticmethod
     @transaction.atomic
-    def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_10=False):
+    def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_pct=0):
 
         POSService._cap_regalos(carrito)
 
@@ -106,8 +106,9 @@ class POSService:
                     "atributos_snap":  None,
                 })
 
-        # 2) Descuento
-        descuento = subtotal * 0.15 if descuento_10 else 0
+        # 2) Descuento — solo se aceptan 10% o 15% (defensa contra valores manipulados)
+        pct = descuento_pct if descuento_pct in (10, 15) else 0
+        descuento = subtotal * (pct / 100)
         total = subtotal - descuento
 
         # 3) Validar pagos

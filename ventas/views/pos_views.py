@@ -226,7 +226,7 @@ def procesar_venta(request):
         carrito = data.get("carrito", [])
         pagado_efectivo = data.get("pagado_efectivo")
         pagado_tarjeta = data.get("pagado_tarjeta")
-        descuento_10 = data.get("descuento_10")
+        descuento_pct = data.get("descuento_pct")
 
         # 4) Validación básica
         if not carrito:
@@ -258,7 +258,7 @@ def procesar_venta(request):
                 carrito=carrito_real,
                 pagado_efectivo=float(pagado_efectivo),
                 pagado_tarjeta=float(pagado_tarjeta),
-                descuento_10=bool(descuento_10)
+                descuento_pct=int(descuento_pct or 0)
             )
 
             venta = resultado["venta"]

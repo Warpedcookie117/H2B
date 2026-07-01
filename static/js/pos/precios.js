@@ -1,4 +1,4 @@
-import { carrito, setDescuentoActivo } from "./core.js";
+import { carrito } from "./core.js";
 
 console.log("[POS:precios] Módulo cargado");
 
@@ -56,18 +56,4 @@ export function aplicarPreciosGlobales() {
             console.log(`[POS:precios]   "${item.nombre}" modo=${modoPrecio} precio: $${precioAnterior.toFixed(2)} → $${item.precio_aplicado.toFixed(2)}`);
         }
     });
-}
-
-// ============================================================
-// DESCUENTO DEL 10%
-// ============================================================
-
-export function aplicarDescuento10() {
-    console.log("[POS:precios] aplicarDescuento10");
-    setDescuentoActivo(true);
-}
-
-export function quitarDescuento10() {
-    console.log("[POS:precios] quitarDescuento10");
-    setDescuentoActivo(false);
 }

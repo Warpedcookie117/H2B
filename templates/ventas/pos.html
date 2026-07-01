@@ -102,9 +102,23 @@
     <div class="pos-panel pos-panel--productos">
 
         <div class="pos-header-producto">
-            <button id="btn-descuento" class="pos-btn-descuento">
-                15% OFF
-            </button>
+            <div class="pos-menu-acciones">
+                <button type="button"
+                        id="btn-descuento-trigger"
+                        class="pos-btn-descuento"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                    ¿Descuento?
+                </button>
+                <div id="pos-descuento-dropdown" class="pos-menu-dropdown" hidden>
+                    <button type="button" class="pos-menu-item pos-descuento-opcion" data-pct="10">
+                        10% OFF
+                    </button>
+                    <button type="button" class="pos-menu-item pos-descuento-opcion" data-pct="15">
+                        15% OFF
+                    </button>
+                </div>
+            </div>
 
             <h3 class="pos-titulo-productos">PRODUCTOS EN PISO</h3>
 

@@ -1,6 +1,6 @@
 // pago.js — Lógica pura del pago
 
-import { carrito, totalConDescuento, descuentoActivo } from "./core.js";
+import { carrito, totalConDescuento, descuentoPct } from "./core.js";
 import { getCookie } from "./core.js";
 import { limpiarCarrito } from "./carrito.js";
 
@@ -83,7 +83,7 @@ export function validarPago(efectivo, tarjeta) {
 // ============================================================
 
 export async function procesarPago(efectivo, tarjeta) {
-    console.log(`[POS:pago] procesarPago → efectivo=${efectivo} tarjeta=${tarjeta} descuento=${descuentoActivo}`);
+    console.log(`[POS:pago] procesarPago → efectivo=${efectivo} tarjeta=${tarjeta} descuento=${descuentoPct}%`);
 
     onPagoIniciado();
 
@@ -111,7 +111,7 @@ export async function procesarPago(efectivo, tarjeta) {
         }),
         pagado_efectivo: Number(efectivo) || 0,
         pagado_tarjeta: Number(tarjeta) || 0,
-        descuento_10: Boolean(descuentoActivo),
+        descuento_pct: descuentoPct,
         idempotency_key: obtenerIdempotencyKey(),
     };
 

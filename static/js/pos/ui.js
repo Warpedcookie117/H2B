@@ -4,8 +4,8 @@ console.log("[POS:ui] Módulo cargado");
 
 import {
     carrito,
-    descuentoActivo,
-    setDescuentoActivo,
+    descuentoPct,
+    setDescuentoPct,
     setOnCarritoActualizado,
     totalConDescuento,
     lastAddedId,
@@ -19,11 +19,6 @@ import {
     agregarServicio,
     agregarCobroRapido,
 } from "./carrito.js";
-
-import {
-    aplicarDescuento10,
-    quitarDescuento10
-} from "./precios.js";
 
 import {
     validarStock,
@@ -491,31 +486,61 @@ function initBotonCobrar() {
 
 
 // ============================================================
-// 7. Descuento 10%
+// 7. Descuento (desplegable: 10% / 15%, mutuamente excluyentes)
 // ============================================================
 
 function initDescuentoUI() {
     console.log("[POS:ui] initDescuentoUI");
-    const btn = document.getElementById("btn-descuento");
-    if (!btn) return;
+    const trigger  = document.getElementById("btn-descuento-trigger");
+    const dropdown = document.getElementById("pos-descuento-dropdown");
+    if (!trigger || !dropdown) return;
 
-    btn.onclick = () => {
-        console.log(`[POS:ui] click DESCUENTO — descuentoActivo actual: ${descuentoActivo}`);
-        if (!descuentoActivo) {
-            aplicarDescuento10();
-            setDescuentoActivo(true);
-            btn.classList.add("pos-btn-descuento--activo");
-            btn.textContent = "15% ON";
-        } else {
-            quitarDescuento10();
-            setDescuentoActivo(false);
-            btn.classList.remove("pos-btn-descuento--activo");
-            btn.textContent = "15% OFF";
-        }
+    const opciones = Array.from(dropdown.querySelectorAll(".pos-descuento-opcion"));
 
-        actualizarTotales();
-        renderCarritoUI();
-    };
+    // Refleja el % activo en el trigger y resalta la opción elegida
+    function pintarEstado() {
+        const activo = descuentoPct > 0;
+        trigger.classList.toggle("pos-btn-descuento--activo", activo);
+        trigger.textContent = activo ? `${descuentoPct}% ON` : "¿Descuento?";
+        opciones.forEach(op => {
+            op.classList.toggle(
+                "pos-descuento-opcion--activo",
+                parseInt(op.dataset.pct, 10) === descuentoPct
+            );
+        });
+    }
+
+    const abrir  = () => { dropdown.removeAttribute("hidden"); trigger.setAttribute("aria-expanded", "true"); };
+    const cerrar = () => { dropdown.setAttribute("hidden", ""); trigger.setAttribute("aria-expanded", "false"); };
+
+    trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (dropdown.hasAttribute("hidden")) abrir();
+        else cerrar();
+    });
+
+    // Selección: si presionas el mismo % activo → se apaga (ambos quedan libres);
+    // si presionas otro → ese queda activo y el anterior se apaga.
+    opciones.forEach(op => {
+        op.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const pct = parseInt(op.dataset.pct, 10);
+            setDescuentoPct(descuentoPct === pct ? 0 : pct);
+            pintarEstado();
+            actualizarTotales();
+            renderCarritoUI();
+        });
+    });
+
+    // Cerrar al hacer click afuera o con Escape (igual que el menú "¿Estresao?")
+    document.addEventListener("click", (e) => {
+        if (!dropdown.contains(e.target) && e.target !== trigger) cerrar();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cerrar();
+    });
+
+    pintarEstado();
 }
 
 

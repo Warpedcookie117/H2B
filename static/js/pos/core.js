@@ -13,16 +13,16 @@ export let carrito = [];
 // 2. Estado del descuento
 // ============================================================
 
-export let descuentoActivo = false;
+export let descuentoPct = 0;   // 0, 10 o 15 — porcentaje del descuento activo
 
-export function setDescuentoActivo(valor) {
-    console.log(`[POS:core] setDescuentoActivo: ${valor}`);
-    descuentoActivo = valor;
+export function setDescuentoPct(pct) {
+    console.log(`[POS:core] setDescuentoPct: ${pct}`);
+    descuentoPct = pct;
 }
 
 export function resetDescuento() {
     console.log("[POS:core] resetDescuento");
-    descuentoActivo = false;
+    descuentoPct = 0;
 }
 
 
@@ -37,7 +37,7 @@ export function totalSinDescuento() {
 
 export function totalConDescuento() {
     let total = totalSinDescuento();
-    if (descuentoActivo) total *= 0.85;
+    if (descuentoPct > 0) total *= (1 - descuentoPct / 100);
     return total;
 }
 
