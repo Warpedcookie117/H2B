@@ -83,6 +83,9 @@ function renderAllResumenes() {
     document.querySelectorAll("#gridProductos .cardProducto").forEach(renderResumenCard);
 }
 
+// Expuesta para que el buscador re-pinte las badges tras reemplazar el grid.
+window.renderAllResumenes = renderAllResumenes;
+
 window.refrescarResumenUbicaciones = function (productoId) {
     document.querySelectorAll(`#gridProductos [data-producto="${productoId}"]`)
         .forEach(renderResumenCard);

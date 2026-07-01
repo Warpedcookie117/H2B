@@ -55,6 +55,9 @@ if (!buscador) {
                 if (typeof window.aplicarColoresCards === "function") {
                     window.aplicarColoresCards();
                 }
+                // Re-pintar las badges de resumen (piso/bodega) en las cards nuevas.
+                // El grid viene del server sin ellas; se inyectan client-side.
+                window.renderAllResumenes?.();
                 // Precargar todas las imágenes del resultado para paginación instantánea
                 const imgs = grid.querySelectorAll("img");
                 if (imgs.length) window.precargarImagenesEnIdle?.(Array.from(imgs));

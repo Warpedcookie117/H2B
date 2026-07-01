@@ -56,7 +56,7 @@ def api_ventas_hoy(request):
             total = efectivo + tarjeta
 
             ultima_venta = ventas_caja.order_by("-fecha").first()
-            ultima_hora = ultima_venta.fecha.strftime("%H:%M") if ultima_venta else None
+            ultima_hora = timezone.localtime(ultima_venta.fecha).strftime("%H:%M") if ultima_venta else None
 
             efectivo_sucursal += efectivo
             tarjeta_sucursal += tarjeta

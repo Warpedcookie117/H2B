@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 ANCHO = 30
 NOMBRE_IMPRESORA = "TermicaTienda"
 
@@ -89,7 +91,7 @@ def generar_texto_ticket(obj):
         if cfg.direccion:
             lineas.append(_c(cfg.direccion))
         lineas.append(_c(f"TICKET DE VENTA: {venta.id}"))
-        lineas.append(_c(f"Fecha: {venta.fecha.strftime('%d/%m/%Y %H:%M')}"))
+        lineas.append(_c(f"Fecha: {timezone.localtime(venta.fecha).strftime('%d/%m/%Y %H:%M')}"))
         lineas.append(_sep())
 
         tipos_precio = set()
@@ -205,7 +207,7 @@ def generar_texto_ticket(obj):
 
         lineas.append(_c(cfg.nombre_empresa))
         lineas.append(_c("CORTE CAJA"))
-        lineas.append(_c(f"Fecha: {corte.fecha.strftime('%d/%m/%Y %H:%M')}"))
+        lineas.append(_c(f"Fecha: {timezone.localtime(corte.fecha).strftime('%d/%m/%Y %H:%M')}"))
         lineas.append(_c(f"Caja: {corte.caja.nombre}"))
         lineas.append(_sep())
         lineas.append(_c(f"TOTAL EN CAJA TARJETA + EFECTIVO: ${total_general:.2f}"))
