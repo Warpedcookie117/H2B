@@ -660,10 +660,17 @@
 .pos-btn-descuento--activo       { background: var(--pos-verde); color: var(--pos-blanco); }
 .pos-btn-descuento--activo:hover { background: var(--pos-amarillo); color: var(--pos-negro); }
 
-/* Descuento desplegable (10% / 15%) — el trigger llena su columna;
-   la opción elegida se resalta en verde igual que el estado activo. */
+/* Descuento desplegable (10% / 15%) — el trigger llena su columna.
+   Se abre alineado a la IZQUIERDA (el botón está del lado izquierdo del header,
+   al revés que "¿Estresao?") para que no se corte. */
 .pos-menu-acciones > .pos-btn-descuento { width: 100%; }
-.pos-descuento-opcion--activo { background: var(--pos-verde); color: var(--pos-blanco); }
+.pos-descuento-dropdown { left: 0; right: auto; min-width: 7rem; }
+/* La opción elegida se resalta en verde y hace un "pop" al activarse. */
+.pos-descuento-opcion--activo {
+  background: var(--pos-verde);
+  color: var(--pos-blanco);
+  animation: posScaleIn 0.2s ease-out;
+}
 
 /* ============================
    HEADER PRODUCTOS (botones salir/corte)
