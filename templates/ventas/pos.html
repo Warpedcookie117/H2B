@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="{% static 'css/pos.css' %}">
 
 <script>
-    const sucursal_id = {{ ubicacion_pos.id }};
+    window.sucursal_id = {{ ubicacion_pos.id }};
     window.PROMOCIONES          = {{ promociones_json|safe }};
     window.OFERTAS              = {{ ofertas_json|safe }};
     window.ES_DUENO             = {{ es_dueno|yesno:"true,false" }};
