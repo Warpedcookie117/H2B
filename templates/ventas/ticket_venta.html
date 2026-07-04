@@ -149,7 +149,7 @@
            style="animation: slideLeft .4s cubic-bezier(.22,.68,0,1.2) {{ forloop.counter0 }}00ms both;">
         <div class="flex-1">
           <p class="font-black text-sm uppercase text-black">
-            {{ item.nombre_snapshot|default:item.producto.nombre }}
+            {% if item.nombre_snapshot %}{{ item.nombre_snapshot }}{% elif item.producto %}{{ item.producto.nombre }}{% else %}—{% endif %}
           </p>
           {% if item.atributos_snapshot.tipo == "regalo" %}
             <span class="inline-block mt-1 border-2 border-black bg-[#00F5D4] text-black font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
@@ -245,12 +245,14 @@
       🖨 Reimprimir térmica
     </a>
 
+    {% if venta.caja %}
     <a href="{% url 'ventas:tickets_ventas' venta.caja.sucursal.id %}"
        class="btn-90s flex-1 border-4 border-black shadow-[4px_4px_0_0_black]
               bg-white text-black font-black text-xs uppercase tracking-widest py-3
               flex items-center justify-center gap-2">
       ← Todos los tickets
     </a>
+    {% endif %}
 
   </div>
 
