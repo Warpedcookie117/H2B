@@ -170,7 +170,7 @@ urlpatterns = [
     # ============================
     # REABASTECIMIENTO (bodega interna → piso)
     # ============================
-    path("orden-reabastecimiento/", orden_reabastecimiento, name="orden_reabastecimiento"),
+    path("orden-reabastecimiento/<int:ubicacion_id>/", orden_reabastecimiento, name="orden_reabastecimiento"),
     path("api/orden-reabastecimiento/confirmar/", confirmar_orden_reabastecimiento, name="confirmar_orden_reabastecimiento"),
 
     # ============================

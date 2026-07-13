@@ -667,6 +667,8 @@
 
         try {
             const payload = {
+                piso_id:   CTX.pisoId,
+                bodega_id: CTX.bodegaId,
                 renglones: items.map(i => ({
                     producto_id:   i.id,
                     cantidad:      i.cantidad,

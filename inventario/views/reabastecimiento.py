@@ -2,8 +2,8 @@ import json
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from inventario.models import Producto, Ubicacion
@@ -11,35 +11,40 @@ from inventario.services.inventario_service import InventarioService
 from ventas.models import IdempotencyKey
 
 
-def _ubicaciones_de_sesion(request):
-    """Resuelve (piso, bodega) de la sucursal activa en sesión, o (None, None)."""
-    sucursal_id = request.session.get("sucursal_actual")
-    if not sucursal_id:
+def _piso_y_bodega_de(sucursal):
+    """Resuelve (piso, bodega) de una sucursal, o (None, None) si falta alguna."""
+    if sucursal is None:
         return None, None
-    piso = Ubicacion.objects.filter(sucursal_id=sucursal_id, tipo="piso").first()
-    bodega = Ubicacion.objects.filter(sucursal_id=sucursal_id, tipo="bodega").first()
+    piso = Ubicacion.objects.filter(sucursal=sucursal, tipo="piso").first()
+    bodega = Ubicacion.objects.filter(sucursal=sucursal, tipo="bodega").first()
     return piso, bodega
 
 
 @login_required
-def orden_reabastecimiento(request):
+def orden_reabastecimiento(request, ubicacion_id):
     """
     Pantalla móvil para armar la orden de reabastecimiento:
     escanear en piso → recolectar en bodega → confirmar → transferencia múltiple.
     Solo empleados (cualquier rol). Los clientes no tienen acceso.
+
+    La sucursal se resuelve desde `ubicacion_id` (la card de piso/bodega desde la
+    que se dio clic), igual que el resto de vistas de inventario_ubicacion —
+    NO depende de session["sucursal_actual"], que solo se llena al entrar a una
+    caja del POS y puede estar vacía si se llega por el sidebar.
     """
     empleado = getattr(request.user, "empleado", None)
     if empleado is None:
         messages.error(request, "Solo los empleados pueden usar el reabastecimiento.")
         return redirect("tienda_temp:landing")
 
-    piso, bodega = _ubicaciones_de_sesion(request)
+    ubicacion_actual = get_object_or_404(Ubicacion, id=ubicacion_id)
+    piso, bodega = _piso_y_bodega_de(ubicacion_actual.sucursal)
     if piso is None or bodega is None:
         messages.error(
             request,
-            "Necesitas una sucursal activa con Piso y Bodega interna configurados.",
+            "Esta sucursal necesita Piso y Bodega interna configurados.",
         )
-        return redirect("inventario:dashboard_inventario")
+        return redirect("inventario:productos_por_ubicacion", ubicacion_id=ubicacion_id)
 
     return render(request, "inventario/orden_reabastecimiento.html", {
         "piso":     piso,
@@ -56,7 +61,12 @@ def confirmar_orden_reabastecimiento(request):
     si trae más de lo registrado, la transferencia bodega→piso, y el ajuste a 0
     si el empleado marcó "ya no quedó nada". Responde resultado POR RENGLÓN.
 
-    Body JSON: {renglones: [{producto_id, cantidad, vaciar_bodega}], idempotency_key}
+    Body JSON: {piso_id, bodega_id, renglones: [{producto_id, cantidad, vaciar_bodega}],
+                idempotency_key}
+
+    piso_id/bodega_id vienen del contexto que la propia página resolvió al cargar
+    (no de session) — aquí solo se re-validan como defensa (mismo tipo, misma
+    sucursal), no se re-derivan a ciegas.
     """
     empleado = getattr(request.user, "empleado", None)
     if empleado is None:
@@ -65,17 +75,18 @@ def confirmar_orden_reabastecimiento(request):
             status=403,
         )
 
-    piso, bodega = _ubicaciones_de_sesion(request)
-    if piso is None or bodega is None:
-        return JsonResponse(
-            {"success": False, "errors": ["Sin sucursal activa con Piso y Bodega interna."]},
-            status=400,
-        )
-
     try:
         data = json.loads(request.body)
     except Exception:
         return JsonResponse({"success": False, "errors": ["JSON inválido."]}, status=400)
+
+    piso = Ubicacion.objects.filter(id=data.get("piso_id"), tipo="piso").first()
+    bodega = Ubicacion.objects.filter(id=data.get("bodega_id"), tipo="bodega").first()
+    if not piso or not bodega or piso.sucursal_id != bodega.sucursal_id:
+        return JsonResponse(
+            {"success": False, "errors": ["Piso/Bodega inválidos para esta sucursal."]},
+            status=400,
+        )
 
     renglones_raw = data.get("renglones") or []
     if not renglones_raw:
