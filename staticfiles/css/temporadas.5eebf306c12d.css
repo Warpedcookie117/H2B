@@ -1,0 +1,98 @@
+/* ================================
+   ESTILOS PARA FORMULARIO TEMPORADAS
+   ================================ */
+
+/* Contenedor general */
+.temporada-card {
+  background: #ffffff;
+  border: 1px solid #dbeafe; /* azul muy suave */
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.temporada-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Títulos */
+.temporada-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e40af; /* azul fuerte */
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+/* Labels */
+.temporada-label {
+  font-weight: 600;
+  color: #1e3a8a; /* azul elegante */
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+/* Inputs */
+.temporada-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #bfdbfe; /* azul suave */
+  border-radius: 0.5rem;
+  background-color: #fff;
+  font-size: 0.95rem;
+  color: #1e3a8a;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.temporada-input:hover {
+  border-color: #60a5fa; /* azul más fuerte */
+}
+
+.temporada-input:focus {
+  border-color: #2563eb; /* azul profesional */
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  outline: none;
+}
+
+/* Textarea */
+textarea.temporada-input {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+/* Botón */
+.temporada-btn {
+  width: 100%;
+  background-color: #2563eb; /* azul pro */
+  color: white;
+  font-weight: bold;
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.temporada-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+.temporada-btn:active {
+  transform: translateY(0);
+}
+
+/* Texto de solo lectura */
+.temporada-rango {
+  font-size: 0.85rem;
+  color: #475569;
+  margin-top: 0.25rem;
+}
+
+/* Mensaje sin rango */
+.temporada-sin-rango {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}
