@@ -108,9 +108,12 @@
 </div>
 
 <!-- BARRA STICKY INFERIOR: CONFIRMAR — position:fixed inline (a prueba de fallos del
-     CDN de Tailwind, que a veces no genera combinaciones de utilidades poco comunes) -->
+     CDN de Tailwind, que a veces no genera combinaciones de utilidades poco comunes).
+     pr-[4.5rem] en móvil deja hueco para el botón hamburguesa del sidebar
+     (fixed, bottom:1.5rem/right:1rem, z-60 — vive por encima de esta barra y
+     se desaparece en desktop, por eso md:pr-3 regresa al padding normal ahí). -->
 <div style="position:fixed;bottom:0;left:0;right:0;z-index:40;"
-     class="fixed bottom-0 left-0 right-0 px-3 pb-3 pt-2">
+     class="fixed bottom-0 left-0 right-0 pl-3 pr-[4.5rem] md:pr-3 pb-3 pt-2">
   <div class="max-w-2xl mx-auto">
     <button type="button" id="reab-btn-confirmar" disabled
             class="btn-90s w-full border-4 border-black shadow-[5px_5px_0_0_black]
@@ -207,6 +210,8 @@ window.REAB_CTX = {
 };
 </script>
 {% endblock %}
+
+{% block footer %}{% endblock %}
 
 {% block scripts %}
 <script src="{% static 'js/html5-qrcode.min.js' %}"></script>

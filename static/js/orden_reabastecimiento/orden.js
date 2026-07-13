@@ -492,16 +492,27 @@
 
         // focusMode:"continuous" pide enfoque persistente en vez del de un solo
         // disparo — evita el "se ve borroso y luego reenfoca" antes de leer.
-        // Es un "advanced constraint": si el navegador no lo soporta, se ignora solo.
-        const constraintsTrasera = { facingMode: "environment", advanced: [{ focusMode: "continuous" }] };
-        const constraintsFrontal = { facingMode: "user", advanced: [{ focusMode: "continuous" }] };
+        // Es un "advanced constraint" no estándar: en teoría el navegador que no
+        // la reconoce la ignora, pero algunos (Safari/iOS entre ellos) rechazan
+        // TODA la petición de cámara si no la reconocen — por eso cada intento
+        // cae a la versión sin esa constraint antes de darse por vencido.
+        async function iniciarCon(facingMode) {
+            try {
+                await scanner.start(
+                    { facingMode, advanced: [{ focusMode: "continuous" }] },
+                    config, onLectura, () => {}
+                );
+            } catch (_) {
+                await scanner.start({ facingMode }, config, onLectura, () => {});
+            }
+        }
 
         try {
-            await scanner.start(constraintsTrasera, config, onLectura, () => {});
+            await iniciarCon("environment");
             if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
         } catch (_) {
             try {
-                await scanner.start(constraintsFrontal, config, onLectura, () => {});
+                await iniciarCon("user");
             } catch (e2) {
                 toast("❌ Sin acceso a la cámara", "error");
                 $("reab-camara-box").classList.add("hidden");

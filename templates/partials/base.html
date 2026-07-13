@@ -49,7 +49,7 @@
 </div>
 
 <!-- Footer -->
-{% include 'partials/footer.html' %}
+{% block footer %}{% include 'partials/footer.html' %}{% endblock %}
 
 <!-- TOASTS GLOBALES — solo se muestran si el bloque content no los consumió ya -->
 {% if messages %}

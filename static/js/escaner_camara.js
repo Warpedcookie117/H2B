@@ -137,12 +137,18 @@ function initEscanerCamara(onDetectado) {
 
         // focusMode:"continuous" evita el enfoque de "un solo disparo" que deja
         // la imagen borrosa unos segundos hasta que reenfoca sola. No todos los
-        // navegadores lo soportan — es un "advanced constraint", así que si no
-        // se reconoce simplemente se ignora (no rompe el arranque de la cámara).
-        const constraintsTrasera = { facingMode: "environment", advanced: [{ focusMode: "continuous" }] };
-        const constraintsFrontal = { facingMode: "user", advanced: [{ focusMode: "continuous" }] };
+        // navegadores lo soportan — es un "advanced constraint" no estándar, y
+        // algunos (Safari/iOS entre ellos) rechazan TODA la petición de cámara
+        // si no la reconocen. Por eso cada intento cae a la versión sin esa
+        // constraint antes de darse por vencido.
+        function iniciarCon(facingMode) {
+            return scanner.start(
+                { facingMode, advanced: [{ focusMode: "continuous" }] },
+                config, onEscaneado, () => {}
+            ).catch(() => scanner.start({ facingMode }, config, onEscaneado, () => {}));
+        }
 
-        scanner.start(constraintsTrasera, config, onEscaneado, () => {})
+        iniciarCon("environment")
         .then(() => {
             activo = true;
             console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
@@ -151,7 +157,7 @@ function initEscanerCamara(onDetectado) {
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            scanner.start(constraintsFrontal, config, onEscaneado, () => {})
+            iniciarCon("user")
             .then(() => {
                 activo = true;
                 console.log("[escaner] Cámara frontal OK");
