@@ -135,20 +135,12 @@ function initEscanerCamara(onDetectado) {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        // focusMode:"continuous" evita el enfoque de "un solo disparo" que deja
-        // la imagen borrosa unos segundos hasta que reenfoca sola. No todos los
-        // navegadores lo soportan — es un "advanced constraint" no estándar, y
-        // algunos (Safari/iOS entre ellos) rechazan TODA la petición de cámara
-        // si no la reconocen. Por eso cada intento cae a la versión sin esa
-        // constraint antes de darse por vencido.
-        function iniciarCon(facingMode) {
-            return scanner.start(
-                { facingMode, advanced: [{ focusMode: "continuous" }] },
-                config, onEscaneado, () => {}
-            ).catch(() => scanner.start({ facingMode }, config, onEscaneado, () => {}));
-        }
-
-        iniciarCon("environment")
+        // Arranque simple, sin advanced constraints en la negociación inicial
+        // (reintentar .start() con constraints distintas sobre la MISMA instancia
+        // dejaba el scanner en un estado roto en algunos navegadores — por eso
+        // "sin acceso a la cámara"). El enfoque continuo se pide APARTE, después,
+        // ya con la cámara abierta — eso nunca puede tumbar el acceso.
+        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
             console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
@@ -157,7 +149,7 @@ function initEscanerCamara(onDetectado) {
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            iniciarCon("user")
+            scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
                 console.log("[escaner] Cámara frontal OK");

@@ -490,29 +490,17 @@
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        // focusMode:"continuous" pide enfoque persistente en vez del de un solo
-        // disparo — evita el "se ve borroso y luego reenfoca" antes de leer.
-        // Es un "advanced constraint" no estándar: en teoría el navegador que no
-        // la reconoce la ignora, pero algunos (Safari/iOS entre ellos) rechazan
-        // TODA la petición de cámara si no la reconocen — por eso cada intento
-        // cae a la versión sin esa constraint antes de darse por vencido.
-        async function iniciarCon(facingMode) {
-            try {
-                await scanner.start(
-                    { facingMode, advanced: [{ focusMode: "continuous" }] },
-                    config, onLectura, () => {}
-                );
-            } catch (_) {
-                await scanner.start({ facingMode }, config, onLectura, () => {});
-            }
-        }
-
+        // Arranque simple, sin advanced constraints en la negociación inicial
+        // (reintentar .start() con constraints distintas sobre la MISMA instancia
+        // dejaba el scanner en un estado roto en algunos navegadores — por eso
+        // "sin acceso a la cámara"). El enfoque continuo se pide APARTE, después,
+        // ya con la cámara abierta — eso nunca puede tumbar el acceso.
         try {
-            await iniciarCon("environment");
+            await scanner.start({ facingMode: "environment" }, config, onLectura, () => {});
             if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
         } catch (_) {
             try {
-                await iniciarCon("user");
+                await scanner.start({ facingMode: "user" }, config, onLectura, () => {});
             } catch (e2) {
                 toast("❌ Sin acceso a la cámara", "error");
                 $("reab-camara-box").classList.add("hidden");
