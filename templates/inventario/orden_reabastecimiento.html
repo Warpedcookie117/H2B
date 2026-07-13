@@ -1,0 +1,183 @@
+{% extends "partials/base.html" %}
+{% load static %}
+
+{% block title %}Orden de Reabastecimiento{% endblock %}
+
+{% block content %}
+<style>
+  /* Puntito "en vivo" del stock (WebSocket) */
+  .reab-dot {
+    display: inline-block;
+    color: #CCFF00;
+    animation: reabPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes reabPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+  }
+</style>
+<div class="max-w-2xl mx-auto px-3 py-4 space-y-4 overflow-x-hidden" id="reab-wrapper">
+
+  <!-- ENCABEZADO COMPACTO -->
+  <div class="relative overflow-hidden border-4 border-black shadow-[6px_6px_0_0_black] p-4 text-center"
+       style="background-color:#06D6A0;">
+    <h1 class="text-xl sm:text-3xl font-black text-black uppercase tracking-tight leading-tight">
+      📦 Orden de Reabastecimiento
+    </h1>
+    <p class="font-black text-black/60 text-[11px] uppercase tracking-widest mt-1">
+      {{ bodega.nombre }} → {{ piso.nombre }}
+    </p>
+  </div>
+
+  <!-- BARRA STICKY: ESCÁNER + CAPTURA -->
+  <div class="sticky top-0 z-40 border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-2 space-y-2">
+
+    <div class="flex gap-2">
+      <button type="button" id="reab-btn-camara"
+              class="btn-90s border-4 border-black shadow-[3px_3px_0_0_black]
+                     bg-[#FFBE0B] text-black font-black text-xs uppercase tracking-widest
+                     px-3 py-2 whitespace-nowrap">
+        📷 Escanear
+      </button>
+      <input type="text" id="reab-input-codigo"
+             placeholder="…o teclea el código"
+             style="font-size:16px;"
+             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+             inputmode="numeric"
+             class="flex-1 min-w-0 border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none">
+    </div>
+
+    <!-- CÁMARA CONTINUA (oculta hasta activar) -->
+    <div id="reab-camara-box" class="hidden space-y-1">
+      <div id="reab-camara" class="w-full border-2 border-black overflow-hidden"></div>
+      <p class="text-[10px] text-gray-500 font-bold text-center uppercase tracking-widest">
+        Escaneo continuo — cada bip agrega o suma 1
+      </p>
+    </div>
+
+    <!-- BÚSQUEDA POR NOMBRE (fallback sin código) -->
+    <div class="relative">
+      <input type="text" id="reab-input-nombre"
+             placeholder="🔎 Sin código? Busca por nombre…"
+             style="font-size:16px;"
+             autocomplete="off"
+             class="w-full border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none bg-[#f9fafb]">
+      <div id="reab-nombre-resultados"
+           class="hidden absolute left-0 right-0 top-full z-50 border-4 border-black bg-white
+                  shadow-[4px_4px_0_0_black] max-h-56 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- ESTADO VACÍO -->
+  <div id="reab-vacio" class="border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-8 text-center">
+    <p class="font-black text-gray-300 uppercase tracking-widest text-xl">LISTA VACÍA</p>
+    <p class="text-gray-400 font-semibold text-xs mt-2 leading-relaxed">
+      Camina el piso y escanea lo que falte.<br>
+      Luego ve a bodega, recolecta, palomea y confirma. 💪
+    </p>
+  </div>
+
+  <!-- LISTA DE RENGLONES (la pinta el JS) -->
+  <div id="reab-lista" class="space-y-3 pb-28"></div>
+
+  <!-- BARRA STICKY INFERIOR: CONFIRMAR -->
+  <div class="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3">
+    <div class="max-w-2xl mx-auto">
+      <button type="button" id="reab-btn-confirmar" disabled
+              class="btn-90s w-full border-4 border-black shadow-[5px_5px_0_0_black]
+                     bg-black text-white font-black text-sm uppercase tracking-widest py-4
+                     disabled:opacity-40 disabled:cursor-not-allowed">
+        ✅ Confirmar orden (<span id="reab-contador">0</span>)
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: RESUMEN PRE-CONFIRMACIÓN -->
+<div id="reab-modal-resumen" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-3">
+  <div class="w-full max-w-md border-4 border-black shadow-[8px_8px_0_0_black] bg-white">
+    <div class="bg-[#8338EC] border-b-4 border-black px-4 py-3">
+      <p class="font-black text-white text-sm uppercase tracking-widest">📋 Resumen de la orden</p>
+    </div>
+    <div id="reab-resumen-body" class="p-4 space-y-2 max-h-[50vh] overflow-y-auto"></div>
+    <div class="p-3 flex gap-2 border-t-4 border-black">
+      <button type="button" id="reab-resumen-cancelar"
+              class="btn-90s flex-1 border-4 border-black bg-white text-black font-black text-xs uppercase tracking-widest py-3">
+        Cancelar
+      </button>
+      <button type="button" id="reab-resumen-confirmar"
+              class="btn-90s flex-1 border-4 border-black shadow-[3px_3px_0_0_black] bg-[#06D6A0] text-black font-black text-xs uppercase tracking-widest py-3">
+        🚀 Ejecutar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ELEGIR VARIANTE (código con varios productos) -->
+<div id="reab-modal-variantes" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-3">
+  <div class="w-full max-w-md border-4 border-black shadow-[8px_8px_0_0_black] bg-white">
+    <div class="bg-[#FFBE0B] border-b-4 border-black px-4 py-3 flex justify-between items-center">
+      <p class="font-black text-black text-sm uppercase tracking-widest">¿Cuál es?</p>
+      <button type="button" id="reab-variantes-cerrar" class="font-black text-2xl leading-none">✕</button>
+    </div>
+    <div id="reab-variantes-body" class="p-3 space-y-2 max-h-[60vh] overflow-y-auto"></div>
+  </div>
+</div>
+
+<!-- MODAL: AGREGAR INVENTARIO A BODEGA INTERNA -->
+<div id="reab-modal-agregar" class="hidden fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-3">
+  <div class="w-full max-w-md border-4 border-black shadow-[8px_8px_0_0_black] bg-white">
+    <div class="bg-[#3A86FF] border-b-4 border-black px-4 py-3 flex justify-between items-center">
+      <p class="font-black text-white text-sm uppercase tracking-widest">➕ Agregar a {{ bodega.nombre }}</p>
+      <button type="button" id="reab-agregar-cerrar" class="font-black text-2xl text-white leading-none">✕</button>
+    </div>
+    <div class="p-4 space-y-3">
+      <p id="reab-agregar-nombre" class="font-black text-sm uppercase text-black"></p>
+      <label class="block font-black text-[10px] uppercase tracking-widest text-gray-500">
+        ¿Cuántas piezas encontraste de más?
+      </label>
+      <input type="number" id="reab-agregar-cantidad" min="1" value="1"
+             style="font-size:16px;"
+             inputmode="numeric"
+             class="w-full border-4 border-black px-3 py-2 font-black text-lg text-center outline-none">
+      <button type="button" id="reab-agregar-guardar"
+              class="btn-90s w-full border-4 border-black shadow-[3px_3px_0_0_black]
+                     bg-[#06D6A0] text-black font-black text-xs uppercase tracking-widest py-3">
+        Registrar entrada en bodega
+      </button>
+      <p class="text-[10px] text-gray-400 font-semibold text-center">
+        Queda registrado a tu nombre como reabastecimiento.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST GLOBAL -->
+<div id="reab-toast" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-[60] max-w-[92vw]"></div>
+
+<form class="hidden">{% csrf_token %}</form>
+
+<script>
+window.REAB_CTX = {
+  bodegaId:     {{ bodega.id }},
+  pisoId:       {{ piso.id }},
+  bodegaNombre: "{{ bodega.nombre|escapejs }}",
+  pisoNombre:   "{{ piso.nombre|escapejs }}",
+  urls: {
+    buscarCodigo:  "{% url 'inventario:buscar_producto' %}",
+    buscarNombre:  "{% url 'inventario:buscar_producto_en_ubicacion' %}",
+    stockGlobal:   "{% url 'inventario:api_stock_global' %}",
+    confirmar:     "{% url 'inventario:confirmar_orden_reabastecimiento' %}",
+    // agregar_inventario/<producto_id>/<ubicacion_id>/ — el JS interpola
+    agregarBase:   "/inventario/agregar_inventario/",
+  },
+  noImage: "{% static 'img/no-image.png' %}",
+};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/html5-qrcode.min.js' %}"></script>
+<script src="{% static 'js/orden_reabastecimiento/orden.js' %}"></script>
+{% endblock %}

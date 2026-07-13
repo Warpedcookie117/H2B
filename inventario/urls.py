@@ -65,6 +65,12 @@ from .views.inventarios import (
     ubicaciones_del_producto,
 )
 
+# Reabastecimiento (bodega interna → piso)
+from .views.reabastecimiento import (
+    orden_reabastecimiento,
+    confirmar_orden_reabastecimiento,
+)
+
 # Reportes
 from .views.reportes import (
     reportes,
@@ -160,6 +166,12 @@ urlpatterns = [
     path("buscar_producto_en_ubicacion/", buscar_producto_en_ubicacion, name="buscar_producto_en_ubicacion"),
     path('api/inventario-ubicacion/<int:producto_id>/<int:ubicacion_id>/', eliminar_inventario_ubicacion, name='eliminar_inventario_ubicacion'),
     path('api/ubicaciones-del-producto/<int:producto_id>/', ubicaciones_del_producto, name='ubicaciones_del_producto'),
+
+    # ============================
+    # REABASTECIMIENTO (bodega interna → piso)
+    # ============================
+    path("orden-reabastecimiento/", orden_reabastecimiento, name="orden_reabastecimiento"),
+    path("api/orden-reabastecimiento/confirmar/", confirmar_orden_reabastecimiento, name="confirmar_orden_reabastecimiento"),
 
     # ============================
     # SOLICITUDES

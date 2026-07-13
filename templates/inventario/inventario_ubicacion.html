@@ -74,6 +74,14 @@
             style="background-color: {{ color_header }}; color: black;">
       ⇄ Transferencia múltiple
     </button>
+    {% if ubicacion.tipo == "piso" or ubicacion.tipo == "bodega" %}
+    <a href="{% url 'inventario:orden_reabastecimiento' %}"
+       class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black]
+              bg-[#06D6A0] text-black font-black text-xs uppercase tracking-widest px-4 py-3
+              flex items-center gap-1 whitespace-nowrap">
+      📦 Reabastecer piso
+    </a>
+    {% endif %}
     <a href="{% url 'inventario:nuevo_producto' %}"
        class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_black]
               text-white font-black text-xs uppercase tracking-widest px-4 py-3

@@ -326,6 +326,86 @@ class InventarioService:
 
         return resultados
 
+    @staticmethod
+    def orden_reabastecimiento(origen, destino, renglones, empleado=None):
+        """
+        Ejecuta una orden de reabastecimiento (bodega interna → piso).
+
+        Cada renglón: {"producto": Producto, "cantidad": int, "vaciar_origen": bool}
+        La cantidad es LO QUE EL EMPLEADO FÍSICAMENTE TRAE (la verificó al surtir).
+
+        Por renglón, en savepoint independiente (un fallo no tumba a los demás):
+          1. Si cantidad pedida > stock registrado en origen → ajuste positivo
+             automático (el empleado tiene las piezas en la mano; se registra
+             como conteo a su nombre).
+          2. Transferencia origen → destino.
+          3. Si vaciar_origen y queda remanente → ajuste a 0 (el empleado
+             confirmó con un tap que ya no quedó nada en bodega).
+        """
+        resultados = []
+
+        for r in renglones:
+            producto = r["producto"]
+            cantidad = int(r["cantidad"])
+            vaciar   = bool(r.get("vaciar_origen", False))
+
+            res = {
+                "producto_id":     producto.id,
+                "nombre":          producto.nombre,
+                "cantidad":        cantidad,
+                "ajuste_positivo": 0,
+                "origen_vaciado":  False,
+                "stock_origen":    None,
+                "stock_destino":   None,
+                "ok":              False,
+                "error":           "",
+            }
+
+            try:
+                if cantidad <= 0:
+                    raise ValidationError("La cantidad debe ser mayor que cero.")
+
+                with transaction.atomic():
+                    # Lock del renglón en origen (se crea si nunca existió ahí)
+                    inv, _ = Inventario.objects.get_or_create(
+                        producto=producto, ubicacion=origen
+                    )
+                    inv = Inventario.objects.select_for_update().get(pk=inv.pk)
+                    stock_origen = inv.cantidad_actual
+
+                    # 1) Ajuste positivo automático — verificado físicamente
+                    if cantidad > stock_origen:
+                        InventarioService.ajuste(
+                            producto, cantidad, origen, empleado, motivo="conteo"
+                        )
+                        res["ajuste_positivo"] = cantidad - stock_origen
+
+                    # 2) Transferencia origen → destino
+                    t = InventarioService.transferencia(
+                        producto, cantidad, origen, destino, empleado
+                    )
+                    res["stock_origen"]  = t["cantidad_origen"]
+                    res["stock_destino"] = t["cantidad_destino"]
+
+                    # 3) Vaciar origen (tap explícito del empleado)
+                    if vaciar and t["cantidad_origen"] > 0:
+                        InventarioService.ajuste(
+                            producto, 0, origen, empleado, motivo="conteo"
+                        )
+                        res["stock_origen"]   = 0
+                        res["origen_vaciado"] = True
+
+                    res["ok"] = True
+
+            except ValidationError as e:
+                res["error"] = " ".join(e.messages)
+            except Exception as e:
+                res["error"] = str(e)
+
+            resultados.append(res)
+
+        return resultados
+
     # -----------------------------
     # INTERNOS
     # -----------------------------
