@@ -125,6 +125,7 @@ function initEscanerCamara(onDetectado) {
         const config = {
             fps: isIOS ? 8 : 15,
             qrbox: { width: 310, height: 150 },
+            disableFlip: true, // cámara trasera: sin espejo, evita el doble intento de decode por cuadro
             formatsToSupport: F ? [
                 F.EAN_13, F.EAN_8,
                 F.UPC_A,  F.UPC_E,
@@ -134,15 +135,23 @@ function initEscanerCamara(onDetectado) {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
+        // focusMode:"continuous" evita el enfoque de "un solo disparo" que deja
+        // la imagen borrosa unos segundos hasta que reenfoca sola. No todos los
+        // navegadores lo soportan — es un "advanced constraint", así que si no
+        // se reconoce simplemente se ignora (no rompe el arranque de la cámara).
+        const constraintsTrasera = { facingMode: "environment", advanced: [{ focusMode: "continuous" }] };
+        const constraintsFrontal = { facingMode: "user", advanced: [{ focusMode: "continuous" }] };
+
+        scanner.start(constraintsTrasera, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
             console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
+            if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
             inyectarControles();
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
+            scanner.start(constraintsFrontal, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
                 console.log("[escaner] Cámara frontal OK");

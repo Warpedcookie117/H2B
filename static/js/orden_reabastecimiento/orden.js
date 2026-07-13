@@ -11,8 +11,17 @@
     const LS_KEY = `reab_orden_v1_${CTX.bodegaId}`;
 
     // Estado: [{id, nombre, foto, codigo, cantidad, stockBodega, stockPiso,
-    //           palomeado, vaciar, error}]
+    //           palomeado, vaciar, error, color}]
     let items = [];
+
+    // Paleta 90s del resto de la app — acento de color por renglón, asignado
+    // UNA vez al crear el renglón (no recalculado por posición, para que no
+    // "brinquen" de color al borrar otros renglones de la lista).
+    const CARD_COLORS = ["#FFBE0B", "#FF006E", "#3A86FF", "#8338EC", "#06D6A0", "#CCFF00"];
+    let colorSeq = 0;
+    function siguienteColor() {
+        return CARD_COLORS[(colorSeq++) % CARD_COLORS.length];
+    }
 
     // ============================================================
     // HELPERS
@@ -58,8 +67,14 @@
         const lista = $("reab-lista");
         const vacio = $("reab-vacio");
         const btn   = $("reab-btn-confirmar");
+        const contador = $("reab-contador");
 
-        $("reab-contador").textContent = items.length;
+        if (contador.textContent !== String(items.length)) {
+            contador.textContent = items.length;
+            contador.classList.remove("reab-pop");
+            void contador.offsetWidth; // reflow: reinicia la animación
+            contador.classList.add("reab-pop");
+        }
         btn.disabled = items.length === 0;
         vacio.classList.toggle("hidden", items.length > 0);
 
@@ -68,9 +83,13 @@
     }
 
     function renderRenglon(item) {
+        if (!item.color) item.color = siguienteColor(); // borradores viejos sin color asignado
+
         const div = document.createElement("div");
         div.dataset.rid = item.id;
         div.className = `border-4 border-black shadow-[4px_4px_0_0_black] bg-white p-3 space-y-2 ${item.palomeado ? "opacity-60" : ""}`;
+        div.style.borderTop = `8px solid ${item.color}`;
+        div.style.backgroundColor = `${item.color}14`; // ~8% opacidad — tinte sutil, texto sigue legible
 
         const foto = item.foto || CTX.noImage;
         const faltan = item.cantidad - item.stockBodega;
@@ -237,6 +256,7 @@
             palomeado:   false,
             vaciar:      false,
             error:       "",
+            color:       siguienteColor(),
         });
         guardar(); render();
         toast(`Agregado: ${prod.nombre}`);
@@ -462,6 +482,7 @@
         const config = {
             fps: isIOS ? 8 : 15,
             qrbox: { width: 310, height: 150 },
+            disableFlip: true, // cámara trasera: sin espejo, decode más rápido por cuadro
             formatsToSupport: F ? [
                 F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
                 F.CODE_128, F.CODE_39, F.QR_CODE,
@@ -469,11 +490,18 @@
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
+        // focusMode:"continuous" pide enfoque persistente en vez del de un solo
+        // disparo — evita el "se ve borroso y luego reenfoca" antes de leer.
+        // Es un "advanced constraint": si el navegador no lo soporta, se ignora solo.
+        const constraintsTrasera = { facingMode: "environment", advanced: [{ focusMode: "continuous" }] };
+        const constraintsFrontal = { facingMode: "user", advanced: [{ focusMode: "continuous" }] };
+
         try {
-            await scanner.start({ facingMode: "environment" }, config, onLectura, () => {});
+            await scanner.start(constraintsTrasera, config, onLectura, () => {});
+            if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
         } catch (_) {
             try {
-                await scanner.start({ facingMode: "user" }, config, onLectura, () => {});
+                await scanner.start(constraintsFrontal, config, onLectura, () => {});
             } catch (e2) {
                 toast("❌ Sin acceso a la cámara", "error");
                 $("reab-camara-box").classList.add("hidden");
@@ -747,6 +775,7 @@
             if (raw) items = JSON.parse(raw) || [];
         } catch (_) { items = []; }
 
+        colorSeq = items.length; // continúa la secuencia de colores tras restaurar
         render();
 
         if (items.length) {
