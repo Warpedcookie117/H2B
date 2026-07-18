@@ -70,12 +70,20 @@
                      px-3 py-2 whitespace-nowrap">
         📷 Escanear
       </button>
-      <input type="text" id="reab-input-codigo"
-             placeholder="…o teclea el código"
-             style="font-size:16px;"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             inputmode="text"
-             class="flex-1 min-w-0 border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none">
+      <!-- UN solo campo: acepta código (escaneo/pistola/tecleado) O nombre.
+           El sistema intenta código exacto primero; si no, busca por nombre.
+           Mismo criterio que el buscador del POS e inventario_ubicacion. -->
+      <div class="relative flex-1 min-w-0">
+        <input type="text" id="reab-input-codigo"
+               placeholder="…o teclea código o nombre"
+               style="font-size:16px;"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+               inputmode="text"
+               class="w-full border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none">
+        <div id="reab-nombre-resultados"
+             class="hidden absolute left-0 right-0 top-full z-50 border-4 border-black bg-white
+                    shadow-[4px_4px_0_0_black] max-h-56 overflow-y-auto"></div>
+      </div>
     </div>
 
     <!-- CÁMARA CONTINUA (oculta hasta activar) -->
@@ -84,18 +92,6 @@
       <p class="text-[10px] text-gray-500 font-bold text-center uppercase tracking-widest">
         Escaneo continuo — cada bip agrega o suma 1
       </p>
-    </div>
-
-    <!-- BÚSQUEDA POR NOMBRE (fallback sin código) -->
-    <div class="relative">
-      <input type="text" id="reab-input-nombre"
-             placeholder="🔎 Sin código? Busca por nombre…"
-             style="font-size:16px;"
-             autocomplete="off"
-             class="w-full border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none bg-[#f9fafb]">
-      <div id="reab-nombre-resultados"
-           class="hidden absolute left-0 right-0 top-full z-50 border-4 border-black bg-white
-                  shadow-[4px_4px_0_0_black] max-h-56 overflow-y-auto"></div>
     </div>
   </div>
 

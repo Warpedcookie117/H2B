@@ -60,6 +60,17 @@ function initEscanerCamara(onDetectado) {
         return checkCalc === checkReal;
     }
 
+    // Checksum EAN-13 completo — un código que lo pasa NO puede ser una
+    // lectura chueca del decoder, así que basta UNA sola lectura.
+    function _checksumEAN13(c) {
+        if (!/^\d{13}$/.test(c)) return false;
+        let suma = 0;
+        for (let i = 0; i < 12; i++) {
+            suma += parseInt(c[i], 10) * (i % 2 === 0 ? 1 : 3);
+        }
+        return ((10 - (suma % 10)) % 10) === parseInt(c[12], 10);
+    }
+
     function onEscaneado(codigo) {
         // Normalización GTIN-13 en el momento del escaneo: si las barras
         // codifican UPC-A (12 dígitos con checksum válido), prepende el "0"
@@ -78,8 +89,13 @@ function initEscanerCamara(onDetectado) {
             lecturasIguales = 1;
         }
 
-        if (lecturasIguales < LECTURAS_NECESARIAS) {
-            console.log(`[escaner] Lectura ${lecturasIguales}/${LECTURAS_NECESARIAS}: ${codigo} (esperando confirmación)`);
+        // EAN-13/UPC-A con checksum válido → aceptar a la PRIMERA lectura
+        // (mitad del tiempo de espera). El resto (Code128, QR, lecturas con
+        // checksum roto) sigue necesitando 2 lecturas iguales seguidas.
+        const necesarias = _checksumEAN13(codigo) ? 1 : LECTURAS_NECESARIAS;
+
+        if (lecturasIguales < necesarias) {
+            console.log(`[escaner] Lectura ${lecturasIguales}/${necesarias}: ${codigo} (esperando confirmación)`);
             return;
         }
 
@@ -136,23 +152,36 @@ function initEscanerCamara(onDetectado) {
         };
 
         // Arranque simple, sin advanced constraints en la negociación inicial
-        // (reintentar .start() con constraints distintas sobre la MISMA instancia
-        // dejaba el scanner en un estado roto en algunos navegadores — por eso
-        // "sin acceso a la cámara"). El enfoque continuo se pide APARTE, después,
-        // ya con la cámara abierta — eso nunca puede tumbar el acceso.
-        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
+        // (algunos navegadores rechazan TODA la petición si no las reconocen).
+        // Resolución con "ideal": preferencia, no requisito — nunca falla, y
+        // 720p da más detalle de barras = decodifica más rápido.
+        const RES = { width: { ideal: 1280 }, height: { ideal: 720 } };
+
+        // Enfoque continuo DIRECTO sobre el track de video — en caliente, sin
+        // el applyVideoConstraints de la librería (ese detiene y reinicia el
+        // stream: era el "doble arranque" visible antes de poder leer).
+        function enfocarContinuo() {
+            try {
+                const video = reader.querySelector("video");
+                const track = video && video.srcObject && video.srcObject.getVideoTracks()[0];
+                if (track) track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+            } catch (_) {}
+        }
+
+        scanner.start({ facingMode: "environment", ...RES }, config, onEscaneado, () => {})
         .then(() => {
             activo = true;
             console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
-            if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+            enfocarContinuo();
             inyectarControles();
         })
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            scanner.start({ facingMode: "user" }, config, onEscaneado, () => {})
+            scanner.start({ facingMode: "user", ...RES }, config, onEscaneado, () => {})
             .then(() => {
                 activo = true;
                 console.log("[escaner] Cámara frontal OK");
+                enfocarContinuo();
                 inyectarControles();
             })
             .catch((errUser) => {

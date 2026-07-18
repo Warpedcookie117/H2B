@@ -103,11 +103,9 @@
                  onerror="this.src='${CTX.noImage}'">
             <div class="flex-1 min-w-0">
                 <p class="font-black text-xs uppercase leading-tight break-words">${escapeHtml(item.nombre)}</p>
-                <input data-campo="codigo" value="${escapeHtml(item.codigo || "")}"
-                       placeholder="sin código"
-                       style="font-size:16px;"
-                       inputmode="text" autocomplete="off"
-                       class="mt-1 w-full border-2 border-black px-1.5 py-0.5 text-[11px] font-semibold text-gray-600 outline-none">
+                <p class="mt-1 text-[11px] font-mono font-semibold truncate ${item.codigo ? "text-gray-600" : "text-gray-400 italic"}">
+                    ${item.codigo ? escapeHtml(item.codigo) : "sin código"}
+                </p>
             </div>
             <button data-accion="palomear" title="Recolectado"
                     class="shrink-0 w-10 h-10 border-4 border-black font-black text-lg
@@ -134,10 +132,7 @@
         </div>
 
         <div data-zona="warn" class="${faltan > 0 ? "" : "hidden"} border-2 border-black bg-[#FFBE0B] px-2 py-1.5">
-            <p class="font-black text-[10px] uppercase leading-snug" data-campo="warn-texto">
-                ⚠️ Pides ${item.cantidad} y hay ${item.stockBodega} registradas — al confirmar
-                se corregirá bodega <b>+${Math.max(faltan, 0)}</b> a tu nombre.
-            </p>
+            <p class="font-bold text-[11px] leading-snug" data-campo="warn-texto">${textoAdvertencia(item)}</p>
         </div>
 
         ${item.error ? `
@@ -181,10 +176,6 @@
             item.vaciar = e.target.checked; guardar(); render();
         };
         div.querySelector('[data-accion="agregar-inv"]').onclick = () => abrirModalAgregar(item);
-        div.querySelector('[data-campo="codigo"]').onchange = (e) => {
-            const nuevo = e.target.value.trim();
-            if (nuevo && nuevo !== item.codigo) reasignarCodigo(item, nuevo);
-        };
 
         return div;
     }
@@ -193,6 +184,22 @@
         return String(s ?? "").replace(/[&<>"']/g, c => ({
             "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
         }[c]));
+    }
+
+    // Mensaje del banner de advertencia — en cristiano, para quien sea.
+    // Dos casos: el producto NI EXISTE registrado en bodega, o pides más
+    // de lo que el sistema tiene anotado.
+    function textoAdvertencia(item) {
+        const faltan = item.cantidad - item.stockBodega;
+        if (item.stockBodega <= 0) {
+            return `⚠️ Pides <b>${item.cantidad}</b> pero este producto NI EXISTE en la bodega
+                    (según el sistema 🙄). Al confirmar se corrige solito, a tu nombre.
+                    Ojo: si SÍ hay en bodega, cuéntalas y pícale a <b>➕ AGREGAR INV.</b> —
+                    pa' que no la cuenten doble.`;
+        }
+        return `⚠️ Pides <b>${item.cantidad}</b> y solo hay <b>${item.stockBodega}</b> anotadas, pa.
+                Al confirmar, el sistema corrige el <b>+${faltan}</b> solito, a tu nombre.
+                ¿Encontraste más? Cuéntalas y pícale a <b>➕ AGREGAR INV.</b>`;
     }
 
     // Actualización quirúrgica del stock (WS) — no re-renderiza (no roba el foco)
@@ -216,8 +223,7 @@
             warn.classList.toggle("hidden", faltan <= 0);
             const txt = warn.querySelector('[data-campo="warn-texto"]');
             if (txt && faltan > 0) {
-                txt.innerHTML = `⚠️ Pides ${item.cantidad} y hay ${item.stockBodega} registradas — al confirmar
-                                 se corregirá bodega <b>+${faltan}</b> a tu nombre.`;
+                txt.innerHTML = textoAdvertencia(item);
             }
         }
     }
@@ -263,28 +269,31 @@
         toast(`Agregado: ${prod.nombre}`);
     }
 
-    // pickerMode: null | {tipo:"add", codigo} | {tipo:"replace", rid, codigo}
-    let pickerMode = null;
-
-    async function buscarPorCodigo(codigo, modo) {
+    // Un término, dos intentos: primero como CÓDIGO exacto (escaneo/pistola);
+    // si no coincide, como NOMBRE (sugerencias). El empleado no tiene que
+    // saber cuál es cuál — el sistema resuelve solo.
+    async function buscarProducto(termino) {
         try {
-            const r = await fetch(`${CTX.urls.buscarCodigo}?codigo=${encodeURIComponent(codigo)}`);
+            const r = await fetch(`${CTX.urls.buscarCodigo}?codigo=${encodeURIComponent(termino)}`);
             const data = await r.json();
 
             if (!data.existe || !data.variantes?.length) {
-                toast(`No encontré el código ${codigo}`, "error");
-                if (modo?.tipo === "replace") render(); // revierte el input
+                // No es un código registrado → intentarlo como nombre
+                const encontrados = await buscarPorNombre(termino);
+                if (!encontrados) toast(`No encontré nada con "${termino}"`, "error");
                 return;
             }
 
+            const codigo = termino;
+            inputCodigo.value = "";
+            ocultarSugerencias();
+
             if (data.variantes.length === 1) {
-                resolverVariante(data.variantes[0], codigo, modo);
+                agregarProducto(data.variantes[0], codigo);
                 return;
             }
 
             // Varias variantes con el mismo código → elegir
-            pickerMode = modo || { tipo: "add", codigo };
-            pickerMode.codigo = codigo;
             const body = $("reab-variantes-body");
             body.innerHTML = "";
             data.variantes.forEach(v => {
@@ -304,70 +313,79 @@
                     </span>`;
                 opcion.onclick = () => {
                     $("reab-modal-variantes").classList.add("hidden");
-                    resolverVariante(v, pickerMode.codigo, pickerMode);
-                    pickerMode = null;
+                    agregarProducto(v, codigo);
                 };
                 body.appendChild(opcion);
             });
             $("reab-modal-variantes").classList.remove("hidden");
 
         } catch (e) {
-            console.error("[reab] buscarPorCodigo:", e);
-            toast("Error buscando el código", "error");
+            console.error("[reab] buscarProducto:", e);
+            toast("Error buscando el producto", "error");
         }
     }
 
-    async function resolverVariante(v, codigo, modo) {
-        if (modo?.tipo === "replace") {
-            const item = items.find(i => i.id === modo.rid);
-            if (!item) return;
-            if (items.some(i => i.id === v.producto_id && i.id !== item.id)) {
-                toast("Ese producto ya está en la lista", "warn");
-                render();
-                return;
-            }
-            const stocks = await fetchStocks([v.producto_id]);
-            const porUb = stocks[String(v.producto_id)] || {};
-            item.id          = v.producto_id;
-            item.nombre      = v.nombre;
-            item.foto        = v.foto_url || null;
-            item.codigo      = codigo;
-            item.stockBodega = porUb[String(CTX.bodegaId)] ?? 0;
-            item.stockPiso   = porUb[String(CTX.pisoId)] ?? 0;
-            item.error       = "";
-            guardar(); render();
-            toast(`Renglón reasignado: ${v.nombre}`);
-        } else {
-            agregarProducto(v, codigo);
-        }
+    // ============================================================
+    // CAPTURA UNIFICADA — un solo campo para código O nombre.
+    // Pistola física: "teclea" el código y remata con Enter — fallbacks
+    // keyup (Android Chrome a veces no dispara keydown con Enter) y
+    // change (pistolas Bluetooth que terminan con Tab/blur).
+    // ============================================================
+
+    const inputCodigo = $("reab-input-codigo");
+    const dropNombre  = $("reab-nombre-resultados");
+    let nombreTimer = null;
+
+    function ocultarSugerencias() {
+        dropNombre.classList.add("hidden");
     }
 
-    function reasignarCodigo(item, codigoNuevo) {
-        buscarPorCodigo(codigoNuevo, { tipo: "replace", rid: item.id });
+    function procesarEntrada() {
+        const termino = inputCodigo.value.trim();
+        if (!termino) return;
+        clearTimeout(nombreTimer);
+        buscarProducto(termino);
     }
 
-    // ---- Input manual de código ----
-    $("reab-input-codigo").addEventListener("keydown", (e) => {
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        const codigo = e.target.value.trim();
-        if (!codigo) return;
-        e.target.value = "";
-        buscarPorCodigo(codigo, { tipo: "add" });
+    inputCodigo.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); procesarEntrada(); }
+    });
+    inputCodigo.addEventListener("keyup", (e) => {
+        if (e.key === "Enter" || e.keyCode === 13) procesarEntrada();
+    });
+    // Pistolas que rematan con Tab/blur: solo si las sugerencias están
+    // cerradas — si están abiertas, el usuario está tecleando un nombre y
+    // el blur de picarle a una sugerencia no debe disparar otra búsqueda.
+    inputCodigo.addEventListener("change", () => {
+        if (dropNombre.classList.contains("hidden")) procesarEntrada();
     });
 
-    // ---- Búsqueda por nombre (fallback sin código) ----
-    let nombreTimer = null;
-    const inputNombre = $("reab-input-nombre");
-    const dropNombre  = $("reab-nombre-resultados");
-
-    inputNombre.addEventListener("input", () => {
+    // Sugerencias por nombre en vivo mientras teclea (debounce 350ms).
+    // La pistola teclea tan rápido que el debounce nunca alcanza a disparar.
+    inputCodigo.addEventListener("input", () => {
         clearTimeout(nombreTimer);
-        const q = inputNombre.value.trim();
-        if (q.length < 2) { dropNombre.classList.add("hidden"); return; }
+        const q = inputCodigo.value.trim();
+        if (q.length < 2) { ocultarSugerencias(); return; }
         nombreTimer = setTimeout(() => buscarPorNombre(q), 350);
     });
 
+    // Teclas globales → foco al campo: la pistola funciona desde cualquier
+    // parte de la página sin picarle al campo primero. NO roba el foco si ya
+    // estás en otro campo (cantidades, modales) — mismo patrón que el POS.
+    document.addEventListener("keydown", (e) => {
+        const tag = document.activeElement.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") return;
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (["Tab", "Escape", "Enter",
+             "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+             "F1", "F2", "F3", "F4", "F5", "F6",
+             "F7", "F8", "F9", "F10", "F11", "F12"].includes(e.key)) return;
+        inputCodigo.value = "";
+        ocultarSugerencias();
+        inputCodigo.focus();
+    });
+
+    // Busca por nombre, pinta las sugerencias y devuelve cuántas encontró
     async function buscarPorNombre(q) {
         try {
             // Primero en bodega (de ahí se surte); si nada, en piso.
@@ -391,22 +409,27 @@
                     b.className = "w-full text-left px-3 py-2 border-b-2 border-black/10 font-bold text-xs uppercase hover:bg-[#FFBE0B]";
                     b.textContent = res.nombre;
                     b.onclick = () => {
-                        dropNombre.classList.add("hidden");
-                        inputNombre.value = "";
-                        agregarProducto({ producto_id: res.id, nombre: res.nombre, foto_url: res.foto_url }, "");
+                        ocultarSugerencias();
+                        inputCodigo.value = "";
+                        agregarProducto(
+                            { producto_id: res.id, nombre: res.nombre, foto_url: res.foto_url },
+                            res.codigo_barras || ""
+                        );
                     };
                     dropNombre.appendChild(b);
                 });
             }
             dropNombre.classList.remove("hidden");
+            return resultados.length;
         } catch (e) {
             console.warn("[reab] buscarPorNombre:", e);
+            return 0;
         }
     }
 
     document.addEventListener("click", (e) => {
-        if (!dropNombre.contains(e.target) && e.target !== inputNombre) {
-            dropNombre.classList.add("hidden");
+        if (!dropNombre.contains(e.target) && e.target !== inputCodigo) {
+            ocultarSugerencias();
         }
     });
 
@@ -434,14 +457,37 @@
         return ((10 - (suma % 10)) % 10) === checkReal;
     }
 
+    function checksumEAN13(c) {
+        if (!/^\d{13}$/.test(c)) return false;
+        let suma = 0;
+        for (let i = 0; i < 12; i++) {
+            suma += parseInt(c[i], 10) * (i % 2 === 0 ? 1 : 3);
+        }
+        return ((10 - (suma % 10)) % 10) === parseInt(c[12], 10);
+    }
+
+    // Enfoque continuo directo sobre el track de getUserMedia. NO usa el
+    // applyVideoConstraints de html5-qrcode: ese reinicia el stream completo
+    // y provoca el "doble arranque" (cámara inicia → reinicia → recién lee).
+    function enfocarContinuo(contenedorId) {
+        try {
+            const video = document.querySelector(`#${contenedorId} video`);
+            const track = video && video.srcObject && video.srcObject.getVideoTracks()[0];
+            if (track) track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+        } catch (_) {}
+    }
+
     function onLectura(codigo) {
         // Normalización UPC-A → EAN-13 (mismo criterio que el escáner global)
         if (/^\d{12}$/.test(codigo) && checksumUPCA(codigo)) codigo = "0" + codigo;
 
-        // Confirmación: 2 lecturas iguales seguidas (filtra falsos positivos)
+        // Anti-falsos-positivos: los EAN-13/UPC-A con dígito verificador
+        // VÁLIDO se aceptan a la PRIMERA lectura (el checksum ya garantiza
+        // que no fue lectura chueca) — el resto necesita 2 lecturas iguales.
+        const necesarias = checksumEAN13(codigo) ? 1 : LECTURAS_NECESARIAS;
         if (codigo === ultimoCodigoLeido) lecturasIguales++;
         else { ultimoCodigoLeido = codigo; lecturasIguales = 1; }
-        if (lecturasIguales < LECTURAS_NECESARIAS) return;
+        if (lecturasIguales < necesarias) return;
 
         // Cooldown: el mismo código dentro de la ventana se ignora
         // (la cámara sigue viendo el código ~1s después del bip)
@@ -453,10 +499,10 @@
         vibrar();
         flashCamara();
 
-        // El código leído "cae" en el campo de captura manual — mismo campo,
+        // El código leído "cae" en el campo de captura — mismo campo,
         // mismo camino, tanto si lo tecleas como si lo escaneas.
-        $("reab-input-codigo").value = codigo;
-        buscarPorCodigo(codigo, { tipo: "add" });
+        inputCodigo.value = codigo;
+        buscarProducto(codigo);
     }
 
     function flashCamara() {
@@ -496,16 +542,15 @@
         };
 
         // Arranque simple, sin advanced constraints en la negociación inicial
-        // (reintentar .start() con constraints distintas sobre la MISMA instancia
-        // dejaba el scanner en un estado roto en algunos navegadores — por eso
-        // "sin acceso a la cámara"). El enfoque continuo se pide APARTE, después,
-        // ya con la cámara abierta — eso nunca puede tumbar el acceso.
+        // (algunos navegadores rechazan TODA la petición si no las reconocen).
+        // La resolución va con "ideal": es preferencia, no requisito — nunca
+        // puede fallar, y 720p da más detalle de barras = decodifica más rápido.
+        const RES = { width: { ideal: 1280 }, height: { ideal: 720 } };
         try {
-            await scanner.start({ facingMode: "environment" }, config, onLectura, () => {});
-            if (!isIOS) scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+            await scanner.start({ facingMode: "environment", ...RES }, config, onLectura, () => {});
         } catch (_) {
             try {
-                await scanner.start({ facingMode: "user" }, config, onLectura, () => {});
+                await scanner.start({ facingMode: "user", ...RES }, config, onLectura, () => {});
             } catch (e2) {
                 toast("❌ Sin acceso a la cámara", "error");
                 $("reab-camara-box").classList.add("hidden");
@@ -513,6 +558,12 @@
                 return;
             }
         }
+
+        // Enfoque continuo DIRECTO sobre el track de video — en caliente, sin
+        // pasar por applyVideoConstraints de la librería (esa detiene y
+        // reinicia el stream: era el "doble arranque" visible antes de poder
+        // leer). Si el navegador no soporta focusMode, lo ignora y ya.
+        enfocarContinuo("reab-camara");
 
         escaneando = true;
         $("reab-btn-camara").textContent = "⏹ Detener";
@@ -833,8 +884,6 @@
     });
     $("reab-variantes-cerrar").onclick = () => {
         $("reab-modal-variantes").classList.add("hidden");
-        pickerMode = null;
-        render();
     };
 
     // ============================================================

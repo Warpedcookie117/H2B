@@ -557,6 +557,7 @@ def buscar_producto_en_ubicacion(request):
             "nombre": inv.producto.nombre,
             "cantidad_actual": inv.cantidad_actual,
             "foto_url": inv.producto.foto_url.url if inv.producto.foto_url else None,
+            "codigo_barras": inv.producto.codigo_barras or "",
         }
         for inv in inventarios
     ]
