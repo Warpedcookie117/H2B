@@ -466,6 +466,20 @@
         return ((10 - (suma % 10)) % 10) === parseInt(c[12], 10);
     }
 
+    // Traduce el error real de getUserMedia — "sin acceso" a secas no dice si
+    // fue permiso denegado, cámara ocupada o dispositivo sin cámara. Con el
+    // nombre del error, el arreglo es directo en vez de adivinar.
+    function mensajeErrorCamara(e) {
+        const n = e && e.name;
+        if (n === "NotAllowedError")
+            return "🚫 El navegador tiene BLOQUEADO el permiso de cámara para este sitio — actívalo en los ajustes del sitio y reintenta";
+        if (n === "NotFoundError")
+            return "❌ Este dispositivo no tiene cámara disponible";
+        if (n === "NotReadableError")
+            return "⚠️ La cámara está ocupada por otra app o pestaña — ciérrala y reintenta";
+        return `❌ Sin acceso a la cámara (${n || e || "error desconocido"})`;
+    }
+
     // Enfoque continuo directo sobre el track de getUserMedia. NO usa el
     // applyVideoConstraints de html5-qrcode: ese reinicia el stream completo
     // y provoca el "doble arranque" (cámara inicia → reinicia → recién lee).
@@ -541,18 +555,16 @@
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        // Arranque simple, sin advanced constraints en la negociación inicial
-        // (algunos navegadores rechazan TODA la petición si no las reconocen).
-        // La resolución va con "ideal": es preferencia, no requisito — nunca
-        // puede fallar, y 720p da más detalle de barras = decodifica más rápido.
-        const RES = { width: { ideal: 1280 }, height: { ideal: 720 } };
+        // Arranque simple: la librería extrae SOLO facingMode/deviceId del
+        // primer parámetro y descarta cualquier otra clave (verificado en el
+        // código minificado) — no tiene caso pasar más constraints aquí.
         try {
-            await scanner.start({ facingMode: "environment", ...RES }, config, onLectura, () => {});
+            await scanner.start({ facingMode: "environment" }, config, onLectura, () => {});
         } catch (_) {
             try {
-                await scanner.start({ facingMode: "user", ...RES }, config, onLectura, () => {});
+                await scanner.start({ facingMode: "user" }, config, onLectura, () => {});
             } catch (e2) {
-                toast("❌ Sin acceso a la cámara", "error");
+                toast(mensajeErrorCamara(e2), "error");
                 $("reab-camara-box").classList.add("hidden");
                 scanner = null;
                 return;

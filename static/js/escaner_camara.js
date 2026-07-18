@@ -16,6 +16,13 @@ function initEscanerCamara(onDetectado) {
     let scanner = null;
     let activo  = false;
 
+    // iOS no tiene BarcodeDetector nativo → JS puro, más lento. Se decide UNA
+    // vez aquí porque lo usan tanto iniciar() como inyectarControles() — si se
+    // declara dentro de iniciar(), inyectarControles() no la alcanza
+    // (ReferenceError) y el catch lo confunde con "cámara falló".
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
     // ============================
     // ABRIR / CERRAR MODAL
     // ============================
@@ -132,11 +139,6 @@ function initEscanerCamara(onDetectado) {
         reader.innerHTML = "";
         scanner = new Lib("camara-reader");
 
-        // iOS no tiene BarcodeDetector nativo → usa JS puro → más lento.
-        // Bajamos fps y pedimos 720p para que el decodificador procese menos píxeles.
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-            || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
         const F = window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats;
         const config = {
             fps: isIOS ? 8 : 15,
@@ -151,12 +153,6 @@ function initEscanerCamara(onDetectado) {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
         };
 
-        // Arranque simple, sin advanced constraints en la negociación inicial
-        // (algunos navegadores rechazan TODA la petición si no las reconocen).
-        // Resolución con "ideal": preferencia, no requisito — nunca falla, y
-        // 720p da más detalle de barras = decodifica más rápido.
-        const RES = { width: { ideal: 1280 }, height: { ideal: 720 } };
-
         // Enfoque continuo DIRECTO sobre el track de video — en caliente, sin
         // el applyVideoConstraints de la librería (ese detiene y reinicia el
         // stream: era el "doble arranque" visible antes de poder leer).
@@ -168,26 +164,29 @@ function initEscanerCamara(onDetectado) {
             } catch (_) {}
         }
 
-        scanner.start({ facingMode: "environment", ...RES }, config, onEscaneado, () => {})
-        .then(() => {
-            activo = true;
-            console.log(`[escaner] Cámara trasera OK (iOS=${isIOS}, fps=${config.fps})`);
-            enfocarContinuo();
-            inyectarControles();
-        })
+        // Arranque simple: la librería extrae SOLO facingMode/deviceId del
+        // primer parámetro y descarta cualquier otra clave — pasar más
+        // constraints aquí no sirve de nada (verificado en el minificado).
+        scanner.start({ facingMode: "environment" }, config, onEscaneado, () => {})
         .catch((errEnv) => {
             console.warn("[escaner] Cámara trasera falló:", errEnv, "— intentando frontal...");
-            scanner.start({ facingMode: "user", ...RES }, config, onEscaneado, () => {})
-            .then(() => {
-                activo = true;
-                console.log("[escaner] Cámara frontal OK");
+            return scanner.start({ facingMode: "user" }, config, onEscaneado, () => {});
+        })
+        .then(() => {
+            activo = true;
+            console.log(`[escaner] Cámara OK (iOS=${isIOS}, fps=${config.fps})`);
+            // Los extras (enfoque, linterna, zoom) jamás deben tumbar la
+            // cámara: si algo truena aquí, se registra y el escaneo sigue.
+            try {
                 enfocarContinuo();
                 inyectarControles();
-            })
-            .catch((errUser) => {
-                console.error("[escaner] Ambas cámaras fallaron:", errUser);
-                mostrarError("❌ Sin acceso a cámara.\n" + errUser);
-            });
+            } catch (e) {
+                console.warn("[escaner] Controles extra fallaron (la cámara sigue viva):", e);
+            }
+        })
+        .catch((err) => {
+            console.error("[escaner] Ambas cámaras fallaron:", err);
+            mostrarError(mensajeErrorCamara(err));
         });
     }
 
@@ -259,6 +258,20 @@ function initEscanerCamara(onDetectado) {
     // ============================
     // ERROR VISIBLE (solo errores fatales)
     // ============================
+
+    // Traduce el error real de getUserMedia — "sin acceso" a secas no dice si
+    // fue permiso denegado, cámara ocupada o dispositivo sin cámara.
+    function mensajeErrorCamara(e) {
+        const n = e && e.name;
+        if (n === "NotAllowedError")
+            return "🚫 El navegador tiene BLOQUEADO el permiso de cámara para este sitio — actívalo en los ajustes del sitio y reintenta";
+        if (n === "NotFoundError")
+            return "❌ Este dispositivo no tiene cámara disponible";
+        if (n === "NotReadableError")
+            return "⚠️ La cámara está ocupada por otra app o pestaña — ciérrala y reintenta";
+        return `❌ Sin acceso a cámara.\n${n || e || "error desconocido"}`;
+    }
+
     function mostrarError(msg) {
         reader.innerHTML = `
             <div style="padding:1.5rem;text-align:center;font-weight:700;font-size:0.85rem;
