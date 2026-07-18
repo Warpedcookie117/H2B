@@ -526,6 +526,8 @@ def mis_productos(request):
     if empleado.rol != "dueño":
         return HttpResponseForbidden("No tienes permiso para ver esta vista")
 
+    q = (request.GET.get('q') or "").strip()
+
     # Productos solo del dueño
     productos = (
         Producto.objects
@@ -539,11 +541,44 @@ def mis_productos(request):
         .prefetch_related('inventarios__ubicacion', 'temporada')
     )
 
+    # Filtro de búsqueda EN SERVIDOR — el buscador de la página manda ?q=
+    # pero esta vista lo ignoraba: cada tecleada re-renderizaba el catálogo
+    # completo sin filtrar nada.
+    if q:
+        # Búsqueda dual UPC-A/EAN-13 (mismo criterio que buscar_producto_por_codigo)
+        codigos_exactos = [q]
+        if q.isdigit():
+            if len(q) == 12:
+                codigos_exactos.append("0" + q)
+            elif len(q) == 13 and q.startswith("0"):
+                codigos_exactos.append(q[1:])
+
+        productos = productos.filter(
+            Q(nombre__icontains=q) |
+            Q(descripcion__icontains=q) |
+            Q(codigo_barras__in=codigos_exactos) |
+            Q(codigo_barras__icontains=q) |
+            Q(categoria__nombre__icontains=q) |
+            Q(categoria__padre__nombre__icontains=q) |
+            Q(temporada__nombre__icontains=q)
+        ).distinct()
+
+    productos = productos.order_by('nombre')
+
+    # Paginación — sin ella esta vista renderizaba TODO el catálogo del dueño
+    # (miles de productos) en cada petición, incluso una por cada letra
+    # tecleada en el buscador; esa carga fue la causa raíz de una caída
+    # del sitio (saturó el único carril síncrono de Daphne).
+    paginator = Paginator(productos, 20)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
     # Ubicaciones dinámicas
     ubicaciones = Ubicacion.objects.all().order_by("nombre")
 
     return render(request, 'inventario/mis_productos.html', {
-        'productos': productos,
+        'productos': page_obj,
+        'page_obj': page_obj,
+        'q': q,
         'ubicaciones': ubicaciones,
     })
     

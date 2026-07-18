@@ -48,6 +48,14 @@
       <p class="inline-block mt-2 border-2 border-black bg-black text-white font-black text-[11px] uppercase tracking-widest px-3 py-1">
         {{ bodega.nombre }} → {{ piso.nombre }}
       </p>
+      <div class="mt-3">
+        <button type="button" id="reab-btn-pdf" disabled
+                class="btn-90s border-4 border-black shadow-[3px_3px_0_0_black]
+                       bg-[#FFBE0B] text-black font-black text-[11px] uppercase tracking-widest
+                       px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed">
+          📄 Compartir lista (PDF)
+        </button>
+      </div>
     </div>
   </div>
 
@@ -66,7 +74,7 @@
              placeholder="…o teclea el código"
              style="font-size:16px;"
              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-             inputmode="numeric"
+             inputmode="text"
              class="flex-1 min-w-0 border-4 border-black px-3 py-2 font-semibold text-gray-900 outline-none">
     </div>
 
@@ -196,6 +204,7 @@ window.REAB_CTX = {
     buscarNombre:  "{% url 'inventario:buscar_producto_en_ubicacion' %}",
     stockGlobal:   "{% url 'inventario:api_stock_global' %}",
     confirmar:     "{% url 'inventario:confirmar_orden_reabastecimiento' %}",
+    pdf:           "{% url 'inventario:pdf_orden_reabastecimiento' %}",
     // agregar_inventario/<producto_id>/<ubicacion_id>/ — el JS interpola
     agregarBase:   "/inventario/agregar_inventario/",
   },

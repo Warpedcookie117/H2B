@@ -1,14 +1,18 @@
 import json
+import logging
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from inventario.models import Producto, Ubicacion
 from inventario.services.inventario_service import InventarioService
 from ventas.models import IdempotencyKey
+
+_logger = logging.getLogger(__name__)
 
 
 def _piso_y_bodega_de(sucursal):
@@ -153,3 +157,155 @@ def confirmar_orden_reabastecimiento(request):
         "exitosos": exitosos,
         "resultados": resultados,
     })
+
+
+@login_required
+@require_POST
+def pdf_orden_reabastecimiento(request):
+    """
+    Genera un PDF de la lista actual (foto + nombre + código + cantidad pedida)
+    para compartir por WhatsApp mientras se recolecta en bodega — NO ejecuta
+    ningún movimiento de inventario, es solo una "lista de surtido" imprimible.
+
+    Body JSON: {piso_id, bodega_id, renglones: [{producto_id, cantidad}]}
+
+    Los datos del producto se re-leen de la BD (nombre/código/foto), no se
+    confía en lo que mande el cliente — solo la cantidad pedida por renglón.
+    """
+    import io
+    import requests
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfgen import canvas
+
+    empleado = getattr(request.user, "empleado", None)
+    if empleado is None:
+        return JsonResponse(
+            {"success": False, "errors": ["Solo los empleados pueden reabastecer."]},
+            status=403,
+        )
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"success": False, "errors": ["JSON inválido."]}, status=400)
+
+    piso = Ubicacion.objects.filter(id=data.get("piso_id"), tipo="piso").first()
+    bodega = Ubicacion.objects.filter(id=data.get("bodega_id"), tipo="bodega").first()
+    if not piso or not bodega or piso.sucursal_id != bodega.sucursal_id:
+        return JsonResponse(
+            {"success": False, "errors": ["Piso/Bodega inválidos para esta sucursal."]},
+            status=400,
+        )
+
+    renglones_raw = data.get("renglones") or []
+    if not renglones_raw:
+        return JsonResponse({"success": False, "errors": ["La lista está vacía."]}, status=400)
+
+    # Cantidad por producto_id (server-side, no confía en nombre/foto del cliente)
+    cantidades = {}
+    for item in renglones_raw:
+        try:
+            cantidades[int(item.get("producto_id"))] = int(item.get("cantidad"))
+        except (TypeError, ValueError):
+            continue
+
+    productos = {
+        p.id: p for p in Producto.objects.filter(id__in=cantidades.keys())
+    }
+
+    # ------------------------------------------------------------
+    # ARMADO DEL PDF
+    # ------------------------------------------------------------
+    width, height = A4
+    margen = 15 * mm
+    fila_alto = 24 * mm
+    img_lado = 18 * mm
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+
+    def encabezado():
+        y = height - margen
+        try:
+            c.drawImage("static/img/logotienda.png", margen, y - 16 * mm,
+                        width=16 * mm, height=16 * mm, preserveAspectRatio=True, mask="auto")
+        except Exception:
+            pass
+        c.setFont("Helvetica-Bold", 15)
+        c.drawString(margen + 20 * mm, y - 6 * mm, "Lista de surtido")
+        c.setFont("Helvetica", 9)
+        c.drawString(margen + 20 * mm, y - 12 * mm, f"{bodega.nombre} → {piso.nombre}")
+        c.setFont("Helvetica", 8)
+        c.drawRightString(width - margen, y - 6 * mm,
+                           timezone.localtime().strftime("%d/%m/%Y %H:%M"))
+        c.drawRightString(width - margen, y - 12 * mm,
+                           f"Generado por: {empleado.user.get_full_name() or empleado.user.username}")
+        c.setLineWidth(1)
+        c.line(margen, y - 18 * mm, width - margen, y - 18 * mm)
+        return y - 18 * mm - 6 * mm
+
+    y = encabezado()
+    pagina = 1
+
+    def pie_de_pagina():
+        c.setFont("Helvetica", 8)
+        c.drawRightString(width - margen, margen - 5 * mm, f"Página {pagina}")
+
+    for producto_id, cantidad in cantidades.items():
+        producto = productos.get(producto_id)
+        if producto is None:
+            continue
+
+        if y - fila_alto < margen:
+            pie_de_pagina()
+            c.showPage()
+            pagina += 1
+            y = encabezado()
+
+        y_fila_base = y - fila_alto
+
+        # Foto — se descarga de Cloudinary; si falla, se deja el hueco vacío
+        # (una imagen caída nunca debe tumbar el PDF completo).
+        if producto.foto_url:
+            try:
+                resp = requests.get(producto.foto_url.url, timeout=4)
+                resp.raise_for_status()
+                c.drawImage(
+                    ImageReader(io.BytesIO(resp.content)),
+                    margen, y_fila_base + 3 * mm,
+                    width=img_lado, height=img_lado,
+                    preserveAspectRatio=True, anchor="c", mask="auto",
+                )
+            except Exception as e:
+                _logger.warning("No se pudo cargar foto de producto %s en PDF: %s", producto_id, e)
+
+        c.setLineWidth(0.5)
+        c.rect(margen, y_fila_base + 3 * mm, img_lado, img_lado)
+
+        texto_x = margen + img_lado + 6 * mm
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(texto_x, y_fila_base + fila_alto - 8 * mm, producto.nombre[:55])
+        c.setFont("Helvetica", 8)
+        c.setFillGray(0.4)
+        c.drawString(texto_x, y_fila_base + fila_alto - 14 * mm,
+                     producto.codigo_barras or "sin código")
+        c.setFillGray(0)
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawRightString(width - margen, y_fila_base + fila_alto - 12 * mm, f"x{cantidad}")
+
+        c.setLineWidth(0.5)
+        c.line(margen, y_fila_base, width - margen, y_fila_base)
+
+        y = y_fila_base
+
+    pie_de_pagina()
+    c.save()
+    buf.seek(0)
+
+    response = HttpResponse(buf.read(), content_type="application/pdf")
+    nombre_archivo = f"lista_surtido_{timezone.localtime().strftime('%Y%m%d_%H%M')}.pdf"
+    response["Content-Disposition"] = f'inline; filename="{nombre_archivo}"'
+    return response

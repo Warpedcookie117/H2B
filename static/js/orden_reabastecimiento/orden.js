@@ -76,6 +76,7 @@
             contador.classList.add("reab-pop");
         }
         btn.disabled = items.length === 0;
+        $("reab-btn-pdf").disabled = items.length === 0;
         vacio.classList.toggle("hidden", items.length > 0);
 
         lista.innerHTML = "";
@@ -105,7 +106,7 @@
                 <input data-campo="codigo" value="${escapeHtml(item.codigo || "")}"
                        placeholder="sin código"
                        style="font-size:16px;"
-                       inputmode="numeric" autocomplete="off"
+                       inputmode="text" autocomplete="off"
                        class="mt-1 w-full border-2 border-black px-1.5 py-0.5 text-[11px] font-semibold text-gray-600 outline-none">
             </div>
             <button data-accion="palomear" title="Recolectado"
@@ -451,6 +452,10 @@
 
         vibrar();
         flashCamara();
+
+        // El código leído "cae" en el campo de captura manual — mismo campo,
+        // mismo camino, tanto si lo tecleas como si lo escaneas.
+        $("reab-input-codigo").value = codigo;
         buscarPorCodigo(codigo, { tipo: "add" });
     }
 
@@ -649,6 +654,74 @@
             btn.disabled = false;
         }
     };
+
+    // ============================================================
+    // COMPARTIR PDF — lista de surtido (foto + nombre + código + cantidad).
+    // Solo genera el PDF; NO toca inventario ni ejecuta la orden.
+    // ============================================================
+
+    $("reab-btn-pdf").addEventListener("click", async () => {
+        if (!items.length) return;
+
+        const btn = $("reab-btn-pdf");
+        const textoOriginal = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Generando PDF…";
+
+        try {
+            const payload = {
+                piso_id:   CTX.pisoId,
+                bodega_id: CTX.bodegaId,
+                renglones: items.map(i => ({ producto_id: i.id, cantidad: i.cantidad })),
+            };
+
+            const r = await fetch(CTX.urls.pdf, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRF(),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!r.ok) {
+                toast("No se pudo generar el PDF", "error");
+                return;
+            }
+
+            const blob = await r.blob();
+            const nombreArchivo = `lista_surtido_${Date.now()}.pdf`;
+            const archivo = new File([blob], nombreArchivo, { type: "application/pdf" });
+
+            // Web Share API con archivo → hoja nativa de compartir (WhatsApp, etc.)
+            // Si el navegador no lo soporta, se descarga el PDF como respaldo.
+            if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+                await navigator.share({
+                    files: [archivo],
+                    title: "Lista de surtido",
+                    text: `${CTX.bodegaNombre} → ${CTX.pisoNombre}`,
+                });
+            } else {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = nombreArchivo;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            }
+        } catch (e) {
+            // El usuario cancelando la hoja de compartir también cae aquí (AbortError) — no es un error real.
+            if (e.name !== "AbortError") {
+                console.error("[reab] compartir PDF:", e);
+                toast("Error al compartir el PDF", "error");
+            }
+        } finally {
+            btn.disabled = items.length === 0;
+            btn.textContent = textoOriginal;
+        }
+    });
 
     // ============================================================
     // CONFIRMAR ORDEN — resumen → ejecutar → resultados

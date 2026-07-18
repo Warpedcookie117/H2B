@@ -90,6 +90,12 @@ async function fetchYActualizar(q) {
         if (mobileNuevo && mobileViejo)   mobileViejo.innerHTML  = mobileNuevo.innerHTML;
         if (desktopNuevo && desktopViejo) desktopViejo.innerHTML = desktopNuevo.innerHTML;
 
+        // Paginación de mis_productos: refrescarla también, si la página la tiene
+        // (los links de página deben reflejar el filtro de búsqueda activo)
+        const pagNueva = doc.getElementById("paginacion-mis-productos");
+        const pagVieja = document.getElementById("paginacion-mis-productos");
+        if (pagNueva && pagVieja) pagVieja.innerHTML = pagNueva.innerHTML;
+
         colorearCards();
         if (!q) aplicarLimite();   // límite por columna solo sin búsqueda
 

@@ -69,6 +69,7 @@ from .views.inventarios import (
 from .views.reabastecimiento import (
     orden_reabastecimiento,
     confirmar_orden_reabastecimiento,
+    pdf_orden_reabastecimiento,
 )
 
 # Reportes
@@ -172,6 +173,7 @@ urlpatterns = [
     # ============================
     path("orden-reabastecimiento/<int:ubicacion_id>/", orden_reabastecimiento, name="orden_reabastecimiento"),
     path("api/orden-reabastecimiento/confirmar/", confirmar_orden_reabastecimiento, name="confirmar_orden_reabastecimiento"),
+    path("api/orden-reabastecimiento/pdf/", pdf_orden_reabastecimiento, name="pdf_orden_reabastecimiento"),
 
     # ============================
     # SOLICITUDES
