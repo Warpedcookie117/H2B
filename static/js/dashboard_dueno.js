@@ -127,6 +127,26 @@ function initChartBarras(canvasId, data, color) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
 
+    // Cantidad vendida escrita debajo de cada barra — no basta con el
+    // eje Y para leer el número exacto de un vistazo.
+    const cantidadLabelsPlugin = {
+        id: 'cantidadLabels',
+        afterDatasetsDraw(chart) {
+            const { ctx: c, data: d, scales: { x } } = chart;
+            chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                const value = d.datasets[0].data[i];
+                if (!value) return;
+                c.save();
+                c.font = 'bold 14px sans-serif';
+                c.fillStyle = '#111';
+                c.textAlign = 'center';
+                c.textBaseline = 'top';
+                c.fillText(value, bar.x, x.bottom + 6);
+                c.restore();
+            });
+        }
+    };
+
     return new Chart(ctx, {
         type: 'bar',
         data: {
@@ -142,11 +162,13 @@ function initChartBarras(canvasId, data, color) {
             responsive: true,
             maintainAspectRatio: false,
             animation: false,
+            layout: { padding: { bottom: 24 } },
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: "#000", font: { size: 14, weight: "bold" } } },
                 y: { ticks: { color: "#000", font: { size: 13 } }, beginAtZero: true }
             }
-        }
+        },
+        plugins: [cantidadLabelsPlugin]
     });
 }

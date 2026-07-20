@@ -1,7 +1,7 @@
 import json
 
-from django.db.models import Sum, F
-from django.db.models.functions import TruncMonth
+from django.db.models import Sum, F, Value, Q
+from django.db.models.functions import TruncMonth, Coalesce
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.timezone import now
@@ -107,6 +107,51 @@ def dashboard_socio(request):
     return render(request, "tienda/dashboard_socio.html", context)
 
 
+def _mas_vendidos_dueno(empleado, filtro_fecha):
+    """
+    Top productos vendidos de `empleado` bajo el filtro de fecha dado
+    (ej. {"venta__fecha__date": hoy} o {"venta__fecha__gte": hace_7_dias}).
+
+    Servicios y productos sin código de barras no tienen caso desglosarlos
+    uno por uno en un top — se agrupan en una sola barra cada uno:
+    "Servicios" (atribuidos vía Sucursal.dueño_servicios, ya que un
+    renglón de servicio no tiene Producto ligado) y "Productos sin código".
+    """
+    productos = (
+        VentaDetalle.objects
+        .filter(producto__dueño=empleado, **filtro_fecha)
+        .exclude(producto__codigo_barras__isnull=True)
+        .exclude(producto__codigo_barras="")
+        .values(nombre=F("producto__nombre"))
+        .annotate(cantidad=Sum("cantidad"))
+    )
+
+    sin_codigo = (
+        VentaDetalle.objects
+        .filter(producto__dueño=empleado, **filtro_fecha)
+        .filter(Q(producto__codigo_barras__isnull=True) | Q(producto__codigo_barras=""))
+        .aggregate(cantidad=Sum("cantidad"))["cantidad"] or 0
+    )
+
+    servicios = (
+        VentaDetalle.objects
+        .filter(
+            producto__isnull=True,
+            atributos_snapshot__tipo="servicio",
+            venta__caja__sucursal__dueño_servicios=empleado,
+            **filtro_fecha,
+        )
+        .aggregate(cantidad=Sum("cantidad"))["cantidad"] or 0
+    )
+
+    resultado = list(productos)
+    if sin_codigo:
+        resultado.append({"nombre": "Productos sin código", "cantidad": sin_codigo})
+    if servicios:
+        resultado.append({"nombre": "Servicios", "cantidad": servicios})
+    resultado.sort(key=lambda x: -x["cantidad"])
+    return resultado[:10]
+
 
 @login_required
 def dashboard_dueno(request):
@@ -159,39 +204,25 @@ def dashboard_dueno(request):
 
     # ============================================================
     # 3) Mis productos más vendidos — hoy y última semana.
-    #    Agrupa por nombre del producto y suma cantidades.
+    #    Incluye "Servicios" y "Productos sin código" como barras
+    #    aparte (ver _mas_vendidos_dueno).
     # ============================================================
     hace_7_dias = ahora_local - timedelta(days=7)
 
-    mas_vendidos_hoy = (
-        VentaDetalle.objects
-        .filter(
-            producto__dueño=empleado,
-            venta__fecha__date=hoy
-        )
-        .values(nombre=F("producto__nombre"))
-        .annotate(cantidad=Sum("cantidad"))
-        .order_by("-cantidad")[:10]
-    )
-
-    mas_vendidos_semana = (
-        VentaDetalle.objects
-        .filter(
-            producto__dueño=empleado,
-            venta__fecha__gte=hace_7_dias
-        )
-        .values(nombre=F("producto__nombre"))
-        .annotate(cantidad=Sum("cantidad"))
-        .order_by("-cantidad")[:10]
-    )
+    mas_vendidos_hoy = _mas_vendidos_dueno(empleado, {"venta__fecha__date": hoy})
+    mas_vendidos_semana = _mas_vendidos_dueno(empleado, {"venta__fecha__gte": hace_7_dias})
 
     # ============================================================
     # 3b) Más vendidos en TODA la tienda hoy — sin filtrar por dueño.
+    #     nombre_snapshot cubre servicios y productos sin código (no
+    #     tienen FK a Producto) y productos ya eliminados — sin esto,
+    #     producto__nombre sale None y Python "None" rompe el <script>
+    #     del dashboard completo en el navegador (no es JS válido).
     # ============================================================
     mas_vendidos_tienda_hoy = (
         VentaDetalle.objects
         .filter(venta__fecha__date=hoy)
-        .values(nombre=F("producto__nombre"))
+        .values(nombre=Coalesce("nombre_snapshot", "producto__nombre", Value("Producto eliminado")))
         .annotate(cantidad=Sum("cantidad"))
         .order_by("-cantidad")[:10]
     )
