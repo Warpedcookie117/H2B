@@ -10,7 +10,9 @@ from django.utils.timezone import now
 
 @login_required
 def ventas_por_cajero(request):
-    hoy = timezone.now().date()
+    # now() es UTC — pasadas las 6pm hora de Monterrey ya cae en el dia
+    # siguiente en UTC. localtime() lo corrige.
+    hoy = timezone.localtime(timezone.now()).date()
 
     ventas = Venta.objects.filter(fecha__date=hoy)
 
@@ -37,12 +39,23 @@ def api_ventas_hoy(request):
     if not request.user.is_superuser and (not empleado or empleado.rol != "dueño"):
         raise PermissionDenied
     from sucursales.models import Sucursal
-    hoy = now().date()
+    # now() regresa UTC — pasadas las 6pm hora de Monterrey (UTC-6) ya cae
+    # en el dia siguiente en UTC, y "ventas de hoy" se vuelve "ventas de
+    # mañana" (0 resultados). localtime() lo corrige.
+    hoy = timezone.localtime(now()).date()
 
     sucursales = Sucursal.objects.prefetch_related("cajas").all().order_by("nombre")
 
+    # Desglose por caja de SOLO los productos de este dueño — se cruza
+    # abajo con cada caja (en $0 si no vendió nada ahí hoy).
+    dueno_por_caja_id = {}
+    if empleado:
+        from ventas.services.corte_service import resumen_ventas_dueno_por_caja
+        dueno_por_caja_id = {d["caja_id"]: d for d in resumen_ventas_dueno_por_caja(empleado, hoy)}
+
     resultado_chart = []
     resultado_cajas = []
+    resultado_mis_cajas = []
 
     for sucursal in sucursales:
         efectivo_sucursal = 0
@@ -70,6 +83,15 @@ def api_ventas_hoy(request):
                 "ultima_hora": ultima_hora,
             })
 
+            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0})
+            resultado_mis_cajas.append({
+                "sucursal": sucursal.nombre,
+                "caja": caja.nombre,
+                "efectivo": mis["efectivo"],
+                "tarjeta": mis["tarjeta"],
+                "total": mis["total"],
+            })
+
         resultado_chart.append({
             "nombre": sucursal.nombre,
             "efectivo": round(efectivo_sucursal, 2),
@@ -77,7 +99,21 @@ def api_ventas_hoy(request):
             "total": round(efectivo_sucursal + tarjeta_sucursal, 2),
         })
 
+    # $ vendido AHORITA (hoy) de los productos de este dueño — efectivo/tarjeta.
+    # Se deriva de dueno_por_caja_id (ya consultado arriba) en vez de volver
+    # a pegarle a la BD. Superusuario sin perfil de Empleado: se omite.
+    mis_ventas = None
+    if empleado:
+        valores = dueno_por_caja_id.values()
+        mis_ventas = {
+            "efectivo": round(sum(d["efectivo"] for d in valores), 2),
+            "tarjeta": round(sum(d["tarjeta"] for d in valores), 2),
+            "total": round(sum(d["total"] for d in valores), 2),
+        }
+
     return JsonResponse({
         "chart": resultado_chart,
         "cajas": resultado_cajas,
+        "mis_ventas": mis_ventas,
+        "mis_cajas": resultado_mis_cajas,
     }, safe=False)

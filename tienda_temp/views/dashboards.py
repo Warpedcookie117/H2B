@@ -116,8 +116,12 @@ def dashboard_dueno(request):
         messages.error(request, "Acceso denegado.")
         return redirect("tienda_temp:dashboard_socio")
 
-    hoy = now().date()
-    mes_actual = now().strftime("%B").capitalize()
+    # now() regresa UTC — pasadas las 6pm hora de Monterrey (UTC-6) ya cae
+    # en el dia siguiente en UTC. Todo lo que se compara contra un
+    # calendario (dia/mes) debe pasar por localtime() primero.
+    ahora_local = localtime(now())
+    hoy = ahora_local.date()
+    mes_actual = ahora_local.strftime("%B").capitalize()
 
     # ============================================================
     # 1) Productos activos a mi nombre
@@ -134,18 +138,41 @@ def dashboard_dueno(request):
         VentaDetalle.objects
         .filter(
             producto__dueño=empleado,
-            venta__fecha__month=now().month,
-            venta__fecha__year=now().year
+            venta__fecha__month=ahora_local.month,
+            venta__fecha__year=ahora_local.year
         )
         .aggregate(total=Sum("subtotal"))
         .get("total") or 0
     )
 
     # ============================================================
-    # 3) Mis productos más vendidos en la última semana
+    # 2b) $ vendido de mis productos AHORITA (hoy) — efectivo/tarjeta.
+    #     Se refresca en vivo por polling (dashboard_dueno.js →
+    #     /ventas/api/ventas/hoy/), esto solo pinta el valor inicial.
+    # ============================================================
+    from ventas.services.corte_service import resumen_ventas_dueno_por_fecha, resumen_ventas_dueno_por_caja
+    ventas_hoy_dueno = resumen_ventas_dueno_por_fecha(empleado, hoy)
+    # Lookup por caja_id — se cruza más abajo con TODAS las cajas de la
+    # sucursal (aunque este dueño no haya vendido nada ahí hoy, se
+    # muestra en $0 para que la lista no "desaparezca" una caja).
+    dueno_por_caja_id = {d["caja_id"]: d for d in resumen_ventas_dueno_por_caja(empleado, hoy)}
+
+    # ============================================================
+    # 3) Mis productos más vendidos — hoy y última semana.
     #    Agrupa por nombre del producto y suma cantidades.
     # ============================================================
-    hace_7_dias = localtime(now()) - timedelta(days=7)
+    hace_7_dias = ahora_local - timedelta(days=7)
+
+    mas_vendidos_hoy = (
+        VentaDetalle.objects
+        .filter(
+            producto__dueño=empleado,
+            venta__fecha__date=hoy
+        )
+        .values(nombre=F("producto__nombre"))
+        .annotate(cantidad=Sum("cantidad"))
+        .order_by("-cantidad")[:10]
+    )
 
     mas_vendidos_semana = (
         VentaDetalle.objects
@@ -153,6 +180,17 @@ def dashboard_dueno(request):
             producto__dueño=empleado,
             venta__fecha__gte=hace_7_dias
         )
+        .values(nombre=F("producto__nombre"))
+        .annotate(cantidad=Sum("cantidad"))
+        .order_by("-cantidad")[:10]
+    )
+
+    # ============================================================
+    # 3b) Más vendidos en TODA la tienda hoy — sin filtrar por dueño.
+    # ============================================================
+    mas_vendidos_tienda_hoy = (
+        VentaDetalle.objects
+        .filter(venta__fecha__date=hoy)
         .values(nombre=F("producto__nombre"))
         .annotate(cantidad=Sum("cantidad"))
         .order_by("-cantidad")[:10]
@@ -171,6 +209,7 @@ def dashboard_dueno(request):
 
     ventas_por_sucursal = []
     ventas_chart_sucursal = []
+    ventas_hoy_dueno_por_caja = []   # desglose "mis productos" — misma lista, todas las cajas
 
     for sucursal in sucursales:
         cajas_data = []
@@ -207,6 +246,17 @@ def dashboard_dueno(request):
             tarjeta_sucursal += float(tarjeta)
             total_sucursal += float(total)
 
+            # Desglose de SOLO mis productos en esta caja — en $0 si hoy
+            # no vendí nada ahí, para que la caja no "desaparezca" de la lista.
+            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0})
+            ventas_hoy_dueno_por_caja.append({
+                "sucursal": sucursal.nombre,
+                "caja": caja.nombre,
+                "efectivo": mis["efectivo"],
+                "tarjeta": mis["tarjeta"],
+                "total": mis["total"],
+            })
+
         ventas_por_sucursal.append({
             "sucursal": sucursal.nombre,
             "cajas": cajas_data,
@@ -226,8 +276,12 @@ def dashboard_dueno(request):
     context = {
         "productos_dueno": productos_dueno,
         "ventas_mes_dueno": ventas_mes_dueno,
+        "ventas_hoy_dueno": ventas_hoy_dueno,              # card "ahorita" (efectivo/tarjeta)
+        "ventas_hoy_dueno_por_caja": ventas_hoy_dueno_por_caja,  # mismo, desglosado por caja
         "mes_actual": mes_actual,
+        "mas_vendidos_hoy": list(mas_vendidos_hoy),
         "mas_vendidos_semana": list(mas_vendidos_semana),
+        "mas_vendidos_tienda_hoy": list(mas_vendidos_tienda_hoy),
         "ventas_por_sucursal": ventas_por_sucursal,       # cards de cajas
         "ventas_chart_sucursal": ventas_chart_sucursal,   # chart de sucursales
         "ahora": now(),

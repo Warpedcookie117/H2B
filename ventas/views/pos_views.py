@@ -60,8 +60,13 @@ def pos_view(request):
     except Caja.DoesNotExist:
         pass
 
-    from datetime import date
-    hoy = date.today()
+    # date.today() lee el reloj del SISTEMA OPERATIVO (normalmente UTC en un
+    # VPS), no la hora de Monterrey — pasadas las 6pm ya cae en el dia
+    # siguiente y las ofertas por fecha_inicio/fecha_fin se activan o
+    # apagan horas antes o despues de lo debido. localdate() usa la zona
+    # horaria configurada en Django (America/Mexico_City).
+    from django.utils import timezone
+    hoy = timezone.localdate()
 
     # 4) Cargar productos — lookup directo por ubicacion_id (evita GROUP BY + HAVING)
     # Sin caché: siempre datos reales de la BD; el WS mantiene el stock en vivo tras la carga.

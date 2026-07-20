@@ -161,8 +161,10 @@ def corte_del_dia(request):
 
     caja = Caja.objects.get(id=caja_id)
 
-    # 2. Fecha actual
-    hoy = timezone.now().date()
+    # 2. Fecha actual — localtime() porque now() es UTC y pasadas las 6pm
+    # hora de Monterrey ya cae en el dia siguiente en UTC. Esto solo se usa
+    # como fallback cuando la caja NUNCA ha tenido corte (ver abajo).
+    hoy = timezone.localtime(timezone.now()).date()
 
     # 3. Buscar el último corte de esta caja
     ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()

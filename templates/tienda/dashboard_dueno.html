@@ -41,7 +41,7 @@
                 relative overflow-hidden">
       <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#FB5607] rounded-full opacity-40"></div>
       <p class="text-base font-black uppercase tracking-widest">
-        Vendido en {{ mes_actual }} — solo mis productos
+        Esto has vendido de tus productos durante este mes
       </p>
       <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_dueno|default:0 }}</p>
       <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
@@ -49,11 +49,58 @@
 
   </div>
 
+  <!-- $ VENDIDO DE MIS PRODUCTOS AHORITA — vivo por polling -->
+  <div class="relative space-y-4">
+    <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
+      Productos más vendidos ahorita mios!!
+    </h2>
+
+    <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#CCFF00] p-6 relative overflow-hidden">
+      <div class="absolute top-0 right-0 w-10 h-10 bg-black opacity-10 rotate-45"></div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total en Efectivo</p>
+          <p id="dueno-ahorita-efectivo" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.efectivo|default:0 }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total en Tarjeta</p>
+          <p id="dueno-ahorita-tarjeta" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.tarjeta|default:0 }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total hoy sumao</p>
+          <p id="dueno-ahorita-total" class="text-3xl font-black text-[#FF006E] tabular-nums">${{ ventas_hoy_dueno.total|default:0 }}</p>
+        </div>
+      </div>
+
+      <!-- Desglose por caja — solo de mis productos. No le afecta si la
+           caja ya se cortó: cuenta por fecha del día, no desde el corte. -->
+      <div class="border-t-4 border-black border-dashed mt-5 pt-4">
+        <p class="text-xs font-black uppercase text-black/60 tracking-widest mb-2">Desglosado por caja</p>
+        <div id="dueno-ahorita-cajas" class="space-y-2">
+          {% for c in ventas_hoy_dueno_por_caja %}
+          <div class="bg-white border-2 border-black px-3 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1"
+               data-dueno-caja-key="{{ c.sucursal }}__{{ c.caja }}">
+            <span class="font-black text-xs uppercase text-black">🏬 {{ c.sucursal }} · {{ c.caja }}</span>
+            <span class="text-xs font-bold text-gray-700 flex gap-3">
+              <span>💵 <span class="dueno-caja-efectivo">${{ c.efectivo }}</span></span>
+              <span>💳 <span class="dueno-caja-tarjeta">${{ c.tarjeta }}</span></span>
+              <span class="font-black text-[#FF006E]">Σ $<span class="dueno-caja-total">{{ c.total }}</span></span>
+            </span>
+          </div>
+          {% empty %}
+          <p class="text-xs text-black/40 font-semibold">Sin cajas registradas.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- VENTAS HOY — CARDS POR CAJA -->
   <div class="relative space-y-6">
 
     <h2 class="text-2xl font-extrabold text-gray-900 uppercase tracking-wide">
-      📍 Ventas de hoy — por caja
+      Ventas totales de hoy por caja:p
     </h2>
 
     {% for s in ventas_por_sucursal %}
@@ -137,12 +184,36 @@
     <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
+      <div class="absolute -top-3 right-3 w-10 h-10 bg-[#06D6A0] rotate-45 opacity-40"></div>
+      <h2 class="text-lg font-black text-black mb-4 uppercase tracking-wide">
+        🔥 Mis productos más vendidos (hoy)
+      </h2>
+      <div class="relative w-full h-[300px]">
+        <canvas id="chartMasVendidosHoy"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
       <div class="absolute -top-3 right-3 w-10 h-10 bg-[#8338EC] rotate-45 opacity-40"></div>
       <h2 class="text-lg font-black text-black mb-4 uppercase tracking-wide">
         📦 Mis productos más vendidos (última semana)
       </h2>
       <div class="relative w-full h-[300px]">
         <canvas id="chartMasVendidosSemana"></canvas>
+      </div>
+    </div>
+
+    <div class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6
+                transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
+                relative overflow-hidden">
+      <div class="absolute -top-3 left-3 w-10 h-10 bg-[#FFBE0B] rotate-45 opacity-40"></div>
+      <h2 class="text-lg font-black text-black mb-4 uppercase tracking-wide">
+        🏬 Más vendidos en TODA la tienda (hoy)
+      </h2>
+      <div class="relative w-full h-[300px]">
+        <canvas id="chartMasVendidosTiendaHoy"></canvas>
       </div>
     </div>
 
@@ -201,7 +272,9 @@
 
 <!-- Variables para JS -->
 <script>
+  window.INIT_MAS_VENDIDOS_HOY = {{ mas_vendidos_hoy|safe }};
   window.INIT_MAS_VENDIDOS_SEMANA = {{ mas_vendidos_semana|safe }};
+  window.INIT_MAS_VENDIDOS_TIENDA_HOY = {{ mas_vendidos_tienda_hoy|safe }};
   window.INIT_VENTAS_HOY_SUCURSAL = {{ ventas_chart_sucursal|safe }};
 </script>
 

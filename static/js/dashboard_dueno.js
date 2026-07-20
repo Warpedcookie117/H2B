@@ -1,9 +1,13 @@
 let chartVentasHoy = null;
+let chartMasVendidosHoy = null;
 let chartMasVendidos = null;
+let chartMasVendidosTiendaHoy = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     initChartVentasHoySucursal();
-    initChartMasVendidosSemana();
+    chartMasVendidosHoy = initChartBarras("chartMasVendidosHoy", window.INIT_MAS_VENDIDOS_HOY, "#06D6A0");
+    chartMasVendidos = initChartBarras("chartMasVendidosSemana", window.INIT_MAS_VENDIDOS_SEMANA, "#8338EC");
+    chartMasVendidosTiendaHoy = initChartBarras("chartMasVendidosTiendaHoy", window.INIT_MAS_VENDIDOS_TIENDA_HOY, "#FFBE0B");
     setInterval(actualizarVentasHoy, 10000);
 });
 
@@ -72,6 +76,31 @@ function actualizarVentasHoy() {
                 chartVentasHoy.update();
             }
 
+            // Tarjeta "mis productos — vendido ahorita" (efectivo/tarjeta/total)
+            if (data.mis_ventas) {
+                const elEf = document.getElementById("dueno-ahorita-efectivo");
+                const elTa = document.getElementById("dueno-ahorita-tarjeta");
+                const elTo = document.getElementById("dueno-ahorita-total");
+                if (elEf) elEf.textContent = `$${data.mis_ventas.efectivo}`;
+                if (elTa) elTa.textContent = `$${data.mis_ventas.tarjeta}`;
+                if (elTo) elTo.textContent = `$${data.mis_ventas.total}`;
+            }
+
+            // Desglose por caja de "mis productos" dentro de esa misma tarjeta
+            (data.mis_cajas || []).forEach(caja => {
+                const key = `${caja.sucursal}__${caja.caja}`;
+                const card = document.querySelector(`[data-dueno-caja-key="${key}"]`);
+                if (!card) return;
+
+                const elEfectivo = card.querySelector(".dueno-caja-efectivo");
+                const elTarjeta = card.querySelector(".dueno-caja-tarjeta");
+                const elTotal = card.querySelector(".dueno-caja-total");
+
+                if (elEfectivo) elEfectivo.textContent = `$${caja.efectivo}`;
+                if (elTarjeta) elTarjeta.textContent = `$${caja.tarjeta}`;
+                if (elTotal) elTotal.textContent = caja.total;
+            });
+
             data.cajas.forEach(caja => {
                 const key = `${caja.sucursal}__${caja.caja}`;
                 const card = document.querySelector(`[data-caja-key="${key}"]`);
@@ -93,19 +122,19 @@ function actualizarVentasHoy() {
         .catch(err => console.error("Error actualizando ventas:", err));
 }
 
-function initChartMasVendidosSemana() {
-    const data = window.INIT_MAS_VENDIDOS_SEMANA || [];
-    const ctx = document.getElementById("chartMasVendidosSemana");
-    if (!ctx) return;
+function initChartBarras(canvasId, data, color) {
+    data = data || [];
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
 
-    chartMasVendidos = new Chart(ctx, {
+    return new Chart(ctx, {
         type: 'bar',
         data: {
             labels: data.map(x => x.nombre),
             datasets: [{
                 label: 'Cantidad vendida',
                 data: data.map(x => x.cantidad),
-                backgroundColor: "#8338EC",
+                backgroundColor: color,
                 borderRadius: 0
             }]
         },

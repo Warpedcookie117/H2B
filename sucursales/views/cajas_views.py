@@ -74,7 +74,12 @@ def entrar_caja_ajax(request):
 
     caja = get_object_or_404(Caja, id=caja_id)
 
-    hoy = timezone.now().date()
+    # now() regresa UTC — pasadas las 6pm hora de Monterrey (UTC-6) ya cae
+    # en el dia siguiente en UTC. Sin localtime(), "hoy" se infla un dia y
+    # el sistema cree que el dia de hoy nunca se cerro, generando un corte
+    # prematuro de HOY (con la tienda todavia abierta) cada vez que alguien
+    # vuelve a entrar a la caja despues de las 6pm.
+    hoy = timezone.localtime(timezone.now()).date()
     ayer = hoy - timezone.timedelta(days=1)
 
     ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()
