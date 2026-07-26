@@ -2,7 +2,7 @@ import json
 from collections import defaultdict
 from urllib.parse import urlencode
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField, Value
 from django.views.decorators.http import require_http_methods
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
@@ -41,6 +41,12 @@ def productos_por_ubicacion(request, ubicacion_id):
     q      = request.GET.get("q",      "").strip()
     cat    = request.GET.get("cat",    "").strip()
     subcat = request.GET.get("subcat", "").strip()
+
+    # Filtro por atributos: listas paralelas an[]/av[] (nombre/valor), un
+    # valor por atributo, combinados con AND (el producto debe cumplir todos).
+    attr_nombres = request.GET.getlist("an")
+    attr_valores = request.GET.getlist("av")
+    attr_pares   = [(n, v) for n, v in zip(attr_nombres, attr_valores) if n and v]
 
     productos = (
         Inventario.objects
@@ -81,6 +87,30 @@ def productos_por_ubicacion(request, ubicacion_id):
     if subcat:
         productos = productos.filter(producto__categoria__nombre__iexact=subcat)
 
+    # Cada atributo agrega su propio JOIN → AND entre atributos distintos.
+    for n, v in attr_pares:
+        productos = productos.filter(
+            producto__valores_atributo__atributo__nombre__iexact=n,
+            producto__valores_atributo__valor__iexact=v,
+        )
+    if attr_pares:
+        productos = productos.distinct()
+
+    # Orden por relevancia SOLO cuando hay búsqueda de texto: primero el
+    # nombre exacto, luego el que empieza con lo buscado, luego el que lo
+    # contiene, y hasta el final los que empataron por código/atributo/ID.
+    # Sin búsqueda se mantiene el orden alfabético de siempre.
+    if q:
+        productos = productos.annotate(
+            _rank=Case(
+                When(producto__nombre__iexact=q,       then=Value(0)),
+                When(producto__nombre__istartswith=q,  then=Value(1)),
+                When(producto__nombre__icontains=q,    then=Value(2)),
+                default=Value(3),
+                output_field=IntegerField(),
+            )
+        ).order_by("_rank", "producto__nombre")
+
     # Filtro "¿Qué falta?" — excluye productos que ya tienen stock en la ubicación paired
     falta_en_id = None
     falta_en_raw = request.GET.get("falta_en", "").strip()
@@ -101,6 +131,33 @@ def productos_por_ubicacion(request, ubicacion_id):
         .filter(ubicacion=ubicacion, producto__activo=True)
         .values_list("producto_id", flat=True)
     )
+
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    # Atributos por subcategoría, con SOLO los valores que existen entre los
+    # productos de ESTA ubicación (no mostramos "morado" si aquí no hay uno).
+    # El JS arma los dropdowns del filtro al elegir subcategoría. Solo se
+    # necesita en la carga completa: en AJAX (búsqueda al teclear) el panel
+    # ya existe en el cliente, así que nos ahorramos este query por keystroke.
+    atributos_por_subcat = {}
+    if not is_ajax:
+        attr_rows = (
+            ValorAtributo.objects
+            .filter(producto_id__in=ids_en_ubicacion)
+            .values("producto__categoria__nombre", "atributo__nombre", "valor")
+            .distinct()
+        )
+        _attr_map = defaultdict(lambda: defaultdict(set))
+        for row in attr_rows:
+            sub_n = row["producto__categoria__nombre"] or ""
+            atr_n = row["atributo__nombre"] or ""
+            val_v = (row["valor"] or "").strip()
+            if sub_n and atr_n and val_v:
+                _attr_map[sub_n][atr_n].add(val_v)
+        atributos_por_subcat = {
+            sub: [{"nombre": a, "valores": sorted(vals)} for a, vals in sorted(attrs.items())]
+            for sub, attrs in sorted(_attr_map.items())
+        }
 
     inventario_todas_json = list(
         Inventario.objects
@@ -139,8 +196,6 @@ def productos_por_ubicacion(request, ubicacion_id):
             .order_by("nombre")
         )
 
-    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
     if is_ajax:
         lista_productos = productos[:200]
         page_obj = None
@@ -167,6 +222,17 @@ def productos_por_ubicacion(request, ubicacion_id):
         page_obj  = paginator.get_page(page_number_raw or 1)
         lista_productos = ([pinned_inv] + list(page_obj)) if pinned_inv else list(page_obj)
 
+    # query_string para los links de paginación: conserva q/cat/subcat/falta_en
+    # y también los pares de atributos (an/av), en orden, para no perderlos al
+    # cambiar de página.
+    qs_pairs = [(k, v) for k, v in [
+        ("q", q), ("cat", cat), ("subcat", subcat),
+        ("falta_en", str(falta_en_id) if falta_en_id else ""),
+    ] if v]
+    for n, v in attr_pares:
+        qs_pairs.append(("an", n))
+        qs_pairs.append(("av", v))
+
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,
         "productos": lista_productos,
@@ -179,13 +245,12 @@ def productos_por_ubicacion(request, ubicacion_id):
         "q":               q,
         "cat":             cat,
         "subcat":          subcat,
-        "hay_filtros":     bool(q or cat or subcat),
+        "hay_filtros":     bool(q or cat or subcat or attr_pares),
         "categorias_json": categorias_json,
+        "atributos_por_subcat_json": atributos_por_subcat,
+        "attr_pares":      attr_pares,
         "falta_en_id":     falta_en_id,
-        "query_string":    urlencode({k: v for k, v in [
-                               ("q", q), ("cat", cat), ("subcat", subcat),
-                               ("falta_en", falta_en_id or ""),
-                           ] if v}),
+        "query_string":    urlencode(qs_pairs),
     })
 
 

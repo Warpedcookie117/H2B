@@ -40,6 +40,16 @@ if (!buscador) {
         if (subcatVal) url.searchParams.set("subcat", subcatVal);
         else           url.searchParams.delete("subcat");
 
+        // Incluir filtros de atributo (listas paralelas an/av)
+        url.searchParams.delete("an");
+        url.searchParams.delete("av");
+        document.querySelectorAll("#atributos-rows select[data-attr]").forEach(sel => {
+            if (sel.value) {
+                url.searchParams.append("an", sel.dataset.attr);
+                url.searchParams.append("av", sel.value);
+            }
+        });
+
         const grid = document.getElementById("gridProductos");
 
         try {
@@ -145,6 +155,19 @@ if (!buscador) {
     });
 
     // ============================
+    // QUITAR TECLADO al tocar zona vacía (móvil)
+    // En iPhone el teclado tapa media pantalla y no había dónde picarle
+    // sin activar un botón por accidente. Ahora tocar cualquier lugar que
+    // NO sea un control (fondo, grid, zona libre de los botones) le quita
+    // el foco al buscador y el teclado se baja.
+    // ============================
+    document.addEventListener("touchend", function (e) {
+        if (document.activeElement !== buscador) return;
+        if (e.target.closest("input, textarea, select, button, a")) return;
+        buscador.blur();
+    }, { passive: true });
+
+    // ============================
     // ESCÁNER DE CÁMARA → búsqueda inmediata
     // ============================
     if (typeof initEscanerCamara === "function") {
@@ -170,6 +193,78 @@ if (!buscador) {
     if (!categoriasEl || !filtroCategoria || !filtroSubcat) return;
 
     const categoriasMap = JSON.parse(categoriasEl.textContent);
+
+    // ── Filtro por atributos ────────────────────────────────────
+    const panelAtributos = document.getElementById("panel-atributos");
+    const atributosRows   = document.getElementById("atributos-rows");
+    const atributosPorSub = JSON.parse(
+        document.getElementById("atributos-subcat-json")?.textContent || "{}"
+    );
+    // Pares [nombre, valor] preseleccionados (al recargar o paginar con filtros)
+    const attrParesInit = JSON.parse(
+        document.getElementById("attr-pares-json")?.textContent || "[]"
+    );
+
+    function renderPanelAtributos(subcatNombre, preseleccion = []) {
+        if (!panelAtributos || !atributosRows) return;
+        const atributos = atributosPorSub[subcatNombre] || [];
+        atributosRows.innerHTML = "";
+
+        if (!subcatNombre || !atributos.length) {
+            panelAtributos.classList.add("hidden");
+            return;
+        }
+        panelAtributos.classList.remove("hidden");
+
+        const preMap = {};
+        preseleccion.forEach(([n, v]) => { preMap[n] = v; });
+
+        atributos.forEach(a => {
+            const wrap = document.createElement("div");
+            wrap.className = "w-full";
+
+            // Etiqueta arriba con el nombre del atributo — grande y legible.
+            // El dropdown de abajo muestra SOLO el valor, sin cortarse.
+            const label = document.createElement("label");
+            label.className = "block text-sm font-black uppercase tracking-widest text-black mb-1";
+            label.textContent = a.nombre;
+
+            const selWrap = document.createElement("div");
+            selWrap.className = "relative";
+
+            const sel = document.createElement("select");
+            sel.dataset.attr = a.nombre;
+            // font-size:16px evita el zoom automático de iOS y se lee bien.
+            sel.style.cssText = "appearance:none;-webkit-appearance:none;background:#fff;font-size:16px;";
+            sel.className = "w-full border-4 border-black px-3 py-3 pr-10 font-bold " +
+                            "text-black outline-none cursor-pointer";
+
+            const opt0 = document.createElement("option");
+            opt0.value = "";
+            opt0.textContent = "Cualquiera";
+            sel.appendChild(opt0);
+
+            (a.valores || []).forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                if (preMap[a.nombre] === v) opt.selected = true;
+                sel.appendChild(opt);
+            });
+
+            sel.addEventListener("change", () => dispararFetch());
+
+            const flecha = document.createElement("span");
+            flecha.className = "pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black select-none";
+            flecha.textContent = "▼";
+
+            selWrap.appendChild(sel);
+            selWrap.appendChild(flecha);
+            wrap.appendChild(label);
+            wrap.appendChild(selWrap);
+            atributosRows.appendChild(wrap);
+        });
+    }
 
     function poblarCatPadre() {
         Object.keys(categoriasMap).forEach(cat => {
@@ -222,17 +317,21 @@ if (!buscador) {
     const initSubcat = params.get("subcat") || "";
     if (initCat)    { filtroCategoria.value = initCat; poblarSubcat(initCat); }
     if (initSubcat) { filtroSubcat.value = initSubcat; }
+    // Panel de atributos: si venía subcategoría, redibuja con lo preseleccionado
+    renderPanelAtributos(initSubcat, initSubcat ? attrParesInit : []);
     actualizarBtnLimpiar();
 
     // Eventos
     filtroCategoria.addEventListener("change", () => {
         poblarSubcat(filtroCategoria.value);
         filtroSubcat.value = "";
+        renderPanelAtributos("");   // sin subcategoría, no hay atributos
         actualizarBtnLimpiar();
         dispararFetch();
     });
 
     filtroSubcat.addEventListener("change", () => {
+        renderPanelAtributos(filtroSubcat.value);   // atributos frescos, sin preselección
         actualizarBtnLimpiar();
         dispararFetch();
     });
@@ -241,6 +340,7 @@ if (!buscador) {
         filtroCategoria.value = "";
         poblarSubcat("");
         filtroSubcat.value = "";
+        renderPanelAtributos("");
         actualizarBtnLimpiar();
         dispararFetch();
     });

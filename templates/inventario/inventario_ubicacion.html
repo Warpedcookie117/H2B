@@ -68,7 +68,7 @@
       </button>
     </div>
     <button onclick="abrirModalTransferirMultiple({{ ubicacion.id }})"
-            class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black]
+            class="btn-90s self-start sm:self-auto border-4 border-black shadow-[4px_4px_0_0_black]
                    font-black text-xs uppercase tracking-widest px-4 py-3
                    flex items-center gap-1 whitespace-nowrap"
             style="background-color: {{ color_header }}; color: black;">
@@ -76,14 +76,14 @@
     </button>
     {% if ubicacion.tipo == "piso" or ubicacion.tipo == "bodega" %}
     <a href="{% url 'inventario:orden_reabastecimiento' ubicacion.id %}"
-       class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black]
+       class="btn-90s self-start sm:self-auto border-4 border-black shadow-[4px_4px_0_0_black]
               bg-[#06D6A0] text-black font-black text-xs uppercase tracking-widest px-4 py-3
               flex items-center gap-1 whitespace-nowrap">
       📦 Reabastecer piso
     </a>
     {% endif %}
     <a href="{% url 'inventario:nuevo_producto' %}"
-       class="btn-90s bg-black border-4 border-black shadow-[4px_4px_0_0_black]
+       class="btn-90s self-start sm:self-auto bg-black border-4 border-black shadow-[4px_4px_0_0_black]
               text-white font-black text-xs uppercase tracking-widest px-4 py-3
               flex items-center gap-1 whitespace-nowrap">
       + Nuevo producto
@@ -124,6 +124,14 @@
                    bg-[#FF006E] text-white hidden whitespace-nowrap">
       ✕ Limpiar
     </button>
+  </div>
+
+  <!-- PANEL DE FILTRO POR ATRIBUTOS — el JS lo llena al elegir subcategoría -->
+  <div id="panel-atributos" class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#EDE7FF] p-4">
+    <p class="text-sm font-black uppercase tracking-widest text-black mb-3">
+      🎯 Afina por atributo
+    </p>
+    <div id="atributos-rows" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
   </div>
 
   <!-- ANUNCIO SIN RESULTADOS -->
@@ -345,6 +353,8 @@
 
 {{ inventario_todas_json|json_script:"inventarioTodas" }}
 {{ categorias_json|json_script:"categorias-json" }}
+{{ atributos_por_subcat_json|json_script:"atributos-subcat-json" }}
+{{ attr_pares|json_script:"attr-pares-json" }}
 <script>
   window.inventarioTodas    = JSON.parse(document.getElementById("inventarioTodas").textContent);
   window.ubicacionActualId  = {{ ubicacion.id }};
