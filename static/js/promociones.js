@@ -314,8 +314,17 @@
   //   getCatId       — función () => id de la categoría seleccionada
   //   nombreClass    — clase CSS del <select> nombre de cada fila
   //   valorClass     — clase CSS del <select> valor de cada fila
+  //   nombreField    — atributo name="" del <select> nombre (para el POST)
+  //   valorField     — atributo name="" del <select> valor (para el POST)
   //
-  function crearGestorFiltros(rowsContainer, addBtn, getCatId, nombreClass, valorClass) {
+  // OJO: nombreField/valorField son CRÍTICOS. Sin ellos, agregarFila
+  // hardcodeaba "filtro_nombre[]" para TODAS las secciones — así, un
+  // filtro agregado en el DISPARADOR se enviaba con el name del REGALO y
+  // terminaba guardado en filtros_atributos (regalo) en vez de
+  // filtros_disparador. Eso dejaba la promo pidiendo un regalo con un
+  // atributo que no existe en su categoría → cero resultados.
+  function crearGestorFiltros(rowsContainer, addBtn, getCatId, nombreClass, valorClass,
+                              nombreField = 'filtro_nombre[]', valorField = 'filtro_valor[]') {
     if (!rowsContainer) return { cargarAtributos: () => {} };
     let atributosData = [];
 
@@ -329,6 +338,23 @@
           opt.disabled = opt.value !== s.value && usados.has(opt.value);
         });
       });
+    }
+
+    // No tiene caso dejar agregar más filas que atributos existan en la
+    // categoría — cada atributo solo se puede usar una vez (ver arriba),
+    // así que llegado el tope, filas extra siempre saldrían vacías.
+    function _actualizarBotonAgregar() {
+      if (!addBtn) return;
+      const filas = rowsContainer.querySelectorAll('.filtro-fila').length;
+      const tope  = atributosData.length === 0 || filas >= atributosData.length;
+      addBtn.disabled = tope;
+      addBtn.classList.toggle('opacity-40', tope);
+      addBtn.classList.toggle('cursor-not-allowed', tope);
+    }
+
+    function _refrescarUI() {
+      _actualizarDuplicados();
+      _actualizarBotonAgregar();
     }
 
     function _poblarValor(sel, nombreAtrib, preValor = '') {
@@ -345,12 +371,23 @@
       placeholder.textContent = nombreAtrib ? `(cualquier ${nombreAtrib})` : '— Valor —';
       sel.appendChild(placeholder);
 
+      let matched = false;
       (found?.valores || []).forEach(v => {
         const opt = document.createElement('option');
         opt.value = v; opt.textContent = v;
-        if (v === prev) opt.selected = true;
+        if (v === prev) { opt.selected = true; matched = true; }
         sel.appendChild(opt);
       });
+      // BLINDAJE: si el valor guardado no vino en la lista del servidor
+      // (timing, mayúsculas, atributo renombrado), NO lo tires — agrégalo
+      // y déjalo seleccionado. Un select vacío manda valor="" al guardar,
+      // y el servidor descarta ese filtro con "if n and v" → filtro perdido
+      // en silencio. Esta era la causa real de que los filtros no se guardaran.
+      if (prev && !matched) {
+        const opt = document.createElement('option');
+        opt.value = prev; opt.textContent = prev; opt.selected = true;
+        sel.appendChild(opt);
+      }
       // NO borrar sel.dataset.preValor aquí — si el dueño toca la categoría
       // del regalo de ida y vuelta mientras edita, cada cambio reconstruye
       // este dropdown desde cero. Sin la memoria original como respaldo
@@ -365,15 +402,23 @@
       const prevValor  = valSel?.dataset.preValor || valSel?.value || '';
 
       sel.innerHTML = '<option value="">— Atributo —</option>';
+      let matched = false;
       atributosData.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a.nombre; opt.textContent = a.nombre;
-        if (a.nombre === prevNombre) opt.selected = true;
+        if (a.nombre === prevNombre) { opt.selected = true; matched = true; }
         sel.appendChild(opt);
       });
+      // Mismo blindaje que en _poblarValor: si el atributo guardado no está
+      // en la lista del servidor, agrégalo en vez de perderlo al guardar.
+      if (prevNombre && !matched) {
+        const opt = document.createElement('option');
+        opt.value = prevNombre; opt.textContent = prevNombre; opt.selected = true;
+        sel.appendChild(opt);
+      }
 
       _poblarValor(valSel, sel.value, prevValor);
-      _actualizarDuplicados();
+      _refrescarUI();
     }
 
     function _repoblarTodosNombre() {
@@ -388,11 +433,16 @@
     async function cargarAtributos() {
       const catId = getCatId();
       atributosData = [];
-      if (!catId) { _repoblarTodosNombre(); return; }
+      if (!catId) { _repoblarTodosNombre(); _actualizarBotonAgregar(); return; }
       const res  = await fetch(`/ventas/promociones/atributos-categoria/${catId}/`);
       const data = await res.json();
       atributosData = data.atributos || [];
       _repoblarTodosNombre();
+      // _repoblarTodosNombre() solo actualiza el botón si YA hay filas
+      // (recorre .filtro-fila) — en un formulario nuevo sin filas todavía,
+      // hay que actualizarlo aquí para que se habilite en cuanto haya
+      // atributos disponibles.
+      _actualizarBotonAgregar();
     }
 
     function _bindFila(fila) {
@@ -400,7 +450,7 @@
       const valSel = fila.querySelector('.' + valorClass);
       nomSel?.addEventListener('change', () => {
         _poblarValor(valSel, nomSel.value);
-        _actualizarDuplicados();
+        _refrescarUI();
       });
     }
 
@@ -409,13 +459,13 @@
       fila.className = 'filtro-fila flex gap-2 items-center';
       fila.innerHTML = `
         <div class="flex-1">
-          <select name="filtro_nombre[]"
+          <select name="${nombreField}"
                   class="${nombreClass} w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white">
             <option value="">— Atributo —</option>
           </select>
         </div>
         <div class="flex-1">
-          <select name="filtro_valor[]"
+          <select name="${valorField}"
                   class="${valorClass} w-full border-2 border-black px-2 py-1 font-semibold text-sm outline-none bg-white">
             <option value="">— Valor —</option>
           </select>
@@ -425,21 +475,23 @@
                 onclick="this.closest('.filtro-fila').remove(); this.__gestorDup && this.__gestorDup()">✕</button>`;
       // Adjuntar referencia al gestor para el botón de eliminar
       const btnDel = fila.querySelector('button');
-      btnDel.__gestorDup = _actualizarDuplicados;
-      btnDel.onclick = function () { this.closest('.filtro-fila').remove(); _actualizarDuplicados(); };
+      btnDel.__gestorDup = _refrescarUI;
+      btnDel.onclick = function () { this.closest('.filtro-fila').remove(); _refrescarUI(); };
       rowsContainer.appendChild(fila);
       _bindFila(fila);
       _poblarNombre(fila.querySelector('.' + nombreClass));
+      _actualizarBotonAgregar();
     }
 
     rowsContainer.querySelectorAll('.filtro-fila').forEach(fila => {
       // Fijar botón eliminar con referencia al actualizador
       const btn = fila.querySelector('button');
-      if (btn) btn.onclick = function () { this.closest('.filtro-fila').remove(); _actualizarDuplicados(); };
+      if (btn) btn.onclick = function () { this.closest('.filtro-fila').remove(); _refrescarUI(); };
       _bindFila(fila);
     });
 
     addBtn?.addEventListener('click', agregarFila);
+    _actualizarBotonAgregar();
 
     return { cargarAtributos };
   }
@@ -596,7 +648,10 @@
       'promo-filtro-nombre',
       'promo-filtro-valor',
     );
-    catRegSelect?.addEventListener('change', () => gestor.cargarAtributos());
+    catRegSelect?.addEventListener('change', () => {
+      gestor.cargarAtributos();
+      cargarEnlazados();   // la intersección de atributos depende también del regalo
+    });
 
     // ── Gestor de filtros atributos para DISPARADOR ────────────
     const gestorDisp = crearGestorFiltros(
@@ -605,6 +660,8 @@
       () => catDispSelect?.value,
       'disp-filtro-nombre',
       'disp-filtro-valor',
+      'filtro_disparador_nombre[]',   // ← name correcto: sin esto, un filtro
+      'filtro_disparador_valor[]',    //   agregado aquí caía en los del regalo
     );
     catDispSelect?.addEventListener('change', () => {
       gestorDisp.cargarAtributos();
@@ -619,16 +676,31 @@
 
     async function cargarEnlazados() {
       if (!enlazadosBox) return;
-      const catId = catDispSelect?.value;
-      if (!catId) {
+      const catDispId = catDispSelect?.value;
+      const catRegId  = catRegSelect?.value;
+      if (!catDispId) {
         enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Selecciona primero una categoría disparadora.</p>';
         return;
       }
-      const res  = await fetch(`/ventas/promociones/atributos-categoria/${catId}/`);
-      const data = await res.json();
-      const atributos = data.atributos || [];
+      if (!catRegId) {
+        enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Selecciona primero la categoría del regalo.</p>';
+        return;
+      }
+
+      // Enlazar solo tiene sentido con atributos que EXISTEN en las dos
+      // categorías (disparador y regalo). Si un atributo solo está en una
+      // —ej. GR solo en polvos, no en peróxidos— enlazarlo buscaría un
+      // regalo con GR que no existe → cero resultados. Por eso mostramos
+      // únicamente la intersección de ambas.
+      const [rDisp, rReg] = await Promise.all([
+        fetch(`/ventas/promociones/atributos-categoria/${catDispId}/`).then(r => r.json()),
+        fetch(`/ventas/promociones/atributos-categoria/${catRegId}/`).then(r => r.json()),
+      ]);
+      const nombresReg = new Set((rReg.atributos || []).map(a => a.nombre.toLowerCase()));
+      const atributos = (rDisp.atributos || []).filter(a => nombresReg.has(a.nombre.toLowerCase()));
+
       if (!atributos.length) {
-        enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Esta categoría no tiene atributos.</p>';
+        enlazadosBox.innerHTML = '<p class="text-xs text-gray-400 italic">Estas dos categorías no comparten ningún atributo, así que no hay nada que enlazar.</p>';
         return;
       }
       enlazadosBox.innerHTML = '';
