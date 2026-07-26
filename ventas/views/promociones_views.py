@@ -141,6 +141,28 @@ def guardar_promocion_view(request, promocion_id=None):
         n.strip() for n in request.POST.getlist("atributo_enlazado[]") if n.strip()
     ]
 
+    # El JS ya deshabilita en el dropdown los atributos repetidos, pero eso
+    # es solo una ayuda visual — sin este candado en el servidor, dos
+    # filtros del mismo atributo con valores distintos (ej. ML=870 y
+    # ML=950) son imposibles de cumplir a la vez y dejan el modal en $0
+    # resultados sin ningún aviso.
+    def _atributo_repetido(filtros):
+        vistos = set()
+        for f in filtros:
+            clave = f["nombre"].strip().lower()
+            if clave in vistos:
+                return f["nombre"]
+            vistos.add(clave)
+        return None
+
+    repetido = _atributo_repetido(filtros_atributos)
+    if repetido:
+        return JsonResponse({"ok": False, "msg": f"El atributo \"{repetido}\" está repetido en los filtros del regalo. Quita uno de los dos renglones."})
+
+    repetido_disp = _atributo_repetido(filtros_disparador)
+    if repetido_disp:
+        return JsonResponse({"ok": False, "msg": f"El atributo \"{repetido_disp}\" está repetido en los filtros del disparador. Quita uno de los dos renglones."})
+
     # Filtros del disparador solo aplican cuando es por categoría
     if tipo_condicion == "categoria":
         promocion.filtros_disparador = filtros_disparador

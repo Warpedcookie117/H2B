@@ -335,14 +335,27 @@
       if (!sel) return;
       const prev  = preValor || sel.dataset.preValor || sel.value || '';
       const found = atributosData.find(a => a.nombre === nombreAtrib);
-      sel.innerHTML = '<option value="">— Valor —</option>';
+
+      // "— Valor —" antes de elegir atributo. Ya elegido, "(cualquier X)"
+      // deja explícito que dejarlo así vacío es una decisión a propósito
+      // (no restringe por ese atributo) y no una fila a medio llenar.
+      sel.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = nombreAtrib ? `(cualquier ${nombreAtrib})` : '— Valor —';
+      sel.appendChild(placeholder);
+
       (found?.valores || []).forEach(v => {
         const opt = document.createElement('option');
         opt.value = v; opt.textContent = v;
         if (v === prev) opt.selected = true;
         sel.appendChild(opt);
       });
-      if (sel.dataset.preValor) sel.dataset.preValor = '';
+      // NO borrar sel.dataset.preValor aquí — si el dueño toca la categoría
+      // del regalo de ida y vuelta mientras edita, cada cambio reconstruye
+      // este dropdown desde cero. Sin la memoria original como respaldo
+      // permanente, un filtro guardado (ej. "marca = KOOL") se pierde en
+      // silencio al reconstruirse la segunda vez, sin ningún aviso.
     }
 
     function _poblarNombre(sel, preNombre = '') {
@@ -367,7 +380,8 @@
       rowsContainer.querySelectorAll('.' + nombreClass).forEach(sel => {
         const preNombre = sel.dataset.preNombre || '';
         _poblarNombre(sel, preNombre);
-        if (preNombre) sel.dataset.preNombre = '';
+        // NO borrar sel.dataset.preNombre — mismo motivo que en _poblarValor,
+        // debe sobrevivir a reconstrucciones repetidas del dropdown.
       });
     }
 
