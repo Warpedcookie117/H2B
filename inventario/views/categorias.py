@@ -325,6 +325,37 @@ def eliminar_atributo(request, subcat_id, atributo_id):
         "success": True,
         "atributos": atributos
     })
+
+
+@login_required
+def api_atributos_valores_subcategoria(request, subcategoria_id):
+    """
+    Atributos de una subcategoría CON sus valores distintos. Bajo demanda:
+    lo pide el filtro por atributo de la página de reportes al elegir una
+    subcategoría, así solo se carga lo de esa subcategoría y no todo el
+    catálogo. Forma: {"atributos": [{"nombre": ..., "valores": [...]}]}.
+    """
+    from collections import defaultdict
+    subcategoria = get_object_or_404(Categoria, id=subcategoria_id)
+
+    rows = (
+        ValorAtributo.objects
+        .filter(atributo__categoria=subcategoria)
+        .values("atributo__nombre", "valor")
+        .distinct()
+    )
+    por_atributo = defaultdict(set)
+    for row in rows:
+        nombre = (row["atributo__nombre"] or "").strip()
+        valor  = (row["valor"] or "").strip()
+        if nombre and valor:
+            por_atributo[nombre].add(valor)
+
+    atributos = [
+        {"nombre": n, "valores": sorted(vals)}
+        for n, vals in sorted(por_atributo.items())
+    ]
+    return JsonResponse({"atributos": atributos})
     
     
     

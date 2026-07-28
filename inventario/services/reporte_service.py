@@ -5,14 +5,16 @@ from django.db.models import Sum, F
 
 
 def inventario_general(categoria_id=None, subcategoria_id=None,
-                       temporada_id=None, dueño_id=None, ubicacion_id=None):
+                       temporada_id=None, dueño_id=None, ubicacion_id=None,
+                       atributos=None):
 
     # 1. Filtrar productos según los parámetros
     productos = filtrar_productos(
         categoria_id=categoria_id,
         subcategoria_id=subcategoria_id,
         temporada_id=temporada_id,
-        dueño_id=dueño_id
+        dueño_id=dueño_id,
+        atributos=atributos,
     )
 
     # 2. Filtrar inventario según los productos
@@ -41,6 +43,7 @@ def inventario_general(categoria_id=None, subcategoria_id=None,
             "producto_id",
             "ubicacion_id",
             producto_nombre=F("producto__nombre"),
+            codigo_barras=F("producto__codigo_barras"),
             dueño_nombre=F("producto__dueño__user__username"),
             categoria_nombre=F("producto__categoria_padre__nombre"),  # ✔ corregido
             subcategoria_nombre=F("producto__categoria__nombre"),
@@ -62,14 +65,15 @@ def inventario_general(categoria_id=None, subcategoria_id=None,
     return qs
 
 def movimientos_por_tipo(tipo=None, categoria_id=None, subcategoria_id=None,
-                         temporada_id=None, dueño_id=None):
+                         temporada_id=None, dueño_id=None, atributos=None):
 
     # 1. Filtrar productos según los parámetros
     productos = filtrar_productos(
         categoria_id=categoria_id,
         subcategoria_id=subcategoria_id,
         temporada_id=temporada_id,
-        dueño_id=dueño_id
+        dueño_id=dueño_id,
+        atributos=atributos,
     )
 
     # 2. Filtrar movimientos según los productos
@@ -100,6 +104,7 @@ def movimientos_por_tipo(tipo=None, categoria_id=None, subcategoria_id=None,
             "cantidad",
             "fecha",
             producto_nombre=F("producto__nombre"),
+            codigo_barras=F("producto__codigo_barras"),
             dueño_nombre=F("producto__dueño__user__username"),
             categoria_nombre=F("producto__categoria_padre__nombre"),  # ✔ corregido
             subcategoria_nombre=F("producto__categoria__nombre"),
@@ -121,13 +126,14 @@ def movimientos_por_tipo(tipo=None, categoria_id=None, subcategoria_id=None,
     return qs
 
 def resumen_movimientos(categoria_id=None, subcategoria_id=None,
-                        temporada_id=None, dueño_id=None):
+                        temporada_id=None, dueño_id=None, atributos=None):
 
     productos = filtrar_productos(
         categoria_id=categoria_id,
         subcategoria_id=subcategoria_id,
         temporada_id=temporada_id,
-        dueño_id=dueño_id
+        dueño_id=dueño_id,
+        atributos=atributos,
     )
 
     movimientos = (
@@ -147,6 +153,7 @@ def resumen_movimientos(categoria_id=None, subcategoria_id=None,
             'tipo',
             'producto__id',
             'producto__nombre',
+            'producto__codigo_barras',
             'producto__categoria_padre__nombre',   # ✔ corregido
             'producto__categoria__nombre',
             'producto__dueño__user__username',
@@ -188,7 +195,8 @@ def get_datos_reporte(
     temporada_id=None,
     ubicacion_id=None,
     dueño_id=None,
-    movimiento_tipo=None
+    movimiento_tipo=None,
+    atributos=None,
 ):
     """
     Dispatcher central de reportes.
@@ -201,7 +209,8 @@ def get_datos_reporte(
             subcategoria_id=subcategoria_id,
             temporada_id=temporada_id,
             dueño_id=dueño_id,
-            ubicacion_id=ubicacion_id
+            ubicacion_id=ubicacion_id,
+            atributos=atributos,
         )
 
     if tipo == "movimientos":
@@ -210,7 +219,8 @@ def get_datos_reporte(
             categoria_id=categoria_id,
             subcategoria_id=subcategoria_id,
             temporada_id=temporada_id,
-            dueño_id=dueño_id
+            dueño_id=dueño_id,
+            atributos=atributos,
         )
 
     if tipo == "resumen_movimientos":
@@ -218,7 +228,8 @@ def get_datos_reporte(
             categoria_id=categoria_id,
             subcategoria_id=subcategoria_id,
             temporada_id=temporada_id,
-            dueño_id=dueño_id
+            dueño_id=dueño_id,
+            atributos=atributos,
         )
 
     # Tipo desconocido

@@ -23,6 +23,7 @@ def reportes(request):
         ubicacion_id=filtros["ubicacion"],
         dueño_id=filtros["dueño"],
         movimiento_tipo=filtros["movimiento"],
+        atributos=filtros["atributos"],
     )
 
     contexto = {

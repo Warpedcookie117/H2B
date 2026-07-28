@@ -24,6 +24,7 @@ from .views.productos import (
 from .views.categorias import (
     categoria_view,
     api_categorias,
+    api_atributos_valores_subcategoria,
     configurar_atributos,
     eliminar_atributo,
     nuevo_atributo,
@@ -118,6 +119,8 @@ urlpatterns = [
     # ============================
     path('categorias/', categoria_view, name='categorias'),
     path('api/categorias/', api_categorias, name='api_categorias'),
+    path('api/subcategoria/<int:subcategoria_id>/atributos-valores/',
+         api_atributos_valores_subcategoria, name='api_atributos_valores_subcategoria'),
 
     # Atributos (módulo aparte)
     path('atributos/', configurar_atributos, name='configurar_atributos'),

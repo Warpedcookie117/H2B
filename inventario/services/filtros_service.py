@@ -6,7 +6,7 @@ from tienda_temp.models import Empleado
 # -----------------------------
 
 def filtrar_productos(categoria_id=None, subcategoria_id=None,
-                      temporada_id=None, dueño_id=None):
+                      temporada_id=None, dueño_id=None, atributos=None):
 
     qs = (
         Producto.objects
@@ -30,6 +30,14 @@ def filtrar_productos(categoria_id=None, subcategoria_id=None,
     if dueño_id:
         qs = qs.filter(dueño_id=dueño_id)
 
+    # Filtrar por atributos — un valor por atributo, AND entre distintos.
+    # Cada .filter() agrega su propio JOIN a valores_atributo (semántica AND).
+    for nombre, valor in (atributos or []):
+        qs = qs.filter(
+            valores_atributo__atributo__nombre__iexact=nombre,
+            valores_atributo__valor__iexact=valor,
+        )
+
     return qs.distinct()
 
 
@@ -50,6 +58,11 @@ def parse_filtros(request):
     if tipo not in {"general", "movimientos", "resumen_movimientos"}:
         tipo = "general"
 
+    # Filtro por atributos: listas paralelas an[]/av[] (nombre/valor).
+    an = request.GET.getlist("an")
+    av = request.GET.getlist("av")
+    atributos = [(n.strip(), v.strip()) for n, v in zip(an, av) if n.strip() and v.strip()]
+
     return {
         "ubicacion": clean(request.GET.get("ubicacion")),
         "categoria": clean(request.GET.get("categoria")),
@@ -57,6 +70,7 @@ def parse_filtros(request):
         "temporada": clean(request.GET.get("temporada")),
         "dueño": clean(request.GET.get("dueño")),
         "movimiento": clean(request.GET.get("movimiento")),
+        "atributos": atributos,
         "tipo": tipo,
     }
 

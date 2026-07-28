@@ -11,9 +11,81 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const apiUrl = form.dataset.apiUrl || '/inventario/api/categorias/';
 
+    // Filtro por atributos (bajo demanda al elegir subcategoría)
+    const attrUrlBase    = form.dataset.attrUrl || '';   // .../subcategoria/0/atributos-valores/
+    const panelAtributos = document.getElementById('panel-atributos-reportes');
+    const atributosRows  = document.getElementById('atributos-rows-reportes');
+    let attrParesInit = [];
+    try {
+        attrParesInit = JSON.parse(document.getElementById('attr-pares-reportes-json')?.textContent || '[]');
+    } catch (e) { attrParesInit = []; }
+
     let categoriasCache = null;
     let fetchActivo     = null;
     let toastTimer      = null;
+
+    // ==============================
+    // PANEL DE ATRIBUTOS
+    // ==============================
+    async function cargarAtributosPanel(subcatId, preseleccion = []) {
+        if (!panelAtributos || !atributosRows) return;
+        atributosRows.innerHTML = '';
+        if (!subcatId) { panelAtributos.classList.add('hidden'); return; }
+
+        const url = attrUrlBase.replace('/0/', '/' + subcatId + '/');
+        let atributos = [];
+        try {
+            const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await resp.json();
+            atributos = data.atributos || [];
+        } catch (e) { console.error('Error atributos:', e); }
+
+        if (!atributos.length) { panelAtributos.classList.add('hidden'); return; }
+        panelAtributos.classList.remove('hidden');
+
+        const preMap = {};
+        preseleccion.forEach(([n, v]) => { preMap[n] = v; });
+
+        atributos.forEach(a => {
+            const wrap = document.createElement('div');
+
+            const label = document.createElement('label');
+            label.className = 'block font-black text-black text-xs uppercase tracking-widest mb-1.5';
+            label.textContent = a.nombre;
+
+            const sel = document.createElement('select');
+            sel.dataset.attr = a.nombre;   // sin name: no entra a FormData, se maneja aparte
+            sel.className = 'select-90s';
+
+            const opt0 = document.createElement('option');
+            opt0.value = '';
+            opt0.textContent = 'Cualquiera';
+            sel.appendChild(opt0);
+
+            (a.valores || []).forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = v;
+                if (preMap[a.nombre] === v) opt.selected = true;
+                sel.appendChild(opt);
+            });
+
+            sel.addEventListener('change', () => fetchReporte('Atributo: ' + a.nombre));
+
+            wrap.appendChild(label);
+            wrap.appendChild(sel);
+            atributosRows.appendChild(wrap);
+        });
+    }
+
+    function agregarAtributosAUrl(searchParams) {
+        document.querySelectorAll('#atributos-rows-reportes select[data-attr]').forEach(sel => {
+            if (sel.value) {
+                searchParams.append('an', sel.dataset.attr);
+                searchParams.append('av', sel.value);
+            }
+        });
+    }
 
     // ==============================
     // SUBCATEGORÍAS
@@ -68,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!link) return;
         const params = new URLSearchParams();
         new FormData(form).forEach((val, key) => { if (val) params.set(key, val); });
+        agregarAtributosAUrl(params);   // an/av del panel de atributos
         link.href = link.dataset.base + '?' + params.toString();
     }
 
@@ -83,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = new URL(window.location.href);
         url.search = '';
         new FormData(form).forEach((val, key) => { if (val) url.searchParams.set(key, val); });
+        agregarAtributosAUrl(url.searchParams);   // an/av del panel de atributos
 
         try {
             const res   = await fetch(url.toString(), {
@@ -129,15 +203,25 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchReporte('Reporte actualizado');
     });
 
-    // Categoría — carga subcategorías antes de buscar
+    // Categoría — carga subcategorías antes de buscar. Al cambiar de
+    // categoría la subcategoría se resetea, así que el panel de atributos
+    // se limpia también.
     catSelect.addEventListener('change', async function () {
         await cargarSubcategorias(this.value, null);
+        cargarAtributosPanel('');
         fetchReporte(getLabelFiltro(this));
     });
 
-    // Resto de selects
+    // Subcategoría — pinta el panel de atributos de esa subcategoría (fresco,
+    // sin preselección) y luego busca.
+    subSelect.addEventListener('change', async function () {
+        await cargarAtributosPanel(this.value);
+        fetchReporte(getLabelFiltro(this));
+    });
+
+    // Resto de selects (excepto categoría y subcategoría, ya manejadas arriba)
     form.querySelectorAll('select').forEach(function (select) {
-        if (select === catSelect) return;
+        if (select === catSelect || select === subSelect) return;
         select.addEventListener('change', function () {
             fetchReporte(getLabelFiltro(this));
         });
@@ -148,7 +232,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // ==============================
     const filtroSub = subSelect.dataset.selected || '';
     if (catSelect.value) {
-        cargarSubcategorias(catSelect.value, filtroSub);
+        // Cargar subcategorías; al terminar, si había subcategoría
+        // preseleccionada, pintar sus atributos con los valores ya elegidos.
+        cargarSubcategorias(catSelect.value, filtroSub).then(() => {
+            if (filtroSub) cargarAtributosPanel(filtroSub, attrParesInit);
+        });
     }
     actualizarLinkPDF();
 

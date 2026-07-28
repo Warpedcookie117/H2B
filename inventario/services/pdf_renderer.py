@@ -127,15 +127,16 @@ def generar_pdf(tipo_reporte, filtros, usuario):
         ubicacion_id=filtros.get("ubicacion"),
         dueño_id=filtros.get("dueño"),
         movimiento_tipo=filtros.get("movimiento"),
+        atributos=filtros.get("atributos"),
     )
 
     # ── INVENTARIO GENERAL ──────────────────────────────────────
     if tipo_reporte == "general":
-        columnas = ["Producto"]
+        columnas = ["Código", "Producto"]
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
         if not filtros.get("subcategoria"): columnas.append("Subcategoría")
-        if not filtros.get("temporada"):    columnas.append("Temporada")
+        if filtros.get("temporada"):        columnas.append("Temporada")
         if not filtros.get("ubicacion"):    columnas.append("Ubicación")
         columnas.append("Cantidad")
 
@@ -143,35 +144,35 @@ def generar_pdf(tipo_reporte, filtros, usuario):
         dibujar_fila(columnas, anchos, negrita=True)
 
         for item in datos:
-            fila = [item.get("producto_nombre", "—")]
+            fila = [item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
             if not filtros.get("dueño"):        fila.append(item.get("dueño_nombre", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("categoria_nombre", "—"))
             if not filtros.get("subcategoria"): fila.append(item.get("subcategoria_nombre", "—"))
-            if not filtros.get("temporada"):    fila.append(item.get("temporada_nombres", "—"))
+            if filtros.get("temporada"):        fila.append(item.get("temporada_nombres", "—"))
             if not filtros.get("ubicacion"):    fila.append(item.get("ubicacion_nombre", "—"))
             fila.append(item.get("total", 0))
             dibujar_fila(fila, anchos)
 
     # ── MOVIMIENTOS ─────────────────────────────────────────────
     elif tipo_reporte == "movimientos":
-        columnas = ["Producto"]
+        columnas = ["Código", "Producto"]
         if not filtros.get("movimiento"):   columnas.append("Tipo")
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
         if not filtros.get("subcategoria"): columnas.append("Subcategoría")
-        if not filtros.get("temporada"):    columnas.append("Temporada")
+        if filtros.get("temporada"):        columnas.append("Temporada")
         columnas += ["Cantidad", "Origen", "Destino", "Fecha"]
 
         anchos = _anchos_columnas(columnas, ancho_disponible)
         dibujar_fila(columnas, anchos, negrita=True)
 
         for item in datos:
-            fila = [item.get("producto_nombre", "—")]
+            fila = [item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
             if not filtros.get("movimiento"):   fila.append(item.get("tipo", "—"))
             if not filtros.get("dueño"):        fila.append(item.get("dueño_nombre", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("categoria_nombre", "—"))
             if not filtros.get("subcategoria"): fila.append(item.get("subcategoria_nombre", "—"))
-            if not filtros.get("temporada"):    fila.append(item.get("temporada_nombres", "—"))
+            if filtros.get("temporada"):        fila.append(item.get("temporada_nombres", "—"))
             fecha = item.get("fecha")
             fila += [
                 item.get("cantidad", 0),
@@ -183,22 +184,22 @@ def generar_pdf(tipo_reporte, filtros, usuario):
 
     # ── RESUMEN DE MOVIMIENTOS ──────────────────────────────────
     elif tipo_reporte == "resumen_movimientos":
-        columnas = ["Tipo", "Producto"]
+        columnas = ["Tipo", "Código", "Producto"]
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
         if not filtros.get("subcategoria"): columnas.append("Subcategoría")
-        if not filtros.get("temporada"):    columnas.append("Temporada")
+        if filtros.get("temporada"):        columnas.append("Temporada")
         columnas.append("Total movido")
 
         anchos = _anchos_columnas(columnas, ancho_disponible)
         dibujar_fila(columnas, anchos, negrita=True)
 
         for item in datos:
-            fila = [item.get("tipo", "—"), item.get("producto__nombre", "—")]
+            fila = [item.get("tipo", "—"), item.get("producto__codigo_barras", "—"), item.get("producto__nombre", "—")]
             if not filtros.get("dueño"):        fila.append(item.get("producto__dueño__user__username", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("producto__categoria_padre__nombre", "—"))
             if not filtros.get("subcategoria"): fila.append(item.get("producto__categoria__nombre", "—"))
-            if not filtros.get("temporada"):    fila.append(item.get("temporada_nombres", "—"))
+            if filtros.get("temporada"):        fila.append(item.get("temporada_nombres", "—"))
             fila.append(item.get("total", 0))
             dibujar_fila(fila, anchos)
 

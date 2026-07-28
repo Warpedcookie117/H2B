@@ -27,6 +27,7 @@
   <form method="get"
         id="form-reportes"
         data-api-url="{% url 'inventario:api_categorias' %}"
+        data-attr-url="{% url 'inventario:api_atributos_valores_subcategoria' 0 %}"
         class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#EFF6FF] p-6">
 
     <p class="font-black text-black text-xs uppercase tracking-widest mb-5">Filtros</p>
@@ -109,6 +110,15 @@
         </select>
       </div>
 
+    </div>
+
+    <!-- PANEL DE FILTRO POR ATRIBUTOS — el JS lo llena al elegir subcategoría.
+         Se piden bajo demanda a api_atributos_valores_subcategoria. -->
+    <div id="panel-atributos-reportes" class="hidden mt-5 border-4 border-black shadow-[4px_4px_0_0_black] bg-[#EDE7FF] p-4">
+      <p class="text-sm font-black uppercase tracking-widest text-black mb-3">
+        🎯 Afina por atributo
+      </p>
+      <div id="atributos-rows-reportes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
 
     <div class="mt-6 flex flex-col sm:flex-row gap-3">
@@ -198,10 +208,11 @@
         <table class="tabla-90s">
           <thead>
             <tr>
+              <th>Código</th>
               <th>Producto</th>
               <th>Categoría</th>
               <th>Subcategoría</th>
-              <th>Temporada</th>
+              {% if filtro_temporada %}<th>Temporada</th>{% endif %}
               <th>Dueño</th>
               <th>Ubicación</th>
               <th>Cantidad</th>
@@ -210,10 +221,11 @@
           <tbody>
             {% for item in datos %}
             <tr>
+              <td class="font-mono text-xs whitespace-nowrap">{{ item.codigo_barras|default:"—" }}</td>
               <td class="font-black">{{ item.producto_nombre }}</td>
               <td>{{ item.categoria_nombre|default:"—" }}</td>
               <td>{{ item.subcategoria_nombre|default:"—" }}</td>
-              <td>{{ item.temporada_nombres|default:"—" }}</td>
+              {% if filtro_temporada %}<td>{{ item.temporada_nombres|default:"—" }}</td>{% endif %}
               <td>{{ item.dueño_nombre|default:"—" }}</td>
               <td>{{ item.ubicacion_nombre|default:"—" }}</td>
               <td class="font-black text-center text-lg">{{ item.total }}</td>
@@ -235,6 +247,7 @@
         <table class="tabla-90s">
           <thead>
             <tr>
+              <th>Código</th>
               <th>Producto</th>
               <th>Tipo</th>
               <th>Motivo</th>
@@ -247,6 +260,7 @@
           <tbody>
             {% for item in datos %}
             <tr>
+              <td class="font-mono text-xs whitespace-nowrap">{{ item.codigo_barras|default:"—" }}</td>
               <td class="font-black">{{ item.producto_nombre }}</td>
               <td>
                 <span class="badge-tipo
@@ -281,11 +295,12 @@
           <thead>
             <tr>
               <th>Tipo</th>
+              <th>Código</th>
               <th>Producto</th>
               <th>Categoría</th>
               <th>Subcategoría</th>
               <th>Dueño</th>
-              <th>Temporada</th>
+              {% if filtro_temporada %}<th>Temporada</th>{% endif %}
               <th>Total movido</th>
             </tr>
           </thead>
@@ -301,11 +316,12 @@
                   {{ item.tipo }}
                 </span>
               </td>
+              <td class="font-mono text-xs whitespace-nowrap">{{ item.producto__codigo_barras|default:"—" }}</td>
               <td class="font-black">{{ item.producto__nombre|default:"—" }}</td>
               <td>{{ item.producto__categoria_padre__nombre|default:"—" }}</td>
               <td>{{ item.producto__categoria__nombre|default:"—" }}</td>
               <td>{{ item.producto__dueño__user__username|default:"—" }}</td>
-              <td>{{ item.temporada_nombres|default:"—" }}</td>
+              {% if filtro_temporada %}<td>{{ item.temporada_nombres|default:"—" }}</td>{% endif %}
               <td class="font-black text-center text-lg">{{ item.total }}</td>
             </tr>
             {% endfor %}
@@ -338,5 +354,6 @@
 {% endblock %}
 
 {% block scripts %}
+{{ filtros.atributos|json_script:"attr-pares-reportes-json" }}
 <script src="{% static 'js/reportes.js' %}"></script>
 {% endblock %}
