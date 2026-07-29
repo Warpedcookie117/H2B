@@ -40,7 +40,7 @@ if (!buscador) {
         if (subcatVal) url.searchParams.set("subcat", subcatVal);
         else           url.searchParams.delete("subcat");
 
-        // Incluir filtros de atributo (listas paralelas an/av)
+        // Incluir filtros de atributo (listas paralelas an/av) — panel por subcat
         url.searchParams.delete("an");
         url.searchParams.delete("av");
         document.querySelectorAll("#atributos-rows select[data-attr]").forEach(sel => {
@@ -49,6 +49,16 @@ if (!buscador) {
                 url.searchParams.append("av", sel.value);
             }
         });
+
+        // Filtro global por atributo (gan/gav) — toda la ubicación
+        url.searchParams.delete("gan");
+        url.searchParams.delete("gav");
+        const gNom = document.getElementById("ub-global-attr-nombre");
+        const gVal = document.getElementById("ub-global-attr-valor");
+        if (gNom && gVal && gNom.value && gVal.value) {
+            url.searchParams.append("gan", gNom.value);
+            url.searchParams.append("gav", gVal.value);
+        }
 
         const grid = document.getElementById("gridProductos");
 
@@ -341,7 +351,130 @@ if (!buscador) {
         poblarSubcat("");
         filtroSubcat.value = "";
         renderPanelAtributos("");
+        limpiarGlobal();   // el "Limpiar" también quita el filtro global
         actualizarBtnLimpiar();
         dispararFetch();
     });
+
+    // ============================================================
+    // FILTRO GLOBAL POR ATRIBUTO — toda la ubicación, sin subcategoría.
+    // Se arma del mapa atributosPorSub (ya scoped a esta ubicación): junta
+    // los atributos de todas las subcategorías y sus valores. Sin backend nuevo.
+    // ============================================================
+    const gBuscar     = document.getElementById("ub-global-attr-buscar");
+    const gNombreHid  = document.getElementById("ub-global-attr-nombre");
+    const gResultados = document.getElementById("ub-global-attr-resultados");
+    const gValorSel   = document.getElementById("ub-global-attr-valor");
+    const gPanel      = document.getElementById("panel-global-atributos");
+
+    // Índice: nombre → { subcats: cuántas subcats lo tienen, valores: Set }
+    const globalIndex = {};
+    Object.values(atributosPorSub).forEach(atributos => {
+        (atributos || []).forEach(a => {
+            if (!globalIndex[a.nombre]) globalIndex[a.nombre] = { subcats: 0, valores: new Set() };
+            globalIndex[a.nombre].subcats += 1;
+            (a.valores || []).forEach(v => globalIndex[a.nombre].valores.add(v));
+        });
+    });
+    // Ordenados por en cuántas subcats aparecen (los más "globales" primero)
+    const globalNombres = Object.keys(globalIndex).sort((x, y) =>
+        globalIndex[y].subcats - globalIndex[x].subcats || x.localeCompare(y)
+    );
+
+    // Si esta ubicación no tiene atributos, no tiene caso mostrar el filtro
+    if (!globalNombres.length) gPanel?.classList.add("hidden");
+
+    function _normalizarUb(t) {
+        return (t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    }
+
+    function renderGlobalResultados(filtro) {
+        if (!gResultados) return;
+        const f = _normalizarUb((filtro || "").trim());
+        const lista = f
+            ? globalNombres.filter(n => _normalizarUb(n).includes(f)).slice(0, 12)
+            : globalNombres.slice(0, 5);
+
+        gResultados.innerHTML = "";
+        if (!lista.length) {
+            gResultados.innerHTML = '<p class="px-3 py-2 text-xs font-semibold text-gray-500">Sin coincidencias</p>';
+            gResultados.classList.remove("hidden");
+            return;
+        }
+        if (!f) {
+            const h = document.createElement("p");
+            h.className = "px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50";
+            h.textContent = "Los más usados entre subcategorías";
+            gResultados.appendChild(h);
+        }
+        lista.forEach(n => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "w-full text-left px-3 py-2 font-bold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors";
+            b.textContent = n;
+            b.addEventListener("click", () => seleccionarGlobal(n));
+            gResultados.appendChild(b);
+        });
+        gResultados.classList.remove("hidden");
+    }
+
+    function poblarGlobalValores(nombre, preValor = "") {
+        if (!gValorSel) return;
+        if (!nombre || !globalIndex[nombre]) {
+            gValorSel.innerHTML = '<option value="">— Elige atributo primero —</option>';
+            gValorSel.disabled = true;
+            return;
+        }
+        const valores = Array.from(globalIndex[nombre].valores).sort((a, b) => a.localeCompare(b));
+        let html = '<option value="">Cualquiera</option>';
+        valores.forEach(v => {
+            const sel = (v === preValor) ? " selected" : "";
+            html += `<option value="${v}"${sel}>${v}</option>`;
+        });
+        gValorSel.innerHTML = html;
+        gValorSel.disabled = false;
+    }
+
+    function seleccionarGlobal(nombre) {
+        gBuscar.value = nombre;
+        gNombreHid.value = nombre;
+        gResultados.classList.add("hidden");
+        poblarGlobalValores(nombre);
+        dispararFetch();
+    }
+
+    function limpiarGlobal() {
+        if (gBuscar)    gBuscar.value = "";
+        if (gNombreHid) gNombreHid.value = "";
+        poblarGlobalValores("");
+    }
+
+    gBuscar?.addEventListener("focus", () => renderGlobalResultados(gBuscar.value));
+    gBuscar?.addEventListener("input", () => {
+        renderGlobalResultados(gBuscar.value);
+        // Vaciar el campo quita el filtro global
+        if (!gBuscar.value.trim() && gNombreHid.value) {
+            gNombreHid.value = "";
+            poblarGlobalValores("");
+            dispararFetch();
+        }
+    });
+    gValorSel?.addEventListener("change", () => dispararFetch());
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#ub-global-attr-buscar") && !e.target.closest("#ub-global-attr-resultados")) {
+            gResultados?.classList.add("hidden");
+        }
+    });
+
+    // Restaurar el filtro global si venía en la URL (recarga / paginación)
+    let globalParesInit = [];
+    try {
+        globalParesInit = JSON.parse(document.getElementById("attr-global-pares-json")?.textContent || "[]");
+    } catch (e) { globalParesInit = []; }
+    if (globalParesInit.length && gBuscar && gNombreHid) {
+        const [gn, gv] = globalParesInit[0];
+        gBuscar.value = gn;
+        gNombreHid.value = gn;
+        poblarGlobalValores(gn, gv);
+    }
 })();

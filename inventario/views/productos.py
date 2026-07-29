@@ -44,9 +44,18 @@ def productos_por_ubicacion(request, ubicacion_id):
 
     # Filtro por atributos: listas paralelas an[]/av[] (nombre/valor), un
     # valor por atributo, combinados con AND (el producto debe cumplir todos).
+    #   - an/av   → atado a la subcategoría elegida.
+    #   - gan/gav → global (cualquier subcategoría de ESTA ubicación).
+    # Ambos filtran igual; nombres distintos solo para restaurar cada control.
     attr_nombres = request.GET.getlist("an")
     attr_valores = request.GET.getlist("av")
-    attr_pares   = [(n, v) for n, v in zip(attr_nombres, attr_valores) if n and v]
+    attr_pares_subcat = [(n, v) for n, v in zip(attr_nombres, attr_valores) if n and v]
+
+    gattr_nombres = request.GET.getlist("gan")
+    gattr_valores = request.GET.getlist("gav")
+    attr_pares_global = [(n, v) for n, v in zip(gattr_nombres, gattr_valores) if n and v]
+
+    attr_pares = attr_pares_subcat + attr_pares_global
 
     productos = (
         Inventario.objects
@@ -223,15 +232,18 @@ def productos_por_ubicacion(request, ubicacion_id):
         lista_productos = ([pinned_inv] + list(page_obj)) if pinned_inv else list(page_obj)
 
     # query_string para los links de paginación: conserva q/cat/subcat/falta_en
-    # y también los pares de atributos (an/av), en orden, para no perderlos al
-    # cambiar de página.
+    # y los pares de atributos (subcat como an/av, global como gan/gav), en
+    # orden, para no perderlos al cambiar de página.
     qs_pairs = [(k, v) for k, v in [
         ("q", q), ("cat", cat), ("subcat", subcat),
         ("falta_en", str(falta_en_id) if falta_en_id else ""),
     ] if v]
-    for n, v in attr_pares:
+    for n, v in attr_pares_subcat:
         qs_pairs.append(("an", n))
         qs_pairs.append(("av", v))
+    for n, v in attr_pares_global:
+        qs_pairs.append(("gan", n))
+        qs_pairs.append(("gav", v))
 
     return render(request, "inventario/inventario_ubicacion.html", {
         "ubicacion": ubicacion,
@@ -248,7 +260,10 @@ def productos_por_ubicacion(request, ubicacion_id):
         "hay_filtros":     bool(q or cat or subcat or attr_pares),
         "categorias_json": categorias_json,
         "atributos_por_subcat_json": atributos_por_subcat,
-        "attr_pares":      attr_pares,
+        # Separados: el panel por subcategoría restaura an/av; el filtro
+        # global restaura gan/gav (sin mezclarse).
+        "attr_pares":         attr_pares_subcat,
+        "attr_pares_global":  attr_pares_global,
         "falta_en_id":     falta_en_id,
         "query_string":    urlencode(qs_pairs),
     })

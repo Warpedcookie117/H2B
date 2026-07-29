@@ -126,10 +126,49 @@
     </button>
   </div>
 
+  <!-- FILTRO GLOBAL POR ATRIBUTO — todo lo de ESTA ubicación sin importar subcategoría -->
+  <div id="panel-global-atributos" class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#E0F2FE] p-4">
+    <p class="text-sm font-black uppercase tracking-widest text-black mb-1">
+      🌎 Busca aquí por marca, tono, etc.
+    </p>
+    <p class="text-xs font-semibold text-black/60 mb-3">
+      No importa la subcategoría. Ejemplo: elige <b>Marca → Bissu</b> y salen TODOS los
+      Bissu de esta ubicación (pinceles, delineadores… lo que sea).
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-black uppercase tracking-widest text-black mb-1">Atributo</label>
+        <div class="relative">
+          <input type="text" id="ub-global-attr-buscar"
+                 autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                 placeholder="Escribe o elige (marca, tamaño…)"
+                 style="font-size:16px;"
+                 class="w-full border-4 border-black px-3 py-3 font-bold text-black outline-none bg-white">
+          <input type="hidden" id="ub-global-attr-nombre" value="">
+          <div id="ub-global-attr-resultados"
+               class="hidden absolute left-0 right-0 top-full z-50 border-4 border-black bg-white
+                      shadow-[4px_4px_0_0_black] max-h-56 overflow-y-auto"></div>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-black uppercase tracking-widest text-black mb-1">Valor</label>
+        <div class="relative">
+          <select id="ub-global-attr-valor" disabled
+                  style="appearance:none;-webkit-appearance:none;background:#fff;font-size:16px;"
+                  class="w-full border-4 border-black px-3 py-3 pr-10 font-bold text-black outline-none
+                         disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+            <option value="">— Elige atributo primero —</option>
+          </select>
+          <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black select-none">▼</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PANEL DE FILTRO POR ATRIBUTOS — el JS lo llena al elegir subcategoría -->
   <div id="panel-atributos" class="hidden border-4 border-black shadow-[4px_4px_0_0_black] bg-[#EDE7FF] p-4">
     <p class="text-sm font-black uppercase tracking-widest text-black mb-3">
-      🎯 Afina por atributo
+      🎯 Afina una subcategoría por su atributo
     </p>
     <div id="atributos-rows" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
   </div>
@@ -355,6 +394,7 @@
 {{ categorias_json|json_script:"categorias-json" }}
 {{ atributos_por_subcat_json|json_script:"atributos-subcat-json" }}
 {{ attr_pares|json_script:"attr-pares-json" }}
+{{ attr_pares_global|json_script:"attr-global-pares-json" }}
 <script>
   window.inventarioTodas    = JSON.parse(document.getElementById("inventarioTodas").textContent);
   window.ubicacionActualId  = {{ ubicacion.id }};
