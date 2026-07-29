@@ -71,6 +71,12 @@ def _mensaje_filtros(p, filtros_nombres, filtros_raw, y_inicio):
     if filtros_raw.get("movimiento"):
         lineas.append(("Tipo de movimiento", filtros_raw["movimiento"].capitalize()))
 
+    # Atributos seleccionados: los de subcategoría y los globales.
+    for nombre, valor in filtros_raw.get("atributos_subcat", []):
+        lineas.append((nombre, valor))
+    for nombre, valor in filtros_raw.get("atributos_global", []):
+        lineas.append((f"{nombre} (en toda la tienda)", valor))
+
     if not lineas:
         return y_inicio
 
@@ -132,7 +138,7 @@ def generar_pdf(tipo_reporte, filtros, usuario):
 
     # ── INVENTARIO GENERAL ──────────────────────────────────────
     if tipo_reporte == "general":
-        columnas = ["Código", "Producto"]
+        columnas = ["#", "Código", "Producto"]
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
         if not filtros.get("subcategoria"): columnas.append("Subcategoría")
@@ -143,8 +149,10 @@ def generar_pdf(tipo_reporte, filtros, usuario):
         anchos = _anchos_columnas(columnas, ancho_disponible)
         dibujar_fila(columnas, anchos, negrita=True)
 
-        for item in datos:
-            fila = [item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
+        # Número de línea consecutivo (continuo entre páginas) para poder
+        # decir "el de la línea 4 no coincide".
+        for i, item in enumerate(datos, start=1):
+            fila = [i, item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
             if not filtros.get("dueño"):        fila.append(item.get("dueño_nombre", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("categoria_nombre", "—"))
             if not filtros.get("subcategoria"): fila.append(item.get("subcategoria_nombre", "—"))
@@ -155,7 +163,7 @@ def generar_pdf(tipo_reporte, filtros, usuario):
 
     # ── MOVIMIENTOS ─────────────────────────────────────────────
     elif tipo_reporte == "movimientos":
-        columnas = ["Código", "Producto"]
+        columnas = ["#", "Código", "Producto"]
         if not filtros.get("movimiento"):   columnas.append("Tipo")
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
@@ -166,8 +174,8 @@ def generar_pdf(tipo_reporte, filtros, usuario):
         anchos = _anchos_columnas(columnas, ancho_disponible)
         dibujar_fila(columnas, anchos, negrita=True)
 
-        for item in datos:
-            fila = [item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
+        for i, item in enumerate(datos, start=1):
+            fila = [i, item.get("codigo_barras", "—"), item.get("producto_nombre", "—")]
             if not filtros.get("movimiento"):   fila.append(item.get("tipo", "—"))
             if not filtros.get("dueño"):        fila.append(item.get("dueño_nombre", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("categoria_nombre", "—"))
@@ -184,7 +192,7 @@ def generar_pdf(tipo_reporte, filtros, usuario):
 
     # ── RESUMEN DE MOVIMIENTOS ──────────────────────────────────
     elif tipo_reporte == "resumen_movimientos":
-        columnas = ["Tipo", "Código", "Producto"]
+        columnas = ["#", "Tipo", "Código", "Producto"]
         if not filtros.get("dueño"):        columnas.append("Dueño")
         if not filtros.get("categoria"):    columnas.append("Categoría")
         if not filtros.get("subcategoria"): columnas.append("Subcategoría")
@@ -194,8 +202,8 @@ def generar_pdf(tipo_reporte, filtros, usuario):
         anchos = _anchos_columnas(columnas, ancho_disponible)
         dibujar_fila(columnas, anchos, negrita=True)
 
-        for item in datos:
-            fila = [item.get("tipo", "—"), item.get("producto__codigo_barras", "—"), item.get("producto__nombre", "—")]
+        for i, item in enumerate(datos, start=1):
+            fila = [i, item.get("tipo", "—"), item.get("producto__codigo_barras", "—"), item.get("producto__nombre", "—")]
             if not filtros.get("dueño"):        fila.append(item.get("producto__dueño__user__username", "—"))
             if not filtros.get("categoria"):    fila.append(item.get("producto__categoria_padre__nombre", "—"))
             if not filtros.get("subcategoria"): fila.append(item.get("producto__categoria__nombre", "—"))

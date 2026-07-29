@@ -1,7 +1,9 @@
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import render
-from inventario.models import Categoria, Inventario, Temporada, Ubicacion
+from inventario.models import Atributo, Categoria, Inventario, Temporada, Ubicacion
 from tienda_temp.models import Empleado
 from inventario.services.filtros_service import parse_filtros, nombres_filtros
 from inventario.services.pdf_renderer import generar_pdf, exportar_criticos_pdf
@@ -26,10 +28,19 @@ def reportes(request):
         atributos=filtros["atributos"],
     )
 
+    # Paginación en pantalla (50 por página). El PDF NO usa esto: se genera
+    # aparte con TODOS los resultados. list() materializa los dicts —que ya
+    # traen temporada_nombres calculado en el servicio— para poder paginarlos.
+    datos_list = list(datos)
+    paginator  = Paginator(datos_list, 50)
+    page_obj   = paginator.get_page(request.GET.get("page"))
+
     contexto = {
-        # Datos del reporte
+        # Datos del reporte (solo la página actual)
         "tipo_reporte": filtros["tipo"],
-        "datos": datos,
+        "datos": list(page_obj),
+        "page_obj": page_obj,
+        "total_resultados": paginator.count,
 
         # Filtros procesados
         "filtros": filtros,
@@ -48,6 +59,17 @@ def reportes(request):
         "temporadas": Temporada.objects.all(),
         "ubicaciones": Ubicacion.objects.all(),
         "dueños": Empleado.objects.all(),
+
+        # Filtro global por atributo: nombres de atributo ordenados por cuántas
+        # subcategorías los comparten (los más "globales" primero, ej. Marca).
+        # El JS muestra los primeros como sugerencia y busca en TODA la lista.
+        "atributo_nombres": list(
+            Atributo.objects
+            .values("nombre")
+            .annotate(n_subcats=Count("categoria_id", distinct=True))
+            .order_by("-n_subcats", "nombre")
+            .values_list("nombre", flat=True)
+        ),
     }
 
     return render(request, "inventario/reportes.html", contexto)

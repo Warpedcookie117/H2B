@@ -79,12 +79,104 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function agregarAtributosAUrl(searchParams) {
+        // Filtro por subcategoría (an/av)
         document.querySelectorAll('#atributos-rows-reportes select[data-attr]').forEach(sel => {
             if (sel.value) {
                 searchParams.append('an', sel.dataset.attr);
                 searchParams.append('av', sel.value);
             }
         });
+        // Filtro global por atributo (gan/gav)
+        const gNombre = document.getElementById('global-attr-nombre');
+        const gValor  = document.getElementById('global-attr-valor');
+        if (gNombre && gValor && gNombre.value && gValor.value) {
+            searchParams.append('gan', gNombre.value);
+            searchParams.append('gav', gValor.value);
+        }
+    }
+
+    // ==============================
+    // FILTRO GLOBAL POR ATRIBUTO
+    // ==============================
+    const globalAttrUrl  = form.dataset.globalAttrUrl || '';
+    const gBuscar        = document.getElementById('global-attr-buscar');
+    const gNombreHidden  = document.getElementById('global-attr-nombre');
+    const gResultados    = document.getElementById('global-attr-resultados');
+    const gValorSel      = document.getElementById('global-attr-valor');
+
+    let atributoNombres = [];   // ordenados por coincidencia entre subcategorías
+    try {
+        atributoNombres = JSON.parse(document.getElementById('atributo-nombres-json')?.textContent || '[]');
+    } catch (e) { atributoNombres = []; }
+
+    // Ignora acentos y mayúsculas al buscar ("tamano" encuentra "TAMAÑO")
+    function _normalizar(t) {
+        return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    // Lista de coincidencias: vacío → top 5 más compartidos; con texto → busca en TODOS
+    function renderResultadosGlobal(filtro) {
+        if (!gResultados) return;
+        const f = _normalizar((filtro || '').trim());
+        const lista = f
+            ? atributoNombres.filter(n => _normalizar(n).includes(f)).slice(0, 12)
+            : atributoNombres.slice(0, 5);
+
+        gResultados.innerHTML = '';
+        if (!lista.length) {
+            gResultados.innerHTML = '<p class="px-3 py-2 text-xs font-semibold text-gray-500">Sin coincidencias</p>';
+            gResultados.classList.remove('hidden');
+            return;
+        }
+        if (!f) {
+            const h = document.createElement('p');
+            h.className = 'px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50';
+            h.textContent = 'Los más usados entre categorías';
+            gResultados.appendChild(h);
+        }
+        lista.forEach(n => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'w-full text-left px-3 py-2 font-bold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors';
+            b.textContent = n;
+            b.addEventListener('click', () => seleccionarAtributoGlobal(n));
+            gResultados.appendChild(b);
+        });
+        gResultados.classList.remove('hidden');
+    }
+
+    function seleccionarAtributoGlobal(nombre) {
+        gBuscar.value = nombre;
+        gNombreHidden.value = nombre;
+        gResultados.classList.add('hidden');
+        cargarGlobalValores(nombre);   // carga los valores de ese atributo
+        fetchReporte('Atributo global: ' + nombre);
+    }
+
+    async function cargarGlobalValores(nombre, preValor = '') {
+        if (!gValorSel) return;
+        if (!nombre) {
+            gValorSel.innerHTML = '<option value="">— Elige atributo primero —</option>';
+            gValorSel.disabled = true;
+            return;
+        }
+        gValorSel.innerHTML = '<option value="">Cargando...</option>';
+        gValorSel.disabled = true;
+        try {
+            const url = globalAttrUrl + '?nombre=' + encodeURIComponent(nombre);
+            const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await resp.json();
+            let html = '<option value="">Cualquiera</option>';
+            (data.valores || []).forEach(v => {
+                const sel = (v === preValor) ? ' selected' : '';
+                html += `<option value="${v}"${sel}>${v}</option>`;
+            });
+            gValorSel.innerHTML = html;
+            gValorSel.disabled = false;
+        } catch (e) {
+            console.error('Error valores globales:', e);
+            gValorSel.innerHTML = '<option value="">Error al cargar</option>';
+        }
     }
 
     // ==============================
@@ -147,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ==============================
     // FETCH RESULTADOS
     // ==============================
-    async function fetchReporte(labelFiltro) {
+    async function fetchReporte(labelFiltro, pagina) {
         mostrarToast('✅ ' + labelFiltro);
 
         if (fetchActivo) fetchActivo.abort();
@@ -156,7 +248,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const url = new URL(window.location.href);
         url.search = '';
         new FormData(form).forEach((val, key) => { if (val) url.searchParams.set(key, val); });
-        agregarAtributosAUrl(url.searchParams);   // an/av del panel de atributos
+        agregarAtributosAUrl(url.searchParams);   // an/av + gan/gav
+        // Al cambiar un filtro no se manda página → vuelve a la 1. Solo los
+        // botones de paginación mandan `pagina`.
+        if (pagina) url.searchParams.set('page', pagina);
 
         try {
             const res   = await fetch(url.toString(), {
@@ -203,6 +298,16 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchReporte('Reporte actualizado');
     });
 
+    // Paginación — botones dentro de #reportes-resultado (se re-renderiza por
+    // AJAX, por eso escuchamos en el contenedor estable con delegación).
+    const resultadoBox = document.getElementById('reportes-resultado');
+    resultadoBox?.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-page]');
+        if (!btn) return;
+        fetchReporte('Página ' + btn.dataset.page, btn.dataset.page);
+        resultadoBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
     // Categoría — carga subcategorías antes de buscar. Al cambiar de
     // categoría la subcategoría se resetea, así que el panel de atributos
     // se limpia también.
@@ -219,9 +324,33 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchReporte(getLabelFiltro(this));
     });
 
-    // Resto de selects (excepto categoría y subcategoría, ya manejadas arriba)
+    // Filtro global — buscador de atributo:
+    gBuscar?.addEventListener('focus', function () { renderResultadosGlobal(this.value); });
+    gBuscar?.addEventListener('input', function () {
+        renderResultadosGlobal(this.value);
+        // Si vacían el campo, se quita el filtro global.
+        if (!this.value.trim() && gNombreHidden.value) {
+            gNombreHidden.value = '';
+            cargarGlobalValores('');
+            fetchReporte('Filtro global quitado');
+        }
+    });
+    // Cerrar el dropdown al picar fuera
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('#global-attr-buscar') && !e.target.closest('#global-attr-resultados')) {
+            gResultados?.classList.add('hidden');
+        }
+    });
+    // Al elegir un valor del atributo global, buscar
+    gValorSel?.addEventListener('change', function () {
+        fetchReporte('Filtro global');
+    });
+
+    // Resto de selects (excepto categoría, subcategoría y el valor global,
+    // ya manejados arriba)
     form.querySelectorAll('select').forEach(function (select) {
         if (select === catSelect || select === subSelect) return;
+        if (select === gValorSel) return;
         select.addEventListener('change', function () {
             fetchReporte(getLabelFiltro(this));
         });
@@ -238,6 +367,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (filtroSub) cargarAtributosPanel(filtroSub, attrParesInit);
         });
     }
+
+    // Filtro global: restaurar selección si venía en la URL (recarga/paginación).
+    let attrGlobalInit = [];
+    try {
+        attrGlobalInit = JSON.parse(document.getElementById('attr-global-reportes-json')?.textContent || '[]');
+    } catch (e) { attrGlobalInit = []; }
+    if (attrGlobalInit.length && gBuscar && gNombreHidden) {
+        const [gn, gv] = attrGlobalInit[0];
+        gBuscar.value = gn;
+        gNombreHidden.value = gn;
+        cargarGlobalValores(gn, gv);
+    }
+
     actualizarLinkPDF();
 
 });

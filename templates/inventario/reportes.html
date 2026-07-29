@@ -28,6 +28,7 @@
         id="form-reportes"
         data-api-url="{% url 'inventario:api_categorias' %}"
         data-attr-url="{% url 'inventario:api_atributos_valores_subcategoria' 0 %}"
+        data-global-attr-url="{% url 'inventario:api_valores_atributo_global' %}"
         class="border-4 border-black shadow-[6px_6px_0_0_black] bg-[#EFF6FF] p-6">
 
     <p class="font-black text-black text-xs uppercase tracking-widest mb-5">Filtros</p>
@@ -112,11 +113,49 @@
 
     </div>
 
+    <!-- FILTRO GLOBAL POR ATRIBUTO — independiente de la subcategoría.
+         Trae todo lo que tenga ese atributo=valor (ej. marca=Bissu) sin
+         importar si son delineadores, pinceles, etc. -->
+    <div class="mt-5 border-4 border-black shadow-[4px_4px_0_0_black] bg-[#E0F2FE] p-4">
+      <p class="text-sm font-black uppercase tracking-widest text-black mb-1">
+        🌎 Buscar en TODA la tienda por marca, tono, etc.
+      </p>
+      <p class="text-xs font-semibold text-black/60 mb-3">
+        No importa la categoría. Ejemplo: elige <b>Marca → Bissu</b> y te salen
+        TODOS los productos Bissu juntos (pinceles, delineadores, tintes… lo que sea).
+      </p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Atributo</label>
+          <div class="relative">
+            <input type="text" id="global-attr-buscar"
+                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                   placeholder="Escribe o elige (marca, tamaño…)"
+                   style="font-size:16px;"
+                   class="w-full border-4 border-black px-4 py-3 font-bold text-sm text-black outline-none bg-white">
+            <input type="hidden" id="global-attr-nombre" value="">
+            <div id="global-attr-resultados"
+                 class="hidden absolute left-0 right-0 top-full z-50 border-4 border-black bg-white
+                        shadow-[4px_4px_0_0_black] max-h-56 overflow-y-auto"></div>
+          </div>
+        </div>
+        <div>
+          <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Valor</label>
+          <select id="global-attr-valor" class="select-90s" disabled>
+            <option value="">— Elige atributo primero —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- PANEL DE FILTRO POR ATRIBUTOS — el JS lo llena al elegir subcategoría.
          Se piden bajo demanda a api_atributos_valores_subcategoria. -->
     <div id="panel-atributos-reportes" class="hidden mt-5 border-4 border-black shadow-[4px_4px_0_0_black] bg-[#EDE7FF] p-4">
-      <p class="text-sm font-black uppercase tracking-widest text-black mb-3">
-        🎯 Afina por atributo
+      <p class="text-sm font-black uppercase tracking-widest text-black mb-1">
+        🎯 ¿Escogiste subcategoría? ¿Necesitas información más específica?
+      </p>
+      <p class="text-xs font-semibold text-black/60 mb-3">
+        Filtra por atributo en una subcategoría. Ejemplo: en Gelish, por número de tono.
       </p>
       <div id="atributos-rows-reportes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
@@ -182,6 +221,11 @@
           — solo movimientos de tipo <span class="font-black uppercase">{{ filtros.movimiento }}</span>
         {% endif %}
 
+        {% for nombre, valor in filtros.atributos_global %}
+          {% if forloop.first %} — en toda la tienda, {% else %}, {% endif %}con
+          <span class="font-black uppercase">{{ nombre }} = {{ valor }}</span>
+        {% endfor %}
+
         .
       </p>
     </div>
@@ -193,7 +237,10 @@
     <div>
       <div class="inline-block border-4 border-black shadow-[3px_3px_0_0_black] bg-[#CCFF00] px-5 py-2">
         <span class="font-black text-black text-sm uppercase tracking-widest">
-          {{ datos|length }} resultado{{ datos|length|pluralize:"s" }}
+          {{ total_resultados }} resultado{{ total_resultados|pluralize:"s" }}
+          {% if page_obj.paginator.num_pages > 1 %}
+            <span class="text-black/50">· página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+          {% endif %}
         </span>
       </div>
     </div>
@@ -331,6 +378,38 @@
     </div>
     {% endif %}
 
+    <!-- PAGINACIÓN (en pantalla; el PDF trae todo) -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+      {% if page_obj.has_previous %}
+      <button type="button" data-page="{{ page_obj.previous_page_number }}"
+              class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+                     text-white font-black text-xs uppercase tracking-widest px-5 py-2">
+        ◀ Anterior
+      </button>
+      {% else %}
+      <span class="border-4 border-black bg-gray-200 text-gray-400 font-black text-xs uppercase tracking-widest px-5 py-2">◀ Anterior</span>
+      {% endif %}
+
+      <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-5 py-2 text-center min-w-[120px]">
+        <p class="font-black text-black text-sm uppercase tracking-widest leading-none">
+          {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+        </p>
+        <p class="font-semibold text-black/70 text-xs mt-0.5">{{ total_resultados }} en total</p>
+      </div>
+
+      {% if page_obj.has_next %}
+      <button type="button" data-page="{{ page_obj.next_page_number }}"
+              class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+                     text-white font-black text-xs uppercase tracking-widest px-5 py-2">
+        Siguiente ▶
+      </button>
+      {% else %}
+      <span class="border-4 border-black bg-gray-200 text-gray-400 font-black text-xs uppercase tracking-widest px-5 py-2">Siguiente ▶</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% else %}
 
     <!-- SIN DATOS -->
@@ -354,6 +433,8 @@
 {% endblock %}
 
 {% block scripts %}
-{{ filtros.atributos|json_script:"attr-pares-reportes-json" }}
+{{ filtros.atributos_subcat|json_script:"attr-pares-reportes-json" }}
+{{ atributo_nombres|json_script:"atributo-nombres-json" }}
+{{ filtros.atributos_global|json_script:"attr-global-reportes-json" }}
 <script src="{% static 'js/reportes.js' %}"></script>
 {% endblock %}

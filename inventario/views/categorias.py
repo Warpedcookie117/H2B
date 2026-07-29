@@ -356,6 +356,28 @@ def api_atributos_valores_subcategoria(request, subcategoria_id):
         for n, vals in sorted(por_atributo.items())
     ]
     return JsonResponse({"atributos": atributos})
+
+
+@login_required
+def api_valores_atributo_global(request):
+    """
+    Valores distintos de un atributo POR NOMBRE, en TODO el catálogo
+    (sin importar subcategoría). Ej: ?nombre=MARCA → todas las marcas que
+    existen en cualquier subcategoría. Lo usa el filtro global de reportes:
+    "tráeme todo lo que sea marca Bissu, sean pinceles, delineadores, etc.".
+    """
+    nombre = (request.GET.get("nombre") or "").strip()
+    if not nombre:
+        return JsonResponse({"valores": []})
+
+    valores = sorted(set(
+        v.strip()
+        for v in ValorAtributo.objects
+            .filter(atributo__nombre__iexact=nombre)
+            .values_list("valor", flat=True)
+        if v and v.strip()
+    ))
+    return JsonResponse({"valores": valores})
     
     
     

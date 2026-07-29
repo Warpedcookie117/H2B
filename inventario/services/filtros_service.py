@@ -58,10 +58,18 @@ def parse_filtros(request):
     if tipo not in {"general", "movimientos", "resumen_movimientos"}:
         tipo = "general"
 
-    # Filtro por atributos: listas paralelas an[]/av[] (nombre/valor).
+    # Filtro por atributos en dos sabores, ambos filtran igual (por
+    # nombre+valor sobre TODOS los productos). Se usan nombres de parámetro
+    # distintos solo para poder restaurar cada control en la interfaz:
+    #   - an/av   → filtro atado a la subcategoría elegida.
+    #   - gan/gav → filtro GLOBAL (ej. marca=bissu sin importar subcategoría).
     an = request.GET.getlist("an")
     av = request.GET.getlist("av")
     atributos = [(n.strip(), v.strip()) for n, v in zip(an, av) if n.strip() and v.strip()]
+
+    gan = request.GET.getlist("gan")
+    gav = request.GET.getlist("gav")
+    atributos_global = [(n.strip(), v.strip()) for n, v in zip(gan, gav) if n.strip() and v.strip()]
 
     return {
         "ubicacion": clean(request.GET.get("ubicacion")),
@@ -70,7 +78,12 @@ def parse_filtros(request):
         "temporada": clean(request.GET.get("temporada")),
         "dueño": clean(request.GET.get("dueño")),
         "movimiento": clean(request.GET.get("movimiento")),
-        "atributos": atributos,
+        # Para filtrar da igual el origen: se combinan todos (AND).
+        "atributos": atributos + atributos_global,
+        # Separados, para repintar CADA control en la interfaz al recargar
+        # sin que el filtro global se "mezcle" con el panel por subcategoría.
+        "atributos_subcat": atributos,
+        "atributos_global": atributos_global,
         "tipo": tipo,
     }
 
