@@ -346,6 +346,14 @@
           grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       }
   }
+
+  /* Las ~3300 cards arrancan OCULTAS; la paginación (JS) muestra solo la
+     página actual poniendo display:flex inline. Así el POS no tiene que
+     recorrer las 3300 en JS al cargar (eso disparaba el observador de
+     Tailwind-CDN miles de veces → bloqueo de ~700ms). El selector con #id
+     le gana a las clases utilitarias SIN !important, para que el
+     display:flex inline del JS sí pueda mostrar la card. */
+  #lista-productos .producto-item { display: none; }
 </style>
 
 <!-- Badge global para el atajo *N (cantidad multiplicada) -->

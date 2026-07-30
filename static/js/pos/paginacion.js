@@ -7,7 +7,7 @@ const ITEMS_POR_PAGINA = 6;
 let paginaActual = 1;
 let filteredItems = null;   // null = todos, array = resultados de búsqueda ordenados
 let itemsVisibles = [];     // las cards mostradas ahora — para ocultar solo esas
-let primerRender  = true;   // la 1ª vez sí hay que ocultar todas (vienen visibles del server)
+                            // (las demás arrancan ocultas por CSS)
 
 // ============================================================
 // INIT
@@ -63,23 +63,17 @@ function renderPagina(n) {
     const inicio = (n - 1) * ITEMS_POR_PAGINA;
     const fin    = inicio + ITEMS_POR_PAGINA;
 
-    // Ocultar: la PRIMERA vez, todas las cards (vienen visibles del server) —
-    // una sola vez. Después, SOLO las 6 que estaban visibles, para NO tocar
-    // las ~3300 cards en cada cambio de página (eso era lo que trababa el POS
-    // al paginar seguido: 3300 escrituras + relayout completo por página).
-    if (primerRender) {
-        getAllItems().forEach(item => { item.style.display = "none"; });
-        primerRender = false;
-    } else {
-        itemsVisibles.forEach(item => { item.style.display = "none"; });
-    }
+    // Las cards arrancan OCULTAS por CSS (#lista-productos .producto-item{
+    // display:none}). Así NUNCA recorremos las ~3300: solo ocultamos las 6
+    // que estaban visibles y mostramos las 6 nuevas. Sin animación de card —
+    // el toggle de clases sobre este DOM enorme disparaba el observador de
+    // Tailwind-CDN y generaba un diluvio de requestAnimationFrame.
+    itemsVisibles.forEach(item => { item.style.display = "none"; });
 
-    // Mostrar página actual con lazy-load y animación escalonada
     const nuevos = activeItems.slice(inicio, fin);
-    nuevos.forEach((item, i) => {
+    nuevos.forEach(item => {
         item.style.display = "flex";
         cargarImagenCard(item);
-        animarCard(item, i * 40);
     });
     itemsVisibles = nuevos;
 
@@ -87,23 +81,6 @@ function renderPagina(n) {
     if (_dt > 40) console.warn(`[POS:perf] ⏱️ renderPagina p${n} tardó ${_dt.toFixed(0)}ms (${activeItems.length} items activos)`);
     console.log(`[POS:paginacion] renderPagina ${n}: ${inicio}–${Math.min(fin, activeItems.length) - 1} de ${activeItems.length}`);
     actualizarUI();
-}
-
-// ============================================================
-// ANIMACIÓN
-// ============================================================
-
-function animarCard(card, delayMs = 0) {
-    card.style.animationDelay = delayMs + "ms";
-    card.classList.remove("pos-card-anim");
-    // Reiniciar la animación SIN forzar un relayout sincrónico. El
-    // `void card.offsetWidth` anterior obligaba al navegador a recalcular el
-    // layout de las ~3300 cards en cada card mostrada (el "Forced reflow" de
-    // ~350ms que trababa la carga). Con doble rAF se quita y se vuelve a poner
-    // la clase en frames distintos, reiniciando la animación sin bloquear.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        card.classList.add("pos-card-anim");
-    }));
 }
 
 // ============================================================
