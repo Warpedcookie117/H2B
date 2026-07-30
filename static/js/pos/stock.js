@@ -40,9 +40,13 @@ async function insertarCardNueva(productoId) {
         const card = tmp.content.firstElementChild;
         if (!card) return;
 
+        // Insertar OCULTA: la paginación decide cuándo mostrarla (renderPagina
+        // ya no oculta las 3300 cada vez; solo controla las visibles). Sin
+        // esto, la card nueva quedaría visible fuera de su página.
+        card.style.display = "none";
         lista.appendChild(card);
         cargarImagenCard(card); // carga la imagen de inmediato
-        refrescarGrid();        // recalcula paginación
+        refrescarGrid();        // recalcula paginación y muestra si toca
         console.log(`[POS:stock] card NUEVA insertada id=${id}`);
     } catch (e) {
         console.warn(`[POS:stock] error insertando card nueva id=${id}:`, e);

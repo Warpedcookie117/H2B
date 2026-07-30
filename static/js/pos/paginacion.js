@@ -5,7 +5,9 @@ console.log("[POS:paginacion] Módulo cargado");
 const ITEMS_POR_PAGINA = 6;
 
 let paginaActual = 1;
-let filteredItems = null; // null = todos, array = resultados de búsqueda ordenados
+let filteredItems = null;   // null = todos, array = resultados de búsqueda ordenados
+let itemsVisibles = [];     // las cards mostradas ahora — para ocultar solo esas
+let primerRender  = true;   // la 1ª vez sí hay que ocultar todas (vienen visibles del server)
 
 // ============================================================
 // INIT
@@ -55,20 +57,29 @@ function irAPagina(n) {
 // ============================================================
 
 function renderPagina(n) {
-    const allItems    = getAllItems();
     const activeItems = getActiveItems();
     const inicio = (n - 1) * ITEMS_POR_PAGINA;
     const fin    = inicio + ITEMS_POR_PAGINA;
 
-    // Ocultar todos
-    allItems.forEach(item => { item.style.display = "none"; });
+    // Ocultar: la PRIMERA vez, todas las cards (vienen visibles del server) —
+    // una sola vez. Después, SOLO las 6 que estaban visibles, para NO tocar
+    // las ~3300 cards en cada cambio de página (eso era lo que trababa el POS
+    // al paginar seguido: 3300 escrituras + relayout completo por página).
+    if (primerRender) {
+        getAllItems().forEach(item => { item.style.display = "none"; });
+        primerRender = false;
+    } else {
+        itemsVisibles.forEach(item => { item.style.display = "none"; });
+    }
 
     // Mostrar página actual con lazy-load y animación escalonada
-    activeItems.slice(inicio, fin).forEach((item, i) => {
+    const nuevos = activeItems.slice(inicio, fin);
+    nuevos.forEach((item, i) => {
         item.style.display = "flex";
         cargarImagenCard(item);
         animarCard(item, i * 40);
     });
+    itemsVisibles = nuevos;
 
     console.log(`[POS:paginacion] renderPagina ${n}: ${inicio}–${Math.min(fin, activeItems.length) - 1} de ${activeItems.length}`);
     actualizarUI();
