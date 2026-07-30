@@ -23,8 +23,9 @@ export function initPaginacion() {
         if (paginaActual < getTotalPaginas()) irAPagina(paginaActual + 1);
     });
 
-    // Precargar todas las imágenes en segundo plano para paginación instantánea
-    precargarRestantes();
+    // NO se precargan las ~3300 imágenes: en una compu lenta eran 3300
+    // descargas + decode presionando memoria y red. Cada página carga sus 6
+    // imágenes bajo demanda (cargarImagenCard en renderPagina), que es lo justo.
 }
 
 // ============================================================
@@ -80,8 +81,14 @@ function renderPagina(n) {
 function animarCard(card, delayMs = 0) {
     card.style.animationDelay = delayMs + "ms";
     card.classList.remove("pos-card-anim");
-    void card.offsetWidth; // reflow para reiniciar la animación
-    card.classList.add("pos-card-anim");
+    // Reiniciar la animación SIN forzar un relayout sincrónico. El
+    // `void card.offsetWidth` anterior obligaba al navegador a recalcular el
+    // layout de las ~3300 cards en cada card mostrada (el "Forced reflow" de
+    // ~350ms que trababa la carga). Con doble rAF se quita y se vuelve a poner
+    // la clase en frames distintos, reiniciando la animación sin bloquear.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        card.classList.add("pos-card-anim");
+    }));
 }
 
 // ============================================================
@@ -113,33 +120,6 @@ export function cargarImagenCard(card) {
     if (!img) return;
     img.src = img.dataset.src;
     img.removeAttribute("data-src");
-}
-
-// Precarga todas las imágenes restantes en idle, en chunks para no saturar la red
-function precargarRestantes() {
-    const items = getAllItems();
-    let i = 0;
-    const CHUNK = 8;
-
-    const cargarChunk = (deadline) => {
-        while (i < items.length && (!deadline || deadline.timeRemaining() > 0)) {
-            const tope = Math.min(i + CHUNK, items.length);
-            for (; i < tope; i++) cargarImagenCard(items[i]);
-        }
-        if (i < items.length) {
-            if ("requestIdleCallback" in window) {
-                requestIdleCallback(cargarChunk, { timeout: 500 });
-            } else {
-                setTimeout(() => cargarChunk(null), 50);
-            }
-        }
-    };
-
-    if ("requestIdleCallback" in window) {
-        requestIdleCallback(cargarChunk, { timeout: 1000 });
-    } else {
-        setTimeout(() => cargarChunk(null), 200);
-    }
 }
 
 // ============================================================
