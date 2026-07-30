@@ -9,7 +9,36 @@ document.addEventListener("DOMContentLoaded", () => {
     chartMasVendidos = initChartBarras("chartMasVendidosSemana", window.INIT_MAS_VENDIDOS_SEMANA, "#8338EC");
     chartMasVendidosTiendaHoy = initChartBarras("chartMasVendidosTiendaHoy", window.INIT_MAS_VENDIDOS_TIENDA_HOY, "#FFBE0B");
     setInterval(actualizarVentasHoy, 10000);
+    initToggleMes();
 });
+
+// Card "vendido este mes" — oculta al entrar y se revela al tocar, para no
+// mostrar el monto de un vistazo a quien esté cerca.
+function initToggleMes() {
+    const btn     = document.getElementById("btn-toggle-mes");
+    const wrap    = document.getElementById("monto-mes-wrap");
+    const chevron = document.getElementById("chevron-mes");
+    const hint    = document.getElementById("monto-mes-hint");
+    if (!btn || !wrap) return;
+
+    let abierto = false;
+    btn.addEventListener("click", () => {
+        abierto = !abierto;
+        if (abierto) {
+            wrap.style.maxHeight = wrap.scrollHeight + "px";
+            wrap.style.opacity   = "1";
+            if (chevron) chevron.style.transform = "rotate(180deg)";
+            if (hint) hint.style.display = "none";
+            btn.setAttribute("aria-expanded", "true");
+        } else {
+            wrap.style.maxHeight = "0";
+            wrap.style.opacity   = "0";
+            if (chevron) chevron.style.transform = "";
+            if (hint) hint.style.display = "";
+            btn.setAttribute("aria-expanded", "false");
+        }
+    });
+}
 
 function initChartVentasHoySucursal() {
     const data = window.INIT_VENTAS_HOY_SUCURSAL || [];

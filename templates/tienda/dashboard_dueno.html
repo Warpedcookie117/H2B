@@ -40,11 +40,23 @@
                 transition-all duration-150 hover:-translate-x-2 hover:-translate-y-2 hover:shadow-[12px_12px_0_0_black]
                 relative overflow-hidden">
       <div class="absolute -bottom-4 -left-4 w-20 h-20 bg-[#FB5607] rounded-full opacity-40"></div>
-      <p class="text-base font-black uppercase tracking-widest">
-        Esto has vendido de tus productos durante este mes
-      </p>
-      <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_dueno|default:0 }}</p>
-      <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
+
+      <!-- Card del mes: colapsada al entrar (discreción). Se revela al tocar. -->
+      <button type="button" id="btn-toggle-mes" aria-expanded="false"
+              class="w-full text-left flex items-start justify-between gap-3 relative z-10">
+        <p class="text-base font-black uppercase tracking-widest">
+          Esto has vendido de tus productos durante este mes
+        </p>
+        <span id="chevron-mes" class="text-2xl font-black leading-none transition-transform duration-300 flex-shrink-0">▼</span>
+      </button>
+
+      <!-- Monto oculto por defecto (max-height:0). El JS lo despliega. -->
+      <div id="monto-mes-wrap" class="overflow-hidden transition-all duration-500 ease-out"
+           style="max-height:0; opacity:0;">
+        <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_dueno|default:0 }}</p>
+        <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
+      </div>
+      <p id="monto-mes-hint" class="text-sm font-bold opacity-70 mt-3">👁 Toca para ver el monto</p>
     </div>
 
   </div>

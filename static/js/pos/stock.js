@@ -1,4 +1,4 @@
-// stock.js — Stock en tiempo real via WebSocket + polling de respaldo
+// stock.js — Stock en tiempo real via WebSocket (sin polling periódico)
 
 import { carrito } from "./core.js";
 import { cargarImagenCard, refrescarGrid } from "./paginacion.js";
@@ -7,7 +7,6 @@ console.log("[POS:stock] Módulo cargado");
 
 const URL_STOCK = "/ventas/stock-productos/";
 const URL_CARD  = "/ventas/pos/producto-card/"; // + <id>/
-const FALLBACK_MS = 5 * 60_000; // polling cada 5 min solo como respaldo
 
 // IDs con un fetch de card en curso, para no insertar duplicados
 const cardsEnVuelo = new Set();
@@ -143,7 +142,7 @@ function aplicarCambioProducto(d) {
 // WebSocket — se conecta al grupo del piso de la sucursal
 // ============================================================
 
-function conectarWS(pisoId) {
+function conectarWS(pisoId, esReconexion = false) {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const url   = `${proto}//${location.host}/ws/inventario/${pisoId}/`;
     console.log(`[POS:stock] conectando WS → ${url}`);
@@ -151,8 +150,15 @@ function conectarWS(pisoId) {
     const ws = new WebSocket(url);
 
     ws.onopen = () => {
-        console.log("[POS:stock] WS conectado ✓ — sincronizando stock real...");
-        refrescarStock();
+        console.log("[POS:stock] WS conectado ✓");
+        // En la carga inicial las cards ya traen el stock real del servidor,
+        // así que NO hacemos el fetch pesado de los 3400 productos. Solo
+        // re-sincronizamos si esto es una RECONEXIÓN (pudimos perder mensajes
+        // mientras el WS estuvo caído).
+        if (esReconexion) {
+            console.log("[POS:stock] reconexión — re-sincronizando stock");
+            refrescarStock();
+        }
     };
 
     ws.onmessage = (e) => {
@@ -172,7 +178,7 @@ function conectarWS(pisoId) {
 
     ws.onclose = () => {
         console.warn("[POS:stock] WS cerrado — reconectando en 5 s...");
-        setTimeout(() => conectarWS(pisoId), 5000);
+        setTimeout(() => conectarWS(pisoId, true), 5000);
     };
 
     ws.onerror = (err) => console.error("[POS:stock] WS error:", err);
@@ -213,15 +219,12 @@ export function initStock() {
     if (pisoId) {
         conectarWS(pisoId);
     } else {
-        console.warn("[POS:stock] sin pisoId — solo polling");
+        console.warn("[POS:stock] sin pisoId — el stock no se actualizará en vivo");
     }
 
-    // Polling como respaldo para bodega y desconexiones prolongadas
-    setInterval(refrescarStock, FALLBACK_MS);
-
-    // Refrescar inmediatamente tras una venta (el WS puede tardar ms)
-    document.addEventListener("pago-exito", () => {
-        console.log("[POS:stock] pago-exito → refrescando stock");
-        refrescarStock();
-    });
+    // SIN polling periódico: con 3400+ productos el fetch completo cada pocos
+    // minutos pesaba y hacía lenta la carga. El WebSocket mantiene el stock
+    // del piso en vivo (incluye el descuento tras cada venta, que también se
+    // difunde por el grupo del piso). La única re-sincronización pesada ocurre
+    // tras una reconexión del WS (ver conectarWS).
 }
