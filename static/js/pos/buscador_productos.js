@@ -180,6 +180,8 @@ export function initBuscador() {
     if (!buscarInput) return;
 
     function filtrarProductos(texto) {
+        window.__posPerf?.marca(`búsqueda "${texto}"`);
+        const _t0 = performance.now();
         texto = normalizar(texto);
 
         if (!texto) {
@@ -203,6 +205,8 @@ export function initBuscador() {
             .map(({ item }) => item);
 
         setFiltro(coincidentes);
+        const _dt = performance.now() - _t0;
+        if (_dt > 40) console.warn(`[POS:perf] ⏱️ búsqueda "${texto}" tardó ${_dt.toFixed(0)}ms (${items.length} cards recorridas)`);
         console.log(`[POS:buscador] filtrar "${texto}" → ${coincidentes.length} resultados`);
     }
 

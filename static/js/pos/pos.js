@@ -8,11 +8,15 @@ import { initStock } from "./stock.js";
 import { initPaginacion } from "./paginacion.js";
 import { initPromociones } from "./promociones.js";
 import { initOfertas }    from "./ofertas.js";
+import { initPerf }       from "./perf.js";
 
 console.log("[POS] Módulo pos.js cargado");
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[POS] DOMContentLoaded — iniciando módulos...");
+
+    initPerf();   // diagnóstico de bloqueos — primero, para captar todo
+    console.log("[POS] ✓ perf init");
 
     initPaginacion();
     console.log("[POS] ✓ paginacion init");

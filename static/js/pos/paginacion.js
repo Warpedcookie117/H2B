@@ -57,6 +57,8 @@ function irAPagina(n) {
 // ============================================================
 
 function renderPagina(n) {
+    window.__posPerf?.marca(`renderPagina p${n}`);
+    const _t0 = performance.now();
     const activeItems = getActiveItems();
     const inicio = (n - 1) * ITEMS_POR_PAGINA;
     const fin    = inicio + ITEMS_POR_PAGINA;
@@ -81,6 +83,8 @@ function renderPagina(n) {
     });
     itemsVisibles = nuevos;
 
+    const _dt = performance.now() - _t0;
+    if (_dt > 40) console.warn(`[POS:perf] ⏱️ renderPagina p${n} tardó ${_dt.toFixed(0)}ms (${activeItems.length} items activos)`);
     console.log(`[POS:paginacion] renderPagina ${n}: ${inicio}–${Math.min(fin, activeItems.length) - 1} de ${activeItems.length}`);
     actualizarUI();
 }

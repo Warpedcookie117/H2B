@@ -146,7 +146,22 @@ function aplicarCambioProducto(d) {
 // WebSocket — se conecta al grupo del piso de la sucursal
 // ============================================================
 
+// Diagnóstico WS: cuenta mensajes por ventana de 1s (avalancha) y
+// reconexiones en 30s (bucle). Ambos pueden trabar el POS.
+let _wsMsgCount = 0;
+let _wsMsgWindow = performance.now();
+let _wsReconexiones = [];
+
 function conectarWS(pisoId, esReconexion = false) {
+    if (esReconexion) {
+        const ahora = performance.now();
+        _wsReconexiones = _wsReconexiones.filter(t => ahora - t < 30000);
+        _wsReconexiones.push(ahora);
+        if (_wsReconexiones.length >= 4) {
+            console.warn(`[POS:perf] 🔁 WS reconectó ${_wsReconexiones.length} veces en 30s — posible bucle de reconexión`);
+        }
+    }
+
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const url   = `${proto}//${location.host}/ws/inventario/${pisoId}/`;
     console.log(`[POS:stock] conectando WS → ${url}`);
@@ -166,6 +181,18 @@ function conectarWS(pisoId, esReconexion = false) {
     };
 
     ws.onmessage = (e) => {
+        window.__posPerf?.marca("WS onmessage");
+        // Contador de avalancha
+        _wsMsgCount++;
+        const ahora = performance.now();
+        if (ahora - _wsMsgWindow >= 1000) {
+            if (_wsMsgCount > 40) {
+                console.warn(`[POS:perf] 📨 WS recibió ${_wsMsgCount} mensajes en ~1s — posible avalancha`);
+            }
+            _wsMsgCount = 0;
+            _wsMsgWindow = ahora;
+        }
+
         const msg = JSON.parse(e.data);
 
         // Cambio en el detalle del producto (nombre, precios, código, foto)
@@ -193,11 +220,13 @@ function conectarWS(pisoId, esReconexion = false) {
 // ============================================================
 
 async function refrescarStock() {
-    console.log("[POS:stock] polling de respaldo...");
+    window.__posPerf?.marca("refrescarStock (re-sync WS)");
+    console.log("[POS:stock] re-sincronizando stock...");
     try {
         const resp = await fetch(URL_STOCK);
-        if (!resp.ok) { console.warn(`[POS:stock] polling status ${resp.status}`); return; }
+        if (!resp.ok) { console.warn(`[POS:stock] re-sync status ${resp.status}`); return; }
         const data = await resp.json();
+        const _t0 = performance.now();   // solo mide el trabajo en el hilo, no la red
         let n = 0;
         document.querySelectorAll(".producto-item[data-id]").forEach(card => {
             const id = parseInt(card.dataset.id);
@@ -205,9 +234,11 @@ async function refrescarStock() {
             aplicarCambioStock(id, data[id].piso, data[id].bodega);
             n++;
         });
-        console.log(`[POS:stock] polling — ${n} productos actualizados`);
+        const _dt = performance.now() - _t0;
+        if (_dt > 60) console.warn(`[POS:perf] ⏱️ refrescarStock recorrió las cards en ${_dt.toFixed(0)}ms (${n} actualizadas)`);
+        console.log(`[POS:stock] re-sync — ${n} productos actualizados`);
     } catch (e) {
-        console.warn("[POS:stock] polling error:", e);
+        console.warn("[POS:stock] re-sync error:", e);
     }
 }
 
