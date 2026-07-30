@@ -47,14 +47,26 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, s
         console.log(`[POS:carrito] producto nuevo agregado. Total items en carrito: ${carrito.length}`);
     }
 
-    aplicarPreciosGlobales();
-    aplicarOfertas();
-    actualizarTotales();
-    onCarritoActualizado();
+    // Diagnóstico: mide cada eslabón de la cadena que corre al agregar, para
+    // ver cuál traba (sospecha: renderizar el carrito dispara el observador de
+    // Tailwind-CDN sobre las 3400 cards).
+    window.__posPerf?.marca(`agregar al carrito id=${id}`);
+    const _t = (label, fn) => {
+        const t0 = performance.now();
+        fn();
+        const dt = performance.now() - t0;
+        if (dt > 30) console.warn(`[POS:perf] ⏱️ [agregar] ${label} tardó ${dt.toFixed(0)}ms`);
+    };
 
-    document.dispatchEvent(new CustomEvent("pos:producto-agregado", {
-        detail: { subcategoria_id, cat_padre_id }
-    }));
+    _t("aplicarPreciosGlobales", aplicarPreciosGlobales);
+    _t("aplicarOfertas",        aplicarOfertas);
+    _t("actualizarTotales",     actualizarTotales);
+    _t("onCarritoActualizado (render carrito)", onCarritoActualizado);
+    _t("evento pos:producto-agregado (promos)", () => {
+        document.dispatchEvent(new CustomEvent("pos:producto-agregado", {
+            detail: { subcategoria_id, cat_padre_id }
+        }));
+    });
 }
 
 

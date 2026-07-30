@@ -199,9 +199,12 @@
 
         <!-- PAGINACIÓN -->
         <div id="pos-paginacion" class="pos-paginacion">
-            <button id="pos-pag-prev" class="pos-pag-btn">◀ Ant</button>
+            <!-- "translate=no" + palabras completas en español: evita que una
+                 extensión traductora del navegador reescriba el texto (ej.
+                 traducía "Ant" → "Hormiga"). -->
+            <button id="pos-pag-prev" class="pos-pag-btn" translate="no">◀ Atrás</button>
             <span id="pos-pag-info" class="pos-pag-info">1 / 1</span>
-            <button id="pos-pag-next" class="pos-pag-btn">Sig ▶</button>
+            <button id="pos-pag-next" class="pos-pag-btn" translate="no">Siguiente ▶</button>
         </div>
 
     </div>

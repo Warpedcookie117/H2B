@@ -127,6 +127,8 @@ function initModalServicio() {
 function renderCarritoUI() {
     const cont = document.getElementById("carrito-lista");
     if (!cont) return;
+    window.__posPerf?.marca(`renderCarritoUI (${carrito.length} items)`);
+    const _tRender = performance.now();
     console.log(`[POS:ui] renderCarritoUI — ${carrito.length} items`);
 
     cont.innerHTML = "";
@@ -230,6 +232,9 @@ function renderCarritoUI() {
     }
 
     bindCarritoListeners();
+
+    const _dtRender = performance.now() - _tRender;
+    if (_dtRender > 30) console.warn(`[POS:perf] ⏱️ renderCarritoUI tardó ${_dtRender.toFixed(0)}ms (${carrito.length} items)`);
 }
 
 
