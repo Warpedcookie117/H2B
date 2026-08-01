@@ -151,21 +151,22 @@
 .pos-atajos {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: .75rem;
   border: 2px solid #d1d5db;
   background: #f9fafb;
-  padding: .2rem .6rem;
-  font-size: .62rem;
+  padding: .6rem .9rem;
+  font-size: .75rem;
   font-weight: 600;
   color: #374151;
 }
 .pos-atajos-titulo {
-  font-size: .6rem;
+  font-size: .7rem;
   font-weight: 900;
   letter-spacing: .1em;
   color: #6b7280;
   text-transform: uppercase;
-  padding-right: .4rem;
+  padding-right: .6rem;
   border-right: 2px solid #d1d5db;
 }
 .pos-atajos kbd {
@@ -177,6 +178,33 @@
   padding: .05rem .28rem;
   border-radius: 2px;
   letter-spacing: .05em;
+}
+.pos-atajo-btn {
+  background: #111;
+  color: #fff;
+  border: 2px solid #111;
+  font-size: .82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: .6rem 1.1rem;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  /* La sombra sólida es la que da el relieve: al presionar, el botón se
+     recorre justo lo que mide y la sombra desaparece, así que se hunde. */
+  box-shadow: 4px 4px 0 0 #9ca3af;
+  transition: background .12s, color .12s, transform .04s, box-shadow .04s;
+}
+.pos-atajo-btn:hover {
+  background: #fff;
+  color: #111;
+}
+.pos-atajo-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 #9ca3af;
+  background: #111;
+  color: #fff;
 }
 
 /* ============================

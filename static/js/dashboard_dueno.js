@@ -2,6 +2,7 @@ let chartVentasHoy = null;
 let chartMasVendidosHoy = null;
 let chartMasVendidos = null;
 let chartMasVendidosTiendaHoy = null;
+let chartExplorador = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     initChartVentasHoySucursal();
@@ -10,7 +11,208 @@ document.addEventListener("DOMContentLoaded", () => {
     chartMasVendidosTiendaHoy = initChartBarras("chartMasVendidosTiendaHoy", window.INIT_MAS_VENDIDOS_TIENDA_HOY, "#FFBE0B");
     setInterval(actualizarVentasHoy, 10000);
     initToggleMes();
+    initExplorador();
 });
+
+// ============================================================
+// EXPLORADOR DE MÁS VENDIDOS
+// Categoría → subcategoría → atributos de esa subcategoría (marca, etc).
+// Los catálogos se piden a las mismas APIs que usa la página de reportes,
+// y el resultado a /tienda/api/dashboard/mas-vendidos/.
+// ============================================================
+function initExplorador() {
+    const panel = document.getElementById("explorador-vendidos");
+    if (!panel) return;
+
+    const urlVendidos   = panel.dataset.apiVendidos;
+    const urlCategorias = panel.dataset.apiCategorias;
+    const urlAtributos  = panel.dataset.apiAtributos;   // .../subcategoria/0/atributos-valores/
+
+    const selCategoria = document.getElementById("exp-categoria");
+    const selSubcat    = document.getElementById("exp-subcategoria");
+    const selPeriodo   = document.getElementById("exp-periodo");
+    const selMostrar   = document.getElementById("exp-mostrar");
+    const panelAttrs   = document.getElementById("exp-panel-atributos");
+    const rowsAttrs    = document.getElementById("exp-atributos-rows");
+    const elUnidades   = document.getElementById("exp-total-unidades");
+    const elIngreso    = document.getElementById("exp-total-ingreso");
+    const elRango      = document.getElementById("exp-rango");
+    const elVacio      = document.getElementById("exp-vacio");
+    const canvas       = document.getElementById("chartExplorador");
+
+    let categoriasCache = null;
+    let fetchActivo     = null;
+
+    async function cargarSubcategorias(categoriaId) {
+        selSubcat.innerHTML = '<option value="">Todas</option>';
+        limpiarAtributos();
+        if (!categoriaId) return;
+
+        selSubcat.innerHTML = '<option value="">Cargando...</option>';
+        try {
+            if (!categoriasCache) {
+                const resp = await fetch(urlCategorias, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                categoriasCache = await resp.json();
+            }
+            const cat = (categoriasCache.categorias_padre || [])
+                .find(c => String(c.id) === String(categoriaId));
+
+            let html = '<option value="">Todas</option>';
+            (cat?.subcategorias || []).forEach(s => {
+                html += `<option value="${s.id}">${s.nombre}</option>`;
+            });
+            selSubcat.innerHTML = html;
+        } catch (e) {
+            console.error("Error subcategorías:", e);
+            selSubcat.innerHTML = '<option value="">Error al cargar</option>';
+        }
+    }
+
+    function limpiarAtributos() {
+        rowsAttrs.innerHTML = "";
+        panelAttrs.classList.add("hidden");
+    }
+
+    async function cargarAtributos(subcatId) {
+        limpiarAtributos();
+        if (!subcatId) return;
+
+        let atributos = [];
+        try {
+            const resp = await fetch(urlAtributos.replace("/0/", "/" + subcatId + "/"),
+                                     { headers: { "X-Requested-With": "XMLHttpRequest" } });
+            const data = await resp.json();
+            atributos = data.atributos || [];
+        } catch (e) {
+            console.error("Error atributos:", e);
+            return;
+        }
+
+        if (!atributos.length) return;
+        panelAttrs.classList.remove("hidden");
+
+        atributos.forEach(a => {
+            const wrap = document.createElement("div");
+
+            const label = document.createElement("label");
+            label.className = "block font-black text-black text-xs uppercase tracking-widest mb-1.5";
+            label.textContent = a.nombre;
+
+            const sel = document.createElement("select");
+            sel.dataset.attr = a.nombre;
+            sel.className = "w-full border-4 border-black bg-white px-3 py-2 font-bold text-black";
+
+            const opt0 = document.createElement("option");
+            opt0.value = "";
+            opt0.textContent = "Cualquiera";
+            sel.appendChild(opt0);
+
+            (a.valores || []).forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+            });
+
+            sel.addEventListener("change", cargarDatos);
+
+            wrap.appendChild(label);
+            wrap.appendChild(sel);
+            rowsAttrs.appendChild(wrap);
+        });
+    }
+
+    // Mismos nombres de parámetro que reportes (an/av) — el backend reusa
+    // parse_filtros, así que no hay dos formatos que mantener.
+    function construirUrl() {
+        const params = new URLSearchParams();
+        if (selCategoria.value) params.set("categoria", selCategoria.value);
+        if (selSubcat.value)    params.set("subcategoria", selSubcat.value);
+        params.set("periodo", selPeriodo.value);
+        params.set("mostrar", selMostrar.value);
+
+        rowsAttrs.querySelectorAll("select[data-attr]").forEach(sel => {
+            if (sel.value) {
+                params.append("an", sel.dataset.attr);
+                params.append("av", sel.value);
+            }
+        });
+
+        return urlVendidos + "?" + params.toString();
+    }
+
+    async function cargarDatos() {
+        if (fetchActivo) fetchActivo.abort();
+        fetchActivo = new AbortController();
+
+        let data;
+        try {
+            const resp = await fetch(construirUrl(), {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                signal: fetchActivo.signal,
+            });
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            data = await resp.json();
+        } catch (e) {
+            if (e.name !== "AbortError") console.error("Error explorador:", e);
+            return;
+        }
+
+        const datos = data.datos || [];
+
+        elUnidades.textContent = data.total_unidades || 0;
+        elIngreso.textContent  = "$" + (data.total_ingreso || 0);
+        elRango.textContent    = `Del ${data.desde} al ${data.hasta}`;
+
+        elVacio.classList.toggle("hidden", datos.length > 0);
+        canvas.parentElement.classList.toggle("hidden", datos.length === 0);
+
+        pintarChart(datos);
+    }
+
+    function pintarChart(datos) {
+        // Sin datos el contenedor está oculto: crear el chart ahí lo dejaría
+        // con tamaño 0. Se crea hasta que haya algo que dibujar.
+        if (!chartExplorador && !datos.length) return;
+
+        if (chartExplorador) {
+            chartExplorador.data.labels = datos.map(d => d.nombre);
+            chartExplorador.data.datasets[0].data = datos.map(d => d.cantidad);
+            chartExplorador.$ingresos = datos.map(d => d.ingreso);
+            chartExplorador.update();
+            return;
+        }
+
+        chartExplorador = initChartBarras("chartExplorador", datos, "#3A86FF", true);
+        if (!chartExplorador) return;
+
+        chartExplorador.$ingresos = datos.map(d => d.ingreso);
+        // El eje mide unidades; el dinero de cada producto va en el tooltip.
+        chartExplorador.options.plugins.tooltip = {
+            callbacks: {
+                afterLabel: (ctx) => {
+                    const ingreso = chartExplorador.$ingresos?.[ctx.dataIndex];
+                    return ingreso != null ? `Vendido: $${ingreso}` : "";
+                },
+            },
+        };
+        chartExplorador.update();
+    }
+
+    selCategoria.addEventListener("change", async () => {
+        await cargarSubcategorias(selCategoria.value);
+        cargarDatos();
+    });
+    selSubcat.addEventListener("change", async () => {
+        await cargarAtributos(selSubcat.value);
+        cargarDatos();
+    });
+    selPeriodo.addEventListener("change", cargarDatos);
+    selMostrar.addEventListener("change", cargarDatos);
+
+    cargarDatos();
+}
 
 // Card "vendido este mes" — oculta al entrar y se revela al tocar, para no
 // mostrar el monto de un vistazo a quien esté cerca.
@@ -151,7 +353,10 @@ function actualizarVentasHoy() {
         .catch(err => console.error("Error actualizando ventas:", err));
 }
 
-function initChartBarras(canvasId, data, color) {
+// `animar` viene apagado por default: las gráficas de arriba se repintan
+// solas cada 10s por polling y animarlas las deja parpadeando. El explorador
+// sí lo enciende — ahí solo se repinta cuando el dueño mueve un filtro.
+function initChartBarras(canvasId, data, color, animar = false) {
     data = data || [];
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
@@ -190,7 +395,9 @@ function initChartBarras(canvasId, data, color) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: false,
+            animation: animar
+                ? { duration: 700, easing: 'easeOutQuart' }
+                : false,
             layout: { padding: { bottom: 24 } },
             plugins: { legend: { display: false } },
             scales: {

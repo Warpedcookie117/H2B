@@ -231,6 +231,91 @@
 
   </div>
 
+  <!-- EXPLORADOR: MÁS VENDIDOS POR CATEGORÍA / MARCA -->
+  <div id="explorador-vendidos"
+       class="relative bg-white border-4 border-black shadow-[8px_8px_0_0_black] p-6 overflow-hidden"
+       data-api-vendidos="{% url 'tienda_temp:api_mas_vendidos_dueno' %}"
+       data-api-categorias="{% url 'inventario:api_categorias' %}"
+       data-api-atributos="{% url 'inventario:api_atributos_valores_subcategoria' 0 %}">
+
+    <div class="absolute -top-3 left-3 w-10 h-10 bg-[#3A86FF] rotate-45 opacity-40"></div>
+
+    <h2 class="text-lg font-black text-black mb-1 uppercase tracking-wide">
+      🔎 Explorar más vendidos
+    </h2>
+    <p class="text-xs font-bold text-gray-500 mb-5">
+      Elige una categoría y afina por subcategoría o por marca.
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Categoría</label>
+        <select id="exp-categoria" class="w-full border-4 border-black bg-white px-3 py-2 font-bold text-black">
+          <option value="">Todas</option>
+          {% for cat in categorias_padre %}
+            <option value="{{ cat.id }}">{{ cat.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Subcategoría</label>
+        <select id="exp-subcategoria" class="w-full border-4 border-black bg-white px-3 py-2 font-bold text-black">
+          <option value="">Todas</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Periodo</label>
+        <select id="exp-periodo" class="w-full border-4 border-black bg-white px-3 py-2 font-bold text-black">
+          <option value="hoy">Hoy</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="30" selected>Últimos 30 días</option>
+          <option value="mes">Este mes</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-black text-black text-xs uppercase tracking-widest mb-1.5">Mostrar</label>
+        <select id="exp-mostrar" class="w-full border-4 border-black bg-white px-3 py-2 font-bold text-black">
+          <option value="todos" selected>Todos los productos</option>
+          <option value="mios">Solo los míos</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Atributos de la subcategoría elegida (marca, tamaño, etc.) -->
+    <div id="exp-panel-atributos" class="hidden border-t-4 border-black pt-4 mb-4">
+      <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+        Filtros de esta subcategoría
+      </p>
+      <div id="exp-atributos-rows" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 mb-4">
+      <div class="border-4 border-black bg-[#FFBE0B] px-4 py-2">
+        <span class="text-[10px] font-black uppercase tracking-widest text-black">Unidades</span>
+        <span id="exp-total-unidades" class="block text-2xl font-black text-black leading-none">0</span>
+      </div>
+      <div class="border-4 border-black bg-[#06D6A0] px-4 py-2">
+        <span class="text-[10px] font-black uppercase tracking-widest text-black">Vendido</span>
+        <span id="exp-total-ingreso" class="block text-2xl font-black text-black leading-none">$0</span>
+      </div>
+      <p id="exp-rango" class="text-xs font-bold text-gray-500"></p>
+    </div>
+
+    <div class="relative w-full h-[340px]">
+      <canvas id="chartExplorador"></canvas>
+    </div>
+
+    <p id="exp-vacio" class="hidden text-center font-black text-gray-400 uppercase tracking-widest py-10">
+      Sin ventas con esos filtros
+    </p>
+
+  </div>
+
   <!-- ACCIONES RÁPIDAS -->
   <div class="relative space-y-4">
     <h2 class="text-2xl font-extrabold text-gray-900 uppercase">⚡ Acciones rápidas</h2>

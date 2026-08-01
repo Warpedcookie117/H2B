@@ -29,10 +29,6 @@ let _cantPendiente  = null;   // entero o null
 const TIMEOUT_ATAJO = 5000;
 let _atajoTimer     = null;
 
-// Debounce para S/E: si llega otro char en <80ms era código, no atajo
-let _pendingShortcutKey   = null;
-let _pendingShortcutTimer = null;
-
 function badge() {
     return document.getElementById("atajo-cantidad-badge");
 }
@@ -335,58 +331,12 @@ export function initEscaneo() {
     if (scanInput) {
         // Atajo *N en el propio scan-input
         scanInput.addEventListener("keydown", (e) => {
-            // ── Flush de atajo pendiente ──
-            // Si hay una S o E esperando y llega cualquier otra tecla, era parte
-            // de un código de barras → añadirla al input y seguir normal.
-            if (_pendingShortcutKey) {
-                if (e.key === "Escape") {
-                    clearTimeout(_pendingShortcutTimer);
-                    _pendingShortcutTimer = null;
-                    _pendingShortcutKey = null;
-                    return;
-                }
-                clearTimeout(_pendingShortcutTimer);
-                _pendingShortcutTimer = null;
-                scanInput.value += _pendingShortcutKey;
-                _pendingShortcutKey = null;
-                // Seguir procesando la tecla actual normalmente (no return)
-            }
-
-            // ── Atajos de modal con debounce (solo cuando el campo está vacío) ──
-            // Si el campo tiene contenido (barcode en curso), S/E/R son chars normales.
-            // Si está vacío: 80 ms → si no llega otro char = atajo; si llega = inicio de barcode.
-            if (!e.ctrlKey && !e.altKey && !e.metaKey && scanInput.value === "") {
-                if (e.key === "s" || e.key === "S") {
-                    e.preventDefault();
-                    _pendingShortcutKey = e.key;
-                    _pendingShortcutTimer = setTimeout(() => {
-                        _pendingShortcutKey = null;
-                        _pendingShortcutTimer = null;
-                        window.abrirModalServicio?.();
-                    }, 80);
-                    return;
-                }
-                if (e.key === "e" || e.key === "E") {
-                    e.preventDefault();
-                    _pendingShortcutKey = e.key;
-                    _pendingShortcutTimer = setTimeout(() => {
-                        _pendingShortcutKey = null;
-                        _pendingShortcutTimer = null;
-                        window.abrirConsultaPrecios?.();
-                    }, 80);
-                    return;
-                }
-                if (e.key === "r" || e.key === "R") {
-                    e.preventDefault();
-                    _pendingShortcutKey = e.key;
-                    _pendingShortcutTimer = setTimeout(() => {
-                        _pendingShortcutKey = null;
-                        _pendingShortcutTimer = null;
-                        window.abrirCobroRapido?.();
-                    }, 80);
-                    return;
-                }
-            }
+            // Aquí ya no se interceptan S/E/R. Antes se retenían 80 ms para
+            // decidir si eran atajo o el inicio de un código: 80 ms es
+            // velocidad de pistola, no de dedo, así que al teclear un código
+            // a mano el cronómetro siempre vencía primero, se abría el modal
+            // y la letra se perdía. Servicio, precios y cobro rápido ahora
+            // tienen botón en pantalla (.pos-atajo-btn en pos.html).
 
             // Si la tecla es parte del atajo y la consumimos, prevent y salir.
             // Excepción: Enter no se consume; cae al handler de abajo.
@@ -532,23 +482,17 @@ export function initEscaneo() {
 
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
             e.preventDefault();
-            const esPrimeraLetra = scanBuffer === "";
             scanBuffer += e.key;
 
             if (scanTimer) clearTimeout(scanTimer);
 
-            // Timer corto (80ms) cuando la primera letra puede ser un atajo (S/E/R solos).
-            // Timer largo (500ms) como fallback de limpieza para barcodes largos sin Enter.
-            const delay = (esPrimeraLetra && "serSER".includes(e.key)) ? 80 : 500;
+            // Fallback de limpieza para barcodes que llegan sin Enter. Ya no
+            // hay timer corto para S/E/R: esos tienen botón en pantalla.
             scanTimer = setTimeout(() => {
                 scanTimer = null;
-                const buf = scanBuffer;
                 scanBuffer = "";
-                if (buf === "s" || buf === "S") { window.abrirModalServicio?.(); return; }
-                if (buf === "e" || buf === "E") { window.abrirConsultaPrecios?.(); return; }
-                if (buf === "r" || buf === "R") { window.abrirCobroRapido?.(); return; }
-                // Buffer multi-char sin Enter: ignorar (barcode incompleto)
-            }, delay);
+                // Buffer sin Enter: ignorar (barcode incompleto)
+            }, 500);
         }
     });
 

@@ -16,16 +16,8 @@ export function initConsultaPrecios() {
 
     window.abrirConsultaPrecios = abrirModal;
 
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "e" || e.key === "E") {
-            const active = document.activeElement;
-            if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) return;
-            if (!modal.classList.contains("pos-modal--hidden")) return;
-
-            console.log("[POS:consulta_precios] tecla E → abriendo modal consulta precios");
-            abrirModal();
-        }
-    });
+    // Sin atajo de tecla: la E se necesita libre para teclear códigos.
+    // Se abre con el botón de pos.html.
 
     btnCerrar.onclick = () => {
         console.log("[POS:consulta_precios] botón cerrar → cerrarModal");

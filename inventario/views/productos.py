@@ -1,4 +1,5 @@
 import json
+import unicodedata
 from collections import defaultdict
 from urllib.parse import urlencode
 from django.core.paginator import Paginator
@@ -33,6 +34,44 @@ from django.views.decorators.http import require_POST
 
 
 
+
+
+# Cada vocal (y la n, y la c) con sus variantes acentuadas, para armar
+# clases de regex: la "a" que se teclea acepta también á, à, ä...
+_EQUIV_ACENTOS = {
+    "a": "aáàäâã",
+    "e": "eéèëê",
+    "i": "iíìïî",
+    "o": "oóòöôõ",
+    "u": "uúùüû",
+    "n": "nñ",
+    "c": "cç",
+}
+
+
+def _regex_sin_acentos(texto):
+    """
+    Convierte lo tecleado en un regex donde cada letra acepta su versión con
+    y sin acento: "pestana" → "p[eéèëê]st[aáàäâã][nñ][aáàäâã]", que encuentra
+    tanto "Pestaña" como "pestana". Funciona en los dos sentidos porque el
+    término se limpia de acentos antes de armar el patrón.
+
+    Va con __iregex — se traduce a ~* en PostgreSQL (producción) y al REGEXP
+    de Python en SQLite (local), o sea que se comporta igual en ambos. La
+    extensión unaccent de Postgres no existe en SQLite y dejaría la búsqueda
+    rota en desarrollo.
+    """
+    limpio = "".join(
+        c for c in unicodedata.normalize("NFD", texto or "")
+        if unicodedata.category(c) != "Mn"
+    ).lower()
+
+    # re.escape en lo demás: lo teclea el usuario y puede traer ( ) * . que
+    # romperían el patrón.
+    return "".join(
+        f"[{_EQUIV_ACENTOS[c]}]" if c in _EQUIV_ACENTOS else re.escape(c)
+        for c in limpio
+    )
 
 
 @login_required
@@ -80,10 +119,13 @@ def productos_por_ubicacion(request, ubicacion_id):
     categorias_json = {k: sorted(v) for k, v in sorted(cat_map.items())}
 
     if q:
+        # Se busca por regex y no por icontains para que los acentos no
+        # estorben: se captura "Pestaña" pero se busca "pestana".
+        q_regex = _regex_sin_acentos(q)
         filtro = (
-            Q(producto__nombre__icontains=q) |
+            Q(producto__nombre__iregex=q_regex) |
             Q(producto__codigo_barras__icontains=q) |
-            Q(producto__valores_atributo__valor__icontains=q)
+            Q(producto__valores_atributo__valor__iregex=q_regex)
         )
         try:
             filtro |= Q(producto__id=int(q))
@@ -110,11 +152,13 @@ def productos_por_ubicacion(request, ubicacion_id):
     # contiene, y hasta el final los que empataron por código/atributo/ID.
     # Sin búsqueda se mantiene el orden alfabético de siempre.
     if q:
+        # Mismo regex que el filtro, con anclas: si aquí se dejara icontains,
+        # lo encontrado sin acento caería siempre hasta el final.
         productos = productos.annotate(
             _rank=Case(
-                When(producto__nombre__iexact=q,       then=Value(0)),
-                When(producto__nombre__istartswith=q,  then=Value(1)),
-                When(producto__nombre__icontains=q,    then=Value(2)),
+                When(producto__nombre__iregex=rf"^{q_regex}$", then=Value(0)),
+                When(producto__nombre__iregex=rf"^{q_regex}",  then=Value(1)),
+                When(producto__nombre__iregex=q_regex,         then=Value(2)),
                 default=Value(3),
                 output_field=IntegerField(),
             )

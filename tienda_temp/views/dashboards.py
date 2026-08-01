@@ -2,6 +2,7 @@ import json
 
 from django.db.models import Sum, F, Value, Q
 from django.db.models.functions import TruncMonth, Coalesce
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.timezone import now
@@ -12,6 +13,7 @@ from django.contrib.auth.decorators import login_required
 from sucursales.models import Sucursal
 from ventas.models import Venta, VentaDetalle
 from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
+from inventario.services.filtros_service import filtrar_productos, nombres_filtros, parse_filtros
 
 
 
@@ -151,6 +153,100 @@ def _mas_vendidos_dueno(empleado, filtro_fecha):
         resultado.append({"nombre": "Servicios", "cantidad": servicios})
     resultado.sort(key=lambda x: -x["cantidad"])
     return resultado[:10]
+
+
+def _rango_periodo(periodo, hoy):
+    """Traduce el periodo del explorador a (desde, hasta), ambas inclusive."""
+    if periodo == "hoy":
+        return hoy, hoy
+    if periodo == "7":
+        return hoy - timedelta(days=6), hoy
+    if periodo == "mes":
+        return hoy.replace(day=1), hoy
+    return hoy - timedelta(days=29), hoy   # "30" — default
+
+
+def _mas_vendidos_filtrado(empleado, desde, hasta, filtros, solo_mios=True, limite=10):
+    """
+    Top productos vendidos entre `desde` y `hasta` (fechas locales, ambas
+    inclusive), acotado por categoría / subcategoría / atributos (ej. marca).
+
+    A diferencia de _mas_vendidos_dueno aquí NO se agrupan "Servicios" ni
+    "Productos sin código": filtrar por subcategoría o por marca solo tiene
+    sentido sobre renglones con Producto ligado, y un servicio no lo tiene.
+    """
+    detalles = VentaDetalle.objects.filter(
+        producto__isnull=False,
+        venta__fecha__date__gte=desde,
+        venta__fecha__date__lte=hasta,
+    )
+
+    if solo_mios:
+        detalles = detalles.filter(producto__dueño=empleado)
+
+    # El filtro por atributos se resuelve sobre Producto y se inyecta como
+    # subconsulta: si se filtrara con JOINs sobre el detalle, cada JOIN a
+    # valores_atributo duplicaría renglones e inflaría los Sum().
+    if filtros["categoria"] or filtros["subcategoria"] or filtros["atributos"]:
+        productos = filtrar_productos(
+            categoria_id=filtros["categoria"],
+            subcategoria_id=filtros["subcategoria"],
+            atributos=filtros["atributos"],
+        )
+        detalles = detalles.filter(producto__in=productos.values("id"))
+
+    filas = (
+        detalles
+        .values(nombre=F("producto__nombre"))
+        .annotate(cantidad=Sum("cantidad"), ingreso=Sum("subtotal"))
+        .order_by("-cantidad")[:limite]
+    )
+
+    # float() porque Decimal no es serializable a JSON.
+    return [
+        {
+            "nombre": f["nombre"],
+            "cantidad": f["cantidad"],
+            "ingreso": round(float(f["ingreso"] or 0), 2),
+        }
+        for f in filas
+    ]
+
+
+@login_required
+def api_mas_vendidos_dueno(request):
+    """
+    Explorador de más vendidos del dashboard dueño. Reusa parse_filtros de
+    reportes, así que acepta los MISMOS parámetros (categoria, subcategoria,
+    an/av para atributos por subcategoría, gan/gav para el global) más:
+      - periodo: hoy | 7 | 30 | mes   (default 30)
+      - mostrar: todos | mios         (default todos)
+    """
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol != "dueño":
+        return JsonResponse({"error": "Acceso denegado."}, status=403)
+
+    filtros = parse_filtros(request)
+    periodo = (request.GET.get("periodo") or "30").strip()
+    # Default: todo lo que se vendió en la tienda. "mios" acota a sus productos.
+    solo_mios = request.GET.get("mostrar") == "mios"
+
+    hoy = localtime(now()).date()
+    desde, hasta = _rango_periodo(periodo, hoy)
+
+    datos = _mas_vendidos_filtrado(empleado, desde, hasta, filtros, solo_mios=solo_mios)
+
+    return JsonResponse({
+        "datos": datos,
+        "periodo": periodo,
+        "solo_mios": solo_mios,
+        "desde": desde.isoformat(),
+        "hasta": hasta.isoformat(),
+        "filtros_legibles": nombres_filtros(filtros),
+        "atributos": [{"nombre": n, "valor": v} for n, v in filtros["atributos"]],
+        "total_unidades": sum(d["cantidad"] for d in datos),
+        "total_ingreso": round(sum(d["ingreso"] for d in datos), 2),
+    })
 
 
 @login_required
@@ -315,6 +411,9 @@ def dashboard_dueno(request):
         "mas_vendidos_tienda_hoy": list(mas_vendidos_tienda_hoy),
         "ventas_por_sucursal": ventas_por_sucursal,       # cards de cajas
         "ventas_chart_sucursal": ventas_chart_sucursal,   # chart de sucursales
+        # Explorador de más vendidos: solo las categorías padre. Las
+        # subcategorías y los atributos se piden por AJAX al elegir.
+        "categorias_padre": Categoria.objects.filter(padre__isnull=True).order_by("nombre"),
         "ahora": now(),
     }
 

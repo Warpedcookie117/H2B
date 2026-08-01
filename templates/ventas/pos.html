@@ -68,12 +68,21 @@
             autofocus
         >
 
-        <!-- ATAJOS DE TECLADO -->
+        <!-- ACCIONES -->
+        <!-- Antes eran atajos de una tecla (E/S/R). Se pasaron a botones
+             porque la tecla se tragaba la primera letra de los códigos que
+             empiezan con esa misma letra y no dejaba escribirlos a mano. -->
         <div class="pos-atajos">
-            <span class="pos-atajos-titulo">ATAJOS</span>
-            <span><kbd>E</kbd> Consultar precio</span>
-            <span><kbd>S</kbd> Cobrar servicio</span>
-            <span><kbd>R</kbd> Cobro rápido</span>
+            <span class="pos-atajos-titulo">ACCIONES</span>
+            <button type="button" class="pos-atajo-btn" onclick="abrirConsultaPrecios()">
+                Consultar precio
+            </button>
+            <button type="button" class="pos-atajo-btn" onclick="abrirModalServicio()">
+                Cobrar servicio
+            </button>
+            <button type="button" class="pos-atajo-btn" onclick="abrirCobroRapido()">
+                Cobro rápido
+            </button>
             <span><kbd>*</kbd><kbd>N</kbd><kbd>↵</kbd> Cantidad</span>
         </div>
 

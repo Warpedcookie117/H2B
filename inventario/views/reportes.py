@@ -58,7 +58,12 @@ def reportes(request):
         "categorias_padre": Categoria.objects.filter(padre__isnull=True),
         "temporadas": Temporada.objects.all(),
         "ubicaciones": Ubicacion.objects.all(),
-        "dueños": Empleado.objects.all(),
+        "dueños": (
+            Empleado.objects
+            .filter(rol="dueño")
+            .select_related("user")
+            .order_by("user__first_name")
+        ),
 
         # Filtro global por atributo: nombres de atributo ordenados por cuántas
         # subcategorías los comparten (los más "globales" primero, ej. Marca).

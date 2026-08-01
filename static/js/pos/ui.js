@@ -101,10 +101,8 @@ function initModalServicio() {
         window.cerrarModalServicio();
     };
 
-    document.addEventListener("keydown", (e) => {
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-        if (e.key === "s" || e.key === "S") { e.preventDefault(); abrirModalServicio(); }
-    });
+    // Sin atajo de tecla: la S se necesita libre para teclear códigos que
+    // empiezan con esa letra. Se abre con el botón de pos.html.
 
     document.getElementById("srv-precio")?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") window.confirmarServicio();
@@ -932,11 +930,7 @@ function initModalCobroRapido() {
         }
     });
 
-    // ── R desde teclado fuera de inputs ──
-    document.addEventListener("keydown", (e) => {
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-        if (e.key === "r" || e.key === "R") { e.preventDefault(); abrirCobroRapido(); }
-    });
+    // Sin atajo de tecla — se abre con el botón de pos.html.
 
     document.getElementById("modal-cobro-rapido")?.addEventListener("click", function (e) {
         if (e.target === this) window.cerrarCobroRapido();

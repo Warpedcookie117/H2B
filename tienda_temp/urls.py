@@ -2,8 +2,9 @@
 from django.shortcuts import redirect
 from django.urls import path
 from .views.dashboards import (
-dashboard_socio, 
+dashboard_socio,
 dashboard_dueno,
+api_mas_vendidos_dueno,
 base_conocimientos,
 )
 
@@ -38,6 +39,7 @@ urlpatterns = [
     #dashboards
     path('dashboard-socio/', dashboard_socio, name='dashboard_socio'),
     path('dashboard-dueno/', dashboard_dueno, name='dashboard_dueno'),
+    path('api/dashboard/mas-vendidos/', api_mas_vendidos_dueno, name='api_mas_vendidos_dueno'),
     path('base-conocimientos/', base_conocimientos, name='base_conocimientos'),
     
     path('contacto/', contacto, name='contacto'),
