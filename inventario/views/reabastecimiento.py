@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 
 from inventario.models import Producto, Ubicacion
 from inventario.services.inventario_service import InventarioService
+from inventario.templatetags.cloudinary_helpers import foto_jpeg
 from ventas.models import IdempotencyKey
 
 _logger = logging.getLogger(__name__)
@@ -268,9 +269,12 @@ def pdf_orden_reabastecimiento(request):
 
         # Foto — se descarga de Cloudinary; si falla, se deja el hueco vacío
         # (una imagen caída nunca debe tumbar el PDF completo).
+        # Se pide la miniatura, no el original: aquí se dibuja en 18 mm, y
+        # bajar el original de ~2.5 MB por producto disparaba el bandwidth
+        # (un PDF de 30 productos costaba ~75 MB de cuota).
         if producto.foto_url:
             try:
-                resp = requests.get(producto.foto_url.url, timeout=4)
+                resp = requests.get(foto_jpeg(producto.foto_url, 300), timeout=4)
                 resp.raise_for_status()
                 c.drawImage(
                     ImageReader(io.BytesIO(resp.content)),

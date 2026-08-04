@@ -12,6 +12,8 @@ from inventario.forms import  ProductoForm, TemporadaForm
 from inventario.models import Atributo, Categoria, Inventario, MovimientoInventario, Producto, Producto, Temporada, ValorAtributo, Ubicacion
 from inventario.services.barcode_render_service import BarcodeRenderService
 from inventario.services.etiqueta_phomemo_service import EtiquetaPhomemoService
+from inventario.services.imagen_service import ImagenService
+from inventario.templatetags.cloudinary_helpers import foto_jpeg
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
 from inventario.services.codigo_service import CodigoService
@@ -371,9 +373,11 @@ def detalle_producto(request, producto_id):
         if permisos["descripcion"]:
             producto.descripcion = request.POST.get("descripcion", producto.descripcion)
 
-        # Foto: cualquiera con permiso de edición puede actualizarla
+        # Foto: cualquiera con permiso de edición puede actualizarla.
+        # Esta ruta no pasa por ProductoForm, así que la compresión se aplica
+        # aquí explícitamente (si no, se sube el original crudo del celular).
         if permisos["foto"] and "foto_url" in request.FILES:
-            producto.foto_url = request.FILES["foto_url"]
+            producto.foto_url = ImagenService.comprimir(request.FILES["foto_url"])
 
         if permisos["precios"]:
             precio_menudeo_raw = request.POST.get("precio_menudeo", "").strip()
@@ -984,7 +988,11 @@ def buscar_producto_por_codigo(request):
             'precio_docena': producto.precio_docena,
             'tipo_codigo': producto.tipo_codigo,
             'temporadas': list(producto.temporada.values_list("id", flat=True)),
-            'foto_url': producto.foto_url.url if producto.foto_url else None,
+            # f_jpg y 1600 px a propósito: esta URL no solo pinta el thumb del
+            # selector (producto_existente.js la reescribe a w_100), también la
+            # descarga nuevo_producto.js para HEREDAR la foto y volver a
+            # subirla. Servir el original crudo aquí costaba MBs por variante.
+            'foto_url': foto_jpeg(producto.foto_url, 1600) or None,
             'duenio_id': producto.dueño_id,
             'categoria_padre_id': categoria_padre.id if categoria_padre else None,
             'categoria_padre_nombre': categoria_padre.nombre if categoria_padre else None,

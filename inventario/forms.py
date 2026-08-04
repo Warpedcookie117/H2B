@@ -2,6 +2,7 @@ import re
 from django import forms
 from inventario.services.atributo_service import AtributoService
 from inventario.services.codigo_service import CodigoService
+from inventario.services.imagen_service import ImagenService
 from tienda_temp.models import Empleado
 from .models import Atributo, Categoria, Temporada, TransferenciaInventario, Producto, Categoria, Ubicacion, Inventario
 
@@ -335,7 +336,9 @@ class ProductoForm(forms.ModelForm):
         foto = self.cleaned_data.get("foto_url")
         if not foto:
             raise forms.ValidationError("Debes subir una imagen del producto.")
-        return foto
+        # Se comprime antes de que llegue a Cloudinary: las fotos crudas del
+        # celular pesan 2–4 MB y ese storage es el que agota el plan gratuito.
+        return ImagenService.comprimir(foto)
  
     def clean_subcategoria(self):
         sub = self.cleaned_data.get("subcategoria")

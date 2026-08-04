@@ -26,6 +26,29 @@ def _aplicar_transformaciones(url, transformaciones):
     return url.replace("/image/upload/", f"/image/upload/{transformaciones}/")
 
 
+def foto_jpeg(field, width):
+    """
+    URL transformada que SIEMPRE devuelve JPEG (f_jpg en vez de f_auto).
+
+    No es un template tag; es para consumidores que descargan el archivo en
+    vez de mostrarlo en un <img>, y que no necesariamente saben decodificar
+    WebP/AVIF (que es lo que f_auto entregaría):
+
+    - ReportLab, al incrustar la foto en los PDFs de reabastecimiento.
+    - El flujo de "heredar foto" al crear una variante, que hace fetch de la
+      URL y vuelve a subir el blob (nuevo_producto.js).
+
+    Devuelve "" si no hay foto.
+    """
+    if not field:
+        return ""
+    try:
+        url = field.url
+    except Exception:
+        return ""
+    return _aplicar_transformaciones(url, f"w_{width},c_limit,q_auto,f_jpg")
+
+
 @register.simple_tag
 def foto_card(field, width=600):
     """

@@ -1,5 +1,6 @@
 {% extends "partials/base.html" %}
 {% load static %}
+{% load cloudinary_helpers %}
 
 {% block title %}{{ producto.nombre }}{% endblock %}
 
@@ -95,7 +96,7 @@
       {% if permisos.foto %}
         <div onclick="abrirMenuFotoDetalle()" class="cursor-pointer inline-block">
           <img id="foto-detalle-preview"
-               src="{% if producto.foto_url %}{{ producto.foto_url.url }}{% endif %}"
+               src="{% foto_card producto.foto_url %}"
                class="max-h-64 mx-auto border-4 border-black shadow-[4px_4px_0_0_black] object-contain {% if not producto.foto_url %}hidden{% endif %}">
           <div id="foto-detalle-placeholder"
                class="border-4 border-dashed border-gray-400 bg-white h-40 w-64 mx-auto flex flex-col items-center justify-center {% if producto.foto_url %}hidden{% endif %}">
@@ -110,7 +111,7 @@
         </p>
       {% else %}
         {% if producto.foto_url %}
-          <img src="{{ producto.foto_url.url }}"
+          <img src="{% foto_card producto.foto_url %}"
                class="max-h-64 mx-auto border-4 border-black shadow-[4px_4px_0_0_black] object-contain">
         {% else %}
           <div class="border-4 border-dashed border-gray-300 bg-white h-40 flex items-center justify-center">
