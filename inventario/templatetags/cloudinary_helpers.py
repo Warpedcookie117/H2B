@@ -23,6 +23,16 @@ se vean nítidas en pantallas retina):
 Si alguna vista necesita algo más grande, es mejor subir el tamaño de una de
 estas tres constantes que agregar una cuarta.
 
+NUNCA SIRVAS `producto.foto_url.url` DIRECTO
+--------------------------------------------
+Comprobado en producción: una URL SIN transformación hace que Cloudinary
+guarde una derivada del tamaño completo del original — duplica el storage de
+esa foto (2.5 MB extra cada una). Es lo que llenó 4 GB de la cuenta antes de
+que existiera este catálogo.
+
+Cualquier transformación evita ese comportamiento. Usa siempre uno de los
+helpers de este módulo, aunque solo necesites "la foto tal cual".
+
 Uso:
     {% load cloudinary_helpers %}
     <img src="{% foto_mini producto.foto_url %}">
@@ -43,6 +53,11 @@ ANCHO_DETALLE = 640
 # Ancho para las fotos incrustadas en PDFs. Se dibujan en 18 mm de lado, así
 # que 320 px sobra incluso imprimiendo a 300 dpi.
 ANCHO_PDF = 320
+
+# Ancho para heredar la foto al crear una variante: el navegador descarga esta
+# versión y la vuelve a SUBIR. Coincide con el tope de ImagenService para que
+# la variante nueva nazca con el mismo original que tendría si la subieras.
+ANCHO_MASTER = 1600
 
 
 def _aplicar_transformaciones(url, transformaciones):
@@ -117,23 +132,23 @@ def foto_pdf(field):
     return _aplicar_transformaciones(url, f"w_{ANCHO_PDF},c_limit,q_auto,f_jpg")
 
 
-def foto_original(field):
+def foto_master(field):
     """
-    URL del original, sin transformar.
+    Versión grande para el flujo de "heredar foto" al crear una variante: el
+    navegador descarga esta URL y vuelve a SUBIR el blob como foto del
+    producto nuevo.
 
-    Solo para el flujo de "heredar foto" al crear una variante: el navegador
-    descarga esta URL y vuelve a SUBIR el blob como foto del producto nuevo.
+    Fuerza f_jpg para que Pillow siempre sepa abrirlo al re-subir.
 
-    Se usa el original a propósito, en vez de una versión transformada:
-    - No crea ningún derivado nuevo en Cloudinary.
-    - No degrada la foto heredada (si heredáramos una versión de 640 px, la
-      variante nueva nacería con un original peor que el de su padre).
-    - Es JPEG, así que no hay riesgo de que Pillow no sepa abrirlo al re-subir.
-
-    El costo es una descarga más pesada, pero heredar foto es una operación
-    puntual (no ocurre en cada vista), y con ImagenService los originales
-    nuevos ya pesan ~300 KB en vez de 2.5 MB.
+    OJO — NUNCA sirvas aquí `field.url` sin transformar. Se probó en
+    producción: pedir una URL sin transformación hace que Cloudinary guarde
+    una derivada del TAMAÑO COMPLETO del original (2.5 MB por producto), o
+    sea que duplica el storage de esa foto. Cualquier transformación evita
+    ese comportamiento; ésta pesa ~390 KB en vez de 2.5 MB.
 
     Devuelve "" si no hay foto.
     """
-    return _url(field)
+    url = _url(field)
+    if not url:
+        return ""
+    return _aplicar_transformaciones(url, f"w_{ANCHO_MASTER},c_limit,q_auto,f_jpg")

@@ -5,6 +5,7 @@ from django.test import SimpleTestCase
 from PIL import Image
 
 from inventario.services.imagen_service import ImagenService
+from inventario.templatetags import cloudinary_helpers as ch
 
 
 def _subida(imagen, nombre="foto.jpg", formato="JPEG", **guardar):
@@ -86,3 +87,52 @@ class ImagenServiceTest(SimpleTestCase):
 
     def test_sin_foto_no_truena(self):
         self.assertIsNone(ImagenService.comprimir(None))
+
+
+class _Foto:
+    """Imita un ImageField de Cloudinary."""
+    url = ("https://res.cloudinary.com/demo/image/upload/v1/media/productos/x")
+
+    def __bool__(self):
+        return True
+
+
+# Todos los helpers que producen una URL para consumo externo.
+HELPERS = (ch.foto_mini, ch.foto_card, ch.foto_detalle, ch.foto_pdf, ch.foto_master)
+
+
+class CatalogoDeTamañosTest(SimpleTestCase):
+
+    def test_ninguna_url_sale_sin_transformacion(self):
+        # Comprobado en producción: una URL sin transformación hace que
+        # Cloudinary guarde una copia del tamaño COMPLETO del original,
+        # duplicando el storage de esa foto. Ya nos costó ~4 GB una vez.
+        for helper in HELPERS:
+            url = helper(_Foto())
+            resto = url.split("/image/upload/", 1)[1]
+            primer_segmento = resto.split("/", 1)[0]
+            self.assertIn(
+                "w_", primer_segmento,
+                f"{helper.__name__} devolvió una URL sin transformación: {url}",
+            )
+
+    def test_el_catalogo_esta_acotado(self):
+        # Si este test falla es porque alguien agregó un ancho nuevo. No está
+        # prohibido, pero significa un derivado más por producto en Cloudinary:
+        # actualiza el número a conciencia, no por inercia.
+        anchos = {ch.ANCHO_MINI, ch.ANCHO_CARD, ch.ANCHO_DETALLE,
+                  ch.ANCHO_PDF, ch.ANCHO_MASTER}
+        self.assertLessEqual(len(anchos), 4, f"anchos distintos en uso: {sorted(anchos)}")
+
+    def test_sin_foto_devuelve_cadena_vacia(self):
+        for helper in HELPERS:
+            self.assertEqual(helper(None), "", helper.__name__)
+
+    def test_no_toca_urls_que_no_son_de_cloudinary(self):
+        # En desarrollo el storage es local y la URL no lleva /image/upload/.
+        class Local:
+            url = "/media/productos/x.jpg"
+            def __bool__(self): return True
+
+        for helper in HELPERS:
+            self.assertEqual(helper(Local()), "/media/productos/x.jpg", helper.__name__)
