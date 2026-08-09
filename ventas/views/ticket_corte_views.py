@@ -157,7 +157,7 @@ def corte_del_dia(request):
     caja_id = request.session.get("caja_actual")
     if not caja_id:
         messages.error(request, "No estás dentro de ninguna caja.")
-        return redirect("dashboard_socio")
+        return redirect("tienda_temp:dashboard_socio")
 
     caja = Caja.objects.get(id=caja_id)
 
