@@ -5,9 +5,10 @@ Motivo: las fotos llegan crudas del celular (2–4 MB cada una). Con ~4,500
 productos eso son ~12 GB de storage, que por sí solos revientan el plan
 gratuito de Cloudinary (25 credits, donde 1 GB de storage = 1 credit).
 
-El ancho más grande que la app llega a pedir es 1200 px (ver el default de
-`foto_srcset` en templatetags/cloudinary_helpers.py), así que guardar el
-original a 1600 px deja margen de sobra y no degrada ninguna vista actual.
+El ancho más grande que la app llega a pedir es 640 px (ANCHO_DETALLE en
+templatetags/cloudinary_helpers.py), así que guardar el original a 1600 px
+deja margen de sobra y no degrada ninguna vista actual. El margen extra
+existe para poder subir los tamaños del catálogo sin volver a subir fotos.
 
 No se genera thumbnail aquí a propósito: las versiones chicas las produce
 Cloudinary al vuelo con w_/q_auto/f_auto. (El campo `foto_thumbnail` existió

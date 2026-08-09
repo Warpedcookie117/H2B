@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from inventario.forms import AgregarInventarioForm, AjusteInventarioForm, TransferenciaInventarioForm
 from inventario.services.inventario_service import InventarioService
-from inventario.templatetags.cloudinary_helpers import foto_card
+from inventario.templatetags.cloudinary_helpers import foto_mini
 from inventario.models import MovimientoInventario, Producto, Inventario, SolicitudAjuste, TransferenciaInventario, Ubicacion
 from django.http import JsonResponse
 from django.db.models import Sum 
@@ -557,9 +557,9 @@ def buscar_producto_en_ubicacion(request):
             "id": inv.producto.id,
             "nombre": inv.producto.nombre,
             "cantidad_actual": inv.cantidad_actual,
-            # 200 px: orden.js la pinta en un cuadro de 48 px (w-12 h-12).
+            # orden.js la pinta en un cuadro de 48 px (w-12 h-12).
             # Antes se mandaba el original de ~2.5 MB para eso.
-            "foto_url": foto_card(inv.producto.foto_url, 200) or None,
+            "foto_url": foto_mini(inv.producto.foto_url) or None,
             "codigo_barras": inv.producto.codigo_barras or "",
         }
         for inv in inventarios

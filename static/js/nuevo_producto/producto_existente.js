@@ -2,12 +2,17 @@
 // PRODUCTO EXISTENTE (AJAX)
 // ============================
 
-// Cloudinary: reescribe la URL para servir una versión ligera (w pequeño +
-// q_auto:low + f_auto) ideal para thumbs del selector de variantes.
-function urlImagenLigera(url, w = 120) {
+// Cloudinary: reescribe la URL a uno de los tamaños del catálogo.
+// Los anchos y la cadena de transformación deben coincidir EXACTAMENTE con
+// inventario/templatetags/cloudinary_helpers.py — si aquí pidiéramos otro
+// ancho, u otra calidad (q_auto:low en vez de q_auto), Cloudinary guardaría
+// un derivado aparte para la misma imagen.
+const ANCHO_MINI = 160;
+
+function urlImagenLigera(url, w = ANCHO_MINI) {
     if (!url || typeof url !== "string") return url;
     if (!url.includes("/image/upload/")) return url;
-    const trans = `w_${w},c_limit,q_auto:low,f_auto`;
+    const trans = `w_${w},c_limit,q_auto,f_auto`;
     const match = url.match(/\/image\/upload\/([^/]+)\//);
     if (match && (match[1].includes(",") || match[1].includes("_"))) {
         return url.replace(/\/image\/upload\/[^/]+\//, `/image/upload/${trans}/`);
@@ -240,7 +245,7 @@ export function initProductoExistente({
             fotoBox.className = "w-12 h-12 border-2 border-black bg-white flex items-center justify-center overflow-hidden flex-none";
             if (v.foto_url) {
                 const img = document.createElement("img");
-                img.src = urlImagenLigera(v.foto_url, 100);
+                img.src = urlImagenLigera(v.foto_url, ANCHO_MINI);
                 img.loading = "lazy";
                 img.alt = v.nombre;
                 img.className = "w-full h-full object-cover";

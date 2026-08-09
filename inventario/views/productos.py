@@ -13,7 +13,7 @@ from inventario.models import Atributo, Categoria, Inventario, MovimientoInventa
 from inventario.services.barcode_render_service import BarcodeRenderService
 from inventario.services.etiqueta_phomemo_service import EtiquetaPhomemoService
 from inventario.services.imagen_service import ImagenService
-from inventario.templatetags.cloudinary_helpers import foto_jpeg
+from inventario.templatetags.cloudinary_helpers import foto_original
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
 from inventario.services.codigo_service import CodigoService
@@ -988,11 +988,15 @@ def buscar_producto_por_codigo(request):
             'precio_docena': producto.precio_docena,
             'tipo_codigo': producto.tipo_codigo,
             'temporadas': list(producto.temporada.values_list("id", flat=True)),
-            # f_jpg y 1600 px a propósito: esta URL no solo pinta el thumb del
-            # selector (producto_existente.js la reescribe a w_100), también la
-            # descarga nuevo_producto.js para HEREDAR la foto y volver a
-            # subirla. Servir el original crudo aquí costaba MBs por variante.
-            'foto_url': foto_jpeg(producto.foto_url, 1600) or None,
+            # Original sin transformar, a propósito. Esta URL tiene dos
+            # consumidores y ninguno la muestra tal cual:
+            #   - producto_existente.js la reescribe a w_160 para el thumb.
+            #   - nuevo_producto.js la DESCARGA y la vuelve a subir para
+            #     heredar la foto en una variante nueva.
+            # Mandar aquí una versión transformada crearía un derivado extra
+            # por producto y haría que las variantes nacieran con un original
+            # peor que el de su padre.
+            'foto_url': foto_original(producto.foto_url) or None,
             'duenio_id': producto.dueño_id,
             'categoria_padre_id': categoria_padre.id if categoria_padre else None,
             'categoria_padre_nombre': categoria_padre.nombre if categoria_padre else None,

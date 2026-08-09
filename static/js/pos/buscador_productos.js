@@ -153,10 +153,16 @@ function atajoKeydown(e) {
 // ============================================================
 // CLOUDINARY: URL ligera para fotos del modal
 // ============================================================
-function urlImagenLigera(url, w = 160) {
+// Los anchos y la cadena de transformación deben coincidir EXACTAMENTE con
+// inventario/templatetags/cloudinary_helpers.py — si aquí pidiéramos otro
+// ancho, u otra calidad (q_auto:low en vez de q_auto), Cloudinary guardaría
+// un derivado aparte para la misma imagen.
+const ANCHO_CARD = 320;
+
+function urlImagenLigera(url, w = ANCHO_CARD) {
     if (!url || typeof url !== "string") return url;
     if (!url.includes("/image/upload/")) return url;
-    const trans = `w_${w},c_limit,q_auto:low,f_auto`;
+    const trans = `w_${w},c_limit,q_auto,f_auto`;
     // Detectar si ya hay un set de transformaciones (segmento que contiene "_" o ",")
     const match = url.match(/\/image\/upload\/([^/]+)\//);
     if (match && (match[1].includes(",") || match[1].includes("_"))) {
@@ -666,12 +672,12 @@ function renderPaginaActual() {
             btn.style.boxShadow = "4px 4px 0 0 black";
         };
 
-        // Foto — q_auto:low para thumbnail barato en Cloudinary
+        // Foto — tamaño CARD del catálogo (la caja mide 120 px)
         const fotoBox = document.createElement("div");
         fotoBox.style.cssText = "width:100%;height:120px;border:2px solid black;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;";
         const imgEl = card.querySelector("img");
         const srcOriginal = imgEl?.dataset?.src || imgEl?.src || "";
-        const srcLigera = urlImagenLigera(srcOriginal, 240);
+        const srcLigera = urlImagenLigera(srcOriginal, ANCHO_CARD);
         if (srcLigera) {
             const img = document.createElement("img");
             img.src = srcLigera;

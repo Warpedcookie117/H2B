@@ -6,7 +6,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.core.serializers.json import DjangoJSONEncoder
 
-from inventario.templatetags.cloudinary_helpers import foto_card
+from inventario.templatetags.cloudinary_helpers import foto_mini
 from .models import Inventario, Producto
 
 
@@ -55,7 +55,9 @@ def _broadcast_producto(producto):
     )
 
     try:
-        foto = foto_card(producto.foto_url)
+        # Mismo tamaño que _producto_card.html: esta URL reemplaza la de esa
+        # card en el POS, y pedir otro ancho generaría un derivado duplicado.
+        foto = foto_mini(producto.foto_url)
     except Exception:
         foto = ""
 
