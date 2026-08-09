@@ -1,6 +1,7 @@
 import json
+import logging
 
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -8,6 +9,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from inventario.templatetags.cloudinary_helpers import foto_mini
 from .models import Inventario, Producto
+
+_logger = logging.getLogger(__name__)
 
 
 def _broadcast(ubicacion_id, producto_id, cantidad_actual):
@@ -95,3 +98,60 @@ def producto_actualizado(sender, instance, created, **kwargs):
     if created:
         return
     _broadcast_producto(instance)
+
+
+# ============================================================================
+# BORRADO DE LA FOTO REEMPLAZADA
+#
+# Django NO borra el archivo anterior cuando se reasigna un ImageField: sube
+# el nuevo y deja el viejo en Cloudinary para siempre. Cada cambio de foto
+# dejaba así un huérfano que nadie referencia pero sigue ocupando storage
+# (llegaron a ser cientos).
+#
+# Se hace en dos tiempos a propósito:
+#   pre_save  → guarda una referencia a la foto vieja (todavía se puede leer
+#               de la BD, porque `instance` ya trae la nueva en memoria).
+#   post_save → la borra, pero SOLO si el guardado sí se completó. Si se
+#               borrara en pre_save y el INSERT/UPDATE fallara después, se
+#               habría perdido una foto sin haber guardado la nueva.
+# ============================================================================
+
+@receiver(pre_save, sender=Producto)
+def recordar_foto_anterior(sender, instance, update_fields=None, **kwargs):
+    instance._foto_anterior = None
+
+    # Guardados dirigidos que ni tocan la foto (p. ej. save(update_fields=["costo"]))
+    # se saltan la consulta extra.
+    if update_fields is not None and "foto_url" not in update_fields:
+        return
+
+    if not instance.pk:
+        return  # producto nuevo: no hay foto previa que borrar
+
+    try:
+        anterior = Producto.objects.only("foto_url").get(pk=instance.pk).foto_url
+    except Producto.DoesNotExist:
+        return
+
+    nueva = getattr(instance.foto_url, "name", None)
+    if anterior and anterior.name and anterior.name != nueva:
+        instance._foto_anterior = anterior
+
+
+@receiver(post_save, sender=Producto)
+def borrar_foto_anterior(sender, instance, **kwargs):
+    anterior = getattr(instance, "_foto_anterior", None)
+    if not anterior:
+        return
+    instance._foto_anterior = None
+
+    try:
+        anterior.storage.delete(anterior.name)
+        _logger.info("Foto reemplazada borrada de storage: %s", anterior.name)
+    except Exception as e:
+        # Que no se pueda borrar la vieja jamás debe impedir guardar el producto.
+        # A lo mucho queda un huérfano, que el comando limpiar_fotos_huerfanas
+        # recoge después.
+        _logger.warning(
+            "No se pudo borrar la foto anterior %s: %s", anterior.name, e
+        )

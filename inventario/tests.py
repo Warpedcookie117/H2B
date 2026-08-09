@@ -1,10 +1,12 @@
 import io
+from types import SimpleNamespace
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from PIL import Image
 
 from inventario.services.imagen_service import ImagenService
+from inventario.signals import borrar_foto_anterior
 from inventario.templatetags import cloudinary_helpers as ch
 
 
@@ -87,6 +89,64 @@ class ImagenServiceTest(SimpleTestCase):
 
     def test_sin_foto_no_truena(self):
         self.assertIsNone(ImagenService.comprimir(None))
+
+
+class FotoReemplazadaTest(TestCase):
+    """
+    La foto anterior debe borrarse del storage al reemplazarla.
+
+    Se prueba contra los signals directamente, con un storage falso, para no
+    depender de Cloudinary ni del disco.
+    """
+
+    def setUp(self):
+        self.borradas = []
+
+        class StorageFalso:
+            def delete(_, name):
+                self.borradas.append(name)
+
+        self.storage = StorageFalso()
+
+    def _anterior(self, nombre):
+        """Imita el FieldFile de la foto que ya estaba guardada."""
+        anterior = SimpleNamespace(name=nombre, storage=self.storage)
+        anterior.__bool__ = lambda: True
+        return anterior
+
+    def test_borra_la_foto_vieja_al_reemplazarla(self):
+        producto = SimpleNamespace(_foto_anterior=self._anterior("productos/vieja.jpg"))
+
+        borrar_foto_anterior(sender=None, instance=producto)
+
+        self.assertEqual(self.borradas, ["productos/vieja.jpg"])
+
+    def test_no_borra_nada_si_la_foto_no_cambio(self):
+        producto = SimpleNamespace(_foto_anterior=None)
+
+        borrar_foto_anterior(sender=None, instance=producto)
+
+        self.assertEqual(self.borradas, [])
+
+    def test_un_fallo_al_borrar_no_tumba_el_guardado(self):
+        class StorageQueTruena:
+            def delete(self, name):
+                raise IOError("Cloudinary no responde")
+
+        anterior = SimpleNamespace(name="productos/x.jpg", storage=StorageQueTruena())
+        producto = SimpleNamespace(_foto_anterior=anterior)
+
+        # No debe propagar la excepción: perder la foto vieja nunca vale
+        # impedir que se guarde el producto.
+        borrar_foto_anterior(sender=None, instance=producto)
+
+    def test_no_reintenta_el_borrado_en_un_segundo_guardado(self):
+        producto = SimpleNamespace(_foto_anterior=self._anterior("productos/vieja.jpg"))
+
+        borrar_foto_anterior(sender=None, instance=producto)
+        borrar_foto_anterior(sender=None, instance=producto)
+
+        self.assertEqual(self.borradas, ["productos/vieja.jpg"])
 
 
 class _Foto:
