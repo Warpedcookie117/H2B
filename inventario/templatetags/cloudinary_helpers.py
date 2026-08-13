@@ -17,11 +17,20 @@ Los tamaños salen de medir las cajas CSS reales y multiplicarlas por 2 (para qu
 se vean nítidas en pantallas retina):
 
     MINI     160 px  → cajas de 48–72 px  (card del POS, thumbs de selectores)
-    CARD     320 px  → cajas de 96–144 px (grids, kanban, inventario_ubicacion)
-    DETALLE  640 px  → caja de 256 px     (detalle_producto)
+    CARD     320 px  → cajas de 96–256 px (grids, kanban, ubicaciones, detalle)
 
 Si alguna vista necesita algo más grande, es mejor subir el tamaño de una de
-estas tres constantes que agregar una cuarta.
+estas constantes que agregar otra.
+
+CUIDADO CON EL COSTO DE CADA ANCHO NUEVO
+----------------------------------------
+Cada derivado que Cloudinary crea cuenta como una TRANSFORMACIÓN, y con f_auto
+son DOS por ancho (guarda una f_jxl y una f_webp,fl_awebp). Con ~4,000
+productos, un ancho nuevo son ~8,000 transformaciones = 8 credits del plan.
+
+Corolario aprendido a la mala: NO purgar derivados para liberar storage. Cada
+uno regenerado vuelve a cobrar transformación, y sale más caro el remedio
+(~8 credits) que la enfermedad (~4 credits de storage).
 
 NUNCA SIRVAS `producto.foto_url.url` DIRECTO
 --------------------------------------------
@@ -48,7 +57,23 @@ register = template.Library()
 # nuevo significa un derivado más por producto en Cloudinary, así que piénsalo.
 ANCHO_MINI = 160
 ANCHO_CARD = 320
-ANCHO_DETALLE = 640
+
+# Deliberadamente IGUAL a ANCHO_CARD, no es un descuido.
+#
+# Estuvo en 640 y resultó carísimo: ese derivado solo se genera cuando alguien
+# abre la ficha de un producto, así que con ~4,000 productos había ~8,000
+# transformaciones (2 formatos por f_auto) esperando a dispararse una por una
+# conforme la gente navegara. Al reusar 320 —que ya está generado para
+# prácticamente todo el catálogo— esas transformaciones nunca se cobran.
+#
+# La foto del detalle se muestra en una caja de 256 px de alto (max-h-64), así
+# que 320 alcanza. Se pierde algo de nitidez en pantallas retina; es el precio
+# de no reventar la cuota.
+#
+# Para subirlo de nuevo basta cambiar este número, pero cuesta una
+# transformación por producto que abra esa vista. Hacerlo solo con holgura
+# de credits.
+ANCHO_DETALLE = ANCHO_CARD
 
 # Ancho para las fotos incrustadas en PDFs. Se dibujan en 18 mm de lado, así
 # que 320 px sobra incluso imprimiendo a 300 dpi.
@@ -111,7 +136,13 @@ def foto_card(field):
 
 @register.simple_tag
 def foto_detalle(field):
-    """Vista de detalle del producto."""
+    """
+    Vista de detalle del producto.
+
+    Hoy produce la MISMA URL que foto_card (ver ANCHO_DETALLE). Se mantiene
+    como tag aparte para que el día que haya holgura de credits se pueda subir
+    solo este tamaño sin tocar las demás vistas.
+    """
     return _transformada(field, ANCHO_DETALLE)
 
 
