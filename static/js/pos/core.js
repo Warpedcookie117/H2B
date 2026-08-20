@@ -13,7 +13,7 @@ export let carrito = [];
 // 2. Estado del descuento
 // ============================================================
 
-export let descuentoPct = 0;   // 0, 10 o 15 — porcentaje del descuento activo
+export let descuentoPct = 0;   // 0, 5, 10 o 15 — porcentaje del descuento activo
 
 export function setDescuentoPct(pct) {
     console.log(`[POS:core] setDescuentoPct: ${pct}`);

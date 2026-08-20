@@ -489,7 +489,7 @@ function initBotonCobrar() {
 
 
 // ============================================================
-// 7. Descuento (desplegable: 10% / 15%, mutuamente excluyentes)
+// 7. Descuento (desplegable: 5% / 10% / 15%, mutuamente excluyentes)
 // ============================================================
 
 function initDescuentoUI() {

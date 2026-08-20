@@ -5,6 +5,11 @@ from inventario.models import Producto
 from ventas.services.ticket_service import generar_texto_ticket
 from sucursales.models import Caja
 
+# Porcentajes de descuento manual que el cajero puede aplicar en el POS.
+# Espejo de los botones data-pct en templates/ventas/pos.html — los dos lados
+# tienen que coincidir o el descuento se pierde al guardar la venta.
+DESCUENTOS_PERMITIDOS = (5, 10, 15)
+
 
 class POSService:
 
@@ -106,8 +111,11 @@ class POSService:
                     "atributos_snap":  None,
                 })
 
-        # 2) Descuento — solo se aceptan 10% o 15% (defensa contra valores manipulados)
-        pct = descuento_pct if descuento_pct in (10, 15) else 0
+        # 2) Descuento — lista blanca contra valores manipulados: el cliente
+        # puede mandar cualquier número, aquí solo pasan los autorizados.
+        # DEBE coincidir con los botones data-pct de templates/ventas/pos.html;
+        # si agregas uno allá y no aquí, la venta se guarda SIN descuento.
+        pct = descuento_pct if descuento_pct in DESCUENTOS_PERMITIDOS else 0
         descuento = subtotal * (pct / 100)
         total = subtotal - descuento
 
