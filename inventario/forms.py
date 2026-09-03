@@ -223,12 +223,19 @@ class ProductoForm(forms.ModelForm):
         decimal_places=1,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
     )
- 
+
+    costo = forms.DecimalField(
+        required=False,
+        min_value=0,
+        decimal_places=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
+    )
+
     class Meta:
         model = Producto
         fields = [
             'nombre',
-            'precio_mayoreo', 'precio_menudeo', 'precio_docena',
+            'precio_mayoreo', 'precio_menudeo', 'precio_docena', 'costo',
             'foto_url', 'temporada', 'dueño',
             'codigo_barras',
             'tipo_codigo',
@@ -258,8 +265,15 @@ class ProductoForm(forms.ModelForm):
         }
  
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
- 
+
+        # Costo: solo visible/editable para usuarios con rol dueño
+        empleado = getattr(user, 'empleado', None)
+        es_dueno = getattr(empleado, 'rol', None) == 'dueño'
+        if not es_dueno:
+            del self.fields['costo']
+
         # Dueños
         self.fields['dueño'].queryset = Empleado.objects.filter(rol='dueño')
  

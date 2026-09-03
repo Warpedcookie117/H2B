@@ -789,7 +789,7 @@ def nuevo_producto(request):
 
     if request.method == "GET":
         sucursal_actual = request.session.get("sucursal_actual")
-        form = ProductoForm(initial={"sucursal_actual": sucursal_actual})
+        form = ProductoForm(initial={"sucursal_actual": sucursal_actual}, user=request.user)
         form.request = request
         return render(request, "inventario/nuevo_producto.html", contexto(form))
 
@@ -824,7 +824,8 @@ def nuevo_producto(request):
     form = ProductoForm(
         request.POST,
         request.FILES,
-        initial={"sucursal_actual": sucursal_actual}
+        initial={"sucursal_actual": sucursal_actual},
+        user=request.user
     )
     form.request = request
 

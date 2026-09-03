@@ -143,6 +143,14 @@
       </div>
     </div>
 
+    {% if form.costo %}
+    <!-- COSTO (solo dueño) -->
+    <div class="space-y-1">
+      <label class="label-90s">{{ form.costo.label }}</label>
+      <div class="input-wrapper wrapper-costo">{{ form.costo }}</div>
+    </div>
+    {% endif %}
+
     <!-- DUEÑO -->
     <div class="space-y-1">
       <label class="label-90s">{{ form.dueño.label }}</label>
