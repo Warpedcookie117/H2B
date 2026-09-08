@@ -10,6 +10,8 @@ import {
     totalConDescuento,
     lastAddedId,
     clearLastAddedId,
+    formatearMoneda,
+    parsearMonto,
 } from "./core.js";
 
 import {
@@ -23,6 +25,7 @@ import {
 import {
     validarStock,
     validarPago,
+    validarMontosPago,
     procesarPago
 } from "./pago.js";
 
@@ -565,12 +568,48 @@ function initModalPago() {
     const infoBox       = document.getElementById("pago-info");
     const totalDisplay  = document.getElementById("pago-total-display");
 
-    // Calcula en vivo cuánto falta o cuánto es el cambio
+    // Muestra un error de captura (tarjeta/efectivo inválidos) dentro del modal
+    function mostrarErrorPago(msg) {
+        infoBox.textContent = msg;
+        infoBox.className   = "pos-pago-info pos-pago-info--error";
+    }
+
+    // Inserta comas de miles en vivo mientras el cajero escribe, sin perder
+    // el punto decimal (el carrito puede traer centavos por un descuento) ni
+    // brincar el cursor.
+    function formatearEntradaMonto(input) {
+        const cursor = input.selectionStart;
+        const digitosAntesDelCursor = input.value.slice(0, cursor).replace(/[^\d]/g, "").length;
+
+        let limpio = input.value.replace(/[^\d.]/g, "");
+        const primerPunto = limpio.indexOf(".");
+        if (primerPunto !== -1) {
+            limpio = limpio.slice(0, primerPunto + 1) + limpio.slice(primerPunto + 1).replace(/\./g, "");
+        }
+
+        let [entero, decimal] = limpio.split(".");
+        entero = (entero || "").replace(/^0+(?=\d)/, "");
+        const enteroFormateado = entero ? Number(entero).toLocaleString("es-MX") : "";
+
+        let nuevoValor = enteroFormateado;
+        if (decimal !== undefined) nuevoValor += "." + decimal;
+        input.value = nuevoValor;
+
+        // Recoloca el cursor contando los mismos dígitos desde el inicio
+        let contados = 0, pos = 0;
+        while (pos < nuevoValor.length && contados < digitosAntesDelCursor) {
+            if (/\d/.test(nuevoValor[pos])) contados++;
+            pos++;
+        }
+        input.setSelectionRange(pos, pos);
+    }
+
+    // Calcula en vivo cuánto falta o cuánto es el cambio — y de una vez avisa
+    // si el monto capturado no tiene sentido (tarjeta de más, efectivo de más).
     function actualizarInfoPago() {
-        const efectivo   = parseFloat(inputEfectivo.value || 0);
-        const tarjeta    = parseFloat(inputTarjeta.value  || 0);
+        const efectivo   = parsearMonto(inputEfectivo.value);
+        const tarjeta    = parsearMonto(inputTarjeta.value);
         const total      = totalConDescuento();
-        const diferencia = (efectivo + tarjeta) - total;
 
         if (efectivo + tarjeta === 0) {
             infoBox.textContent = "";
@@ -578,17 +617,25 @@ function initModalPago() {
             return;
         }
 
+        const errorMontos = validarMontosPago(efectivo, tarjeta);
+        if (errorMontos) return mostrarErrorPago(errorMontos);
+
+        const diferencia = (efectivo + tarjeta) - total;
         if (diferencia < 0) {
-            infoBox.textContent = `Faltan $${Math.abs(diferencia).toFixed(2)} por pagar`;
+            infoBox.textContent = `Faltan $${formatearMoneda(Math.abs(diferencia))} por pagar`;
             infoBox.className   = "pos-pago-info pos-pago-info--falta";
         } else {
-            infoBox.textContent = `Cambio: $${diferencia.toFixed(2)}`;
+            infoBox.textContent = `Cambio: $${formatearMoneda(diferencia)}`;
             infoBox.className   = "pos-pago-info pos-pago-info--cambio";
         }
     }
 
-    inputEfectivo.addEventListener("input", actualizarInfoPago);
-    inputTarjeta.addEventListener("input",  actualizarInfoPago);
+    [inputEfectivo, inputTarjeta].forEach(inp => {
+        inp.addEventListener("input", () => {
+            formatearEntradaMonto(inp);
+            actualizarInfoPago();
+        });
+    });
 
     // Enter en cualquier campo del modal → confirmar pago
     [inputEfectivo, inputTarjeta].forEach(inp => {
@@ -601,7 +648,7 @@ function initModalPago() {
     abrirModalPago = () => {
         const total = totalConDescuento();
         console.log(`[POS:ui] abrirModalPago → total=$${total.toFixed(2)}`);
-        totalDisplay.textContent = total.toFixed(2);
+        totalDisplay.textContent = formatearMoneda(total);
         inputEfectivo.value = "";
         inputTarjeta.value  = "";
         infoBox.textContent = "";
@@ -621,12 +668,12 @@ function initModalPago() {
 
     // Confirmar y procesar la venta
     btnConfirmar.onclick = async () => {
-        const efectivo = parseFloat(inputEfectivo.value || 0);
-        const tarjeta  = parseFloat(inputTarjeta.value  || 0);
+        const efectivo = parsearMonto(inputEfectivo.value);
+        const tarjeta  = parsearMonto(inputTarjeta.value);
         console.log(`[POS:ui] confirmar-pago → efectivo=${efectivo} tarjeta=${tarjeta}`);
 
         const error = validarPago(efectivo, tarjeta);
-        if (error) return mostrarAlertaUI(error, "error");
+        if (error) return mostrarErrorPago(error);
 
         btnConfirmar.disabled    = true;
         btnConfirmar.textContent = "Procesando...";
@@ -648,7 +695,7 @@ function initModalPago() {
 
             modal.classList.add("pos-modal--hidden");
         } else {
-            mostrarAlertaUI(data?.message || "Error al procesar la venta", "error");
+            mostrarErrorPago(data?.message || "Error al procesar la venta");
             btnConfirmar.disabled    = false;
             btnConfirmar.textContent = "Confirmar";
         }
@@ -670,9 +717,9 @@ function initModalResultado() {
         const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html } = e.detail;
         console.log(`[POS:ui] pago-exito → venta_id=${venta_id} total=${total} cambio=${cambio}`);
 
-        document.getElementById("resultado-total-venta").textContent = total.toFixed(2);
-        document.getElementById("resultado-recibido").textContent    = (pagado_efectivo + pagado_tarjeta).toFixed(2);
-        document.getElementById("resultado-cambio").textContent      = cambio.toFixed(2);
+        document.getElementById("resultado-total-venta").textContent = formatearMoneda(total);
+        document.getElementById("resultado-recibido").textContent    = formatearMoneda(pagado_efectivo + pagado_tarjeta);
+        document.getElementById("resultado-cambio").textContent      = formatearMoneda(cambio);
 
         boxImpresion.textContent = "Enviando a impresora...";
         boxImpresion.className   = "pos-resultado-impresion";

@@ -4,6 +4,40 @@ let chartMasVendidos = null;
 let chartMasVendidosTiendaHoy = null;
 let chartExplorador = null;
 
+// Dibuja el valor de cada barra ARRIBA de la barra (no debajo, donde compite
+// por espacio con el nombre del producto ya rotado). En móvil, con muchas
+// barras angostas juntas, un tamaño de letra fijo hace que los números se
+// encimen y se vean como un solo churro ilegible — aquí la letra se encoge
+// según qué tan pegadas están las barras, y si de plano no cabe, mejor no
+// se dibuja ese label a que se vea encimado con el de al lado.
+function dibujarValoresBarras(chart, { color = '#111', prefijo = '', sufijo = '' } = {}) {
+    const { ctx: c, data: d } = chart;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta.data.length) return;
+
+    const separaciones = meta.data
+        .map((bar, i) => meta.data[i + 1] ? Math.abs(meta.data[i + 1].x - bar.x) : Infinity)
+        .filter(sep => sep !== Infinity);
+    const anchoDisponible = separaciones.length ? Math.min(...separaciones) : chart.width;
+    const fontSize = Math.max(9, Math.min(14, Math.floor(anchoDisponible / 3)));
+
+    c.save();
+    c.font = `bold ${fontSize}px sans-serif`;
+    c.fillStyle = color;
+    c.textAlign = 'center';
+    c.textBaseline = 'bottom';
+
+    meta.data.forEach((bar, i) => {
+        const value = d.datasets[0].data[i];
+        if (!value) return;
+        const texto = `${prefijo}${value}${sufijo}`;
+        if (c.measureText(texto).width > anchoDisponible - 2) return;
+        c.fillText(texto, bar.x, bar.y - 4);
+    });
+
+    c.restore();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initChartVentasHoySucursal();
     chartMasVendidosHoy = initChartBarras("chartMasVendidosHoy", window.INIT_MAS_VENDIDOS_HOY, "#06D6A0");
@@ -251,21 +285,7 @@ function initChartVentasHoySucursal() {
     const totalLabelsPlugin = {
         id: 'totalLabels',
         afterDatasetsDraw(chart) {
-            const { ctx: c, data: d, scales: { x } } = chart;
-
-            chart.getDatasetMeta(0).data.forEach((bar, i) => {
-                const value = d.datasets[0].data[i];
-                if (!value) return;
-
-                c.save();
-                c.font = 'bold 18px sans-serif';
-                c.fillStyle = '#FF006E';
-                c.textAlign = 'center';
-                c.textBaseline = 'top';
-                // ⭐ Debajo del label del eje X
-                c.fillText(`$${value}`, bar.x, x.bottom + 8);
-                c.restore();
-            });
+            dibujarValoresBarras(chart, { color: '#FF006E', prefijo: '$' });
         }
     };
 
@@ -285,8 +305,8 @@ function initChartVentasHoySucursal() {
             maintainAspectRatio: false,
             animation: false,
             layout: {
-            padding: { top: 10, bottom: 35 }
-             },
+                padding: { top: 24 }
+            },
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: "#000", font: { size: 14, weight: "bold" } } },
@@ -361,23 +381,12 @@ function initChartBarras(canvasId, data, color, animar = false) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return null;
 
-    // Cantidad vendida escrita debajo de cada barra — no basta con el
+    // Cantidad vendida escrita arriba de cada barra — no basta con el
     // eje Y para leer el número exacto de un vistazo.
     const cantidadLabelsPlugin = {
         id: 'cantidadLabels',
         afterDatasetsDraw(chart) {
-            const { ctx: c, data: d, scales: { x } } = chart;
-            chart.getDatasetMeta(0).data.forEach((bar, i) => {
-                const value = d.datasets[0].data[i];
-                if (!value) return;
-                c.save();
-                c.font = 'bold 14px sans-serif';
-                c.fillStyle = '#111';
-                c.textAlign = 'center';
-                c.textBaseline = 'top';
-                c.fillText(value, bar.x, x.bottom + 6);
-                c.restore();
-            });
+            dibujarValoresBarras(chart, { color: '#111' });
         }
     };
 
@@ -398,7 +407,7 @@ function initChartBarras(canvasId, data, color, animar = false) {
             animation: animar
                 ? { duration: 700, easing: 'easeOutQuart' }
                 : false,
-            layout: { padding: { bottom: 24 } },
+            layout: { padding: { top: 24 } },
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: "#000", font: { size: 14, weight: "bold" } } },

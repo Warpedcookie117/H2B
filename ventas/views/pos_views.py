@@ -284,6 +284,9 @@ def procesar_venta(request):
                 "ticket_texto": ticket_texto,
             })
 
+        except ValueError as e:
+            return respond({"status": "error", "message": str(e)}, status=400)
+
         except Exception as e:
             logger.error("Error en POSService.crear_venta: %s", e, exc_info=True)
             return respond({"status": "error", "message": "Error al procesar la venta."}, status=400)

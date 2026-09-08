@@ -1,10 +1,19 @@
 // pago.js — Lógica pura del pago
 
-import { carrito, totalConDescuento, descuentoPct } from "./core.js";
+import { carrito, totalConDescuento, descuentoPct, formatearMoneda } from "./core.js";
 import { getCookie } from "./core.js";
 import { limpiarCarrito } from "./carrito.js";
 
 console.log("[POS:pago] Módulo cargado");
+
+// Billete más grande disponible (MXN). Si el efectivo por cobrar es menor
+// a este monto, no tiene sentido recibir más que un billete de este valor.
+const BILLETE_MAXIMO = 1000;
+
+// Margen para redondeo de cambio (monedas o billete chico de más que a veces
+// se le pide al cliente para no dar el cambio en puras monedas).
+const MARGEN_REDONDEO = 50;
+const TOPE_EFECTIVO = BILLETE_MAXIMO + MARGEN_REDONDEO;
 
 // Idempotency key — se regenera ANTES de cada intento de pago.
 // Doble-tap o retry de red comparten el mismo UUID hasta que la venta
@@ -63,14 +72,40 @@ export function validarStock() {
 // 2. Validación del pago
 // ============================================================
 
+// Valida los montos en sí (sin importar si ya alcanzan para cubrir el total).
+// Se usa tanto en vivo, mientras el cajero escribe, como al confirmar.
+export function validarMontosPago(efectivo, tarjeta) {
+    const total = totalConDescuento();
+
+    // La tarjeta nunca da cambio: no puede cobrar más que el total de la cuenta.
+    // Esto atrapa el típico error de captura (ej. 20,000 en vez de 2,000).
+    if (tarjeta > total) {
+        console.warn(`[POS:pago] validarMontosPago FALLÓ — tarjeta ($${tarjeta.toFixed(2)}) mayor al total ($${total.toFixed(2)})`);
+        return `¿Seguro? Pusiste $${formatearMoneda(tarjeta)} en tarjeta y la cuenta es de $${formatearMoneda(total)} — checa que no se te haya ido un cero de más.`;
+    }
+
+    // Si lo que falta cubrir en efectivo es menor al billete más grande,
+    // no tiene sentido recibir más efectivo que ese billete.
+    const restanteEfectivo = total - tarjeta;
+    if (restanteEfectivo < BILLETE_MAXIMO && efectivo > TOPE_EFECTIVO) {
+        console.warn(`[POS:pago] validarMontosPago FALLÓ — efectivo ($${efectivo.toFixed(2)}) mayor a $${TOPE_EFECTIVO} con solo $${restanteEfectivo.toFixed(2)} por cobrar en efectivo`);
+        return `Solo te faltaban $${formatearMoneda(restanteEfectivo)} por cobrar en efectivo — no puedes registrar más de $${formatearMoneda(TOPE_EFECTIVO)}. Fíjate bien cuánto dinero te dieron.`;
+    }
+
+    return null;
+}
+
 export function validarPago(efectivo, tarjeta) {
     const total = totalConDescuento();
     const recibido = efectivo + tarjeta;
     console.log(`[POS:pago] validarPago → efectivo=${efectivo} tarjeta=${tarjeta} total=${total.toFixed(2)} recibido=${recibido.toFixed(2)}`);
 
+    const errorMontos = validarMontosPago(efectivo, tarjeta);
+    if (errorMontos) return errorMontos;
+
     if (recibido < total) {
         console.warn(`[POS:pago] validarPago FALLÓ — faltan $${(total - recibido).toFixed(2)}`);
-        return "Pago insuficiente";
+        return `Todavía te faltan $${formatearMoneda(total - recibido)} por cobrar para completar el pago.`;
     }
 
     console.log("[POS:pago] validarPago OK ✓");

@@ -863,6 +863,13 @@
 }
 .pos-pago-info--falta  { color: var(--pos-rosa); }
 .pos-pago-info--cambio { color: #16a34a; }
+.pos-pago-info--error  {
+  background: var(--pos-rosa);
+  color: var(--pos-blanco);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
 
 .pos-pago-total {
   text-align: center;

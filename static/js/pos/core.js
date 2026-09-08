@@ -43,6 +43,27 @@ export function totalConDescuento() {
 
 
 // ============================================================
+// 3b. Formato de moneda (miles con ",", decimales con ".")
+// ============================================================
+
+const _formatoMoneda = new Intl.NumberFormat("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+});
+
+export function formatearMoneda(valor) {
+    return _formatoMoneda.format(valor || 0);
+}
+
+// Inverso de formatearMoneda: convierte lo que haya en un input (con o sin
+// comas de miles) de vuelta a número, para inputs de texto con formato en vivo.
+export function parsearMonto(valor) {
+    if (typeof valor !== "string") return Number(valor) || 0;
+    return parseFloat(valor.replace(/,/g, "")) || 0;
+}
+
+
+// ============================================================
 // 4. Normalizador (buscador)
 // ============================================================
 

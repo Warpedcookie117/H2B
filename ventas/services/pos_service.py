@@ -10,6 +10,15 @@ from sucursales.models import Caja
 # tienen que coincidir o el descuento se pierde al guardar la venta.
 DESCUENTOS_PERMITIDOS = (5, 10, 15)
 
+# Espejo de las reglas de static/js/pos/pago.js::validarPago. Se validan
+# también aquí porque esta es la fuente de verdad que lee
+# ventas/services/corte_service.py para el corte de caja: si solo se
+# valida en el navegador, un JS desactualizado o un bug futuro en el
+# modal podría guardar una venta con datos mal capturados.
+BILLETE_MAXIMO = 1000
+MARGEN_REDONDEO = 50
+TOPE_EFECTIVO = BILLETE_MAXIMO + MARGEN_REDONDEO
+
 
 class POSService:
 
@@ -120,9 +129,28 @@ class POSService:
         total = subtotal - descuento
 
         # 3) Validar pagos
+
+        # La tarjeta nunca da cambio: no puede cobrar más que el total de la cuenta.
+        if pagado_tarjeta > total:
+            raise ValueError(
+                f"¿Seguro? Pusiste ${pagado_tarjeta:,.2f} en tarjeta y la cuenta es de "
+                f"${total:,.2f} — checa que no se te haya ido un cero de más."
+            )
+
+        # Si lo que falta cubrir en efectivo es menor al billete más grande,
+        # no tiene sentido recibir mucho más efectivo que eso (+ margen de redondeo).
+        restante_efectivo = total - pagado_tarjeta
+        if restante_efectivo < BILLETE_MAXIMO and pagado_efectivo > TOPE_EFECTIVO:
+            raise ValueError(
+                f"Solo te faltaban ${restante_efectivo:,.2f} por cobrar en efectivo — no puedes "
+                f"registrar más de ${TOPE_EFECTIVO:,.2f}. Fíjate bien cuánto dinero te dieron."
+            )
+
         total_pagado = pagado_efectivo + pagado_tarjeta
         if total_pagado < total:
-            raise ValueError("El pago es insuficiente.")
+            raise ValueError(
+                f"Todavía te faltan ${total - total_pagado:,.2f} por cobrar para completar el pago."
+            )
 
         # Cálculo de cambio
         cambio = pagado_efectivo - max(0, total - pagado_tarjeta)
@@ -207,4 +235,4 @@ class POSService:
         elif tarjeta > 0:
             return "tarjeta"
         else:
-            raise ValueError("No se recibió ningún pago válido.")
+            raise ValueError("No registraste ningún pago — captura el efectivo o la tarjeta antes de confirmar.")
