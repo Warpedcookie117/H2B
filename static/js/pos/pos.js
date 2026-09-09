@@ -9,6 +9,7 @@ import { initPaginacion } from "./paginacion.js";
 import { initPromociones } from "./promociones.js";
 import { initOfertas }    from "./ofertas.js";
 import { initPerf }       from "./perf.js";
+import { initPendientes } from "./pendientes.js";
 
 console.log("[POS] Módulo pos.js cargado");
 
@@ -47,6 +48,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     initOfertas();
     console.log("[POS] ✓ ofertas init");
+
+    initPendientes();
+    console.log("[POS] ✓ pendientes init");
 
     console.log("[POS] 🚀 Todo iniciado correctamente");
 });

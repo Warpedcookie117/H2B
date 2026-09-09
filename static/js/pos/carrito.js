@@ -250,3 +250,28 @@ export function limpiarCarrito() {
     document.dispatchEvent(new CustomEvent("pos:carrito-limpiado"));
     console.log("[POS:carrito] carrito limpiado ✓");
 }
+
+
+// ============================================================
+// 8. Cuentas pendientes — snapshot y restauración del carrito
+// ============================================================
+
+// Copia serializable del carrito actual, para guardarla como cuenta
+// pendiente (localStorage) sin conservar referencias vivas.
+export function obtenerSnapshotCarrito() {
+    return JSON.parse(JSON.stringify(carrito));
+}
+
+// Reemplaza el carrito activo por `items` (típicamente una cuenta
+// pendiente restaurada) y vuelve a correr la misma cadena que agregar/
+// eliminar productos, para que precios, ofertas, totales y el render
+// queden consistentes.
+export function cargarCarrito(items) {
+    console.log(`[POS:carrito] cargarCarrito — cargando ${items.length} items`);
+    carrito.length = 0;
+    for (const item of items) carrito.push(item);
+    aplicarPreciosGlobales();
+    aplicarOfertas();
+    actualizarTotales();
+    onCarritoActualizado();
+}

@@ -56,6 +56,9 @@
 
         <h3 class="pos-titulo">🛒 Carrito</h3>
 
+        <!-- CUENTAS PENDIENTES -->
+        <div id="pos-pendientes-tabs" class="pos-pendientes-tabs" hidden></div>
+
         <!-- ALERTA -->
         <div id="pos-alerta" class="pos-alerta pos-alerta--hidden"></div>
 
@@ -82,6 +85,9 @@
             </button>
             <button type="button" class="pos-atajo-btn" onclick="abrirCobroRapido()">
                 Cobro rápido
+            </button>
+            <button type="button" id="btn-pendiente" class="pos-atajo-btn" title="Guardar esta cuenta y atender a otro cliente">
+                ⏸ Pendiente
             </button>
             <span><kbd>*</kbd><kbd>N</kbd><kbd>↵</kbd> Cantidad</span>
         </div>

@@ -546,6 +546,10 @@ function initDescuentoUI() {
         if (e.key === "Escape") cerrar();
     });
 
+    // El descuento también puede cambiar fuera de este dropdown (ej. al
+    // parquear/restaurar una cuenta pendiente) — repintar cuando avisen.
+    document.addEventListener("pos:descuento-externo", pintarEstado);
+
     pintarEstado();
 }
 

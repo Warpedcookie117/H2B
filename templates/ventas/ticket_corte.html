@@ -102,6 +102,10 @@
 <script type="module">
 import { imprimirTicket } from "{% static 'js/pos/impresion.js' %}";
 
+// El corte ya cerró la caja — cualquier cuenta pendiente que haya quedado
+// abierta nunca se cobró, así que no debe seguir apareciendo en el POS.
+try { localStorage.removeItem("pos_cuentas_pendientes"); } catch {}
+
 const btn = document.getElementById("btn-reimprimir-corte");
 btn.addEventListener("click", async () => {
     btn.disabled = true;
