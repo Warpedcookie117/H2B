@@ -567,6 +567,7 @@ function initModalPago() {
     const inputTarjeta  = document.getElementById("pago-tarjeta");
     const infoBox       = document.getElementById("pago-info");
     const totalDisplay  = document.getElementById("pago-total-display");
+    const chkImprimir   = document.getElementById("pago-imprimir-ticket");
 
     // Muestra un error de captura (tarjeta/efectivo inválidos) dentro del modal
     function mostrarErrorPago(msg) {
@@ -655,6 +656,7 @@ function initModalPago() {
         infoBox.className   = "pos-pago-info";
         btnConfirmar.disabled     = false;
         btnConfirmar.textContent  = "Confirmar";
+        chkImprimir.checked = localStorage.getItem("pos_imprimir_ticket") !== "no";
         modal.classList.remove("pos-modal--hidden");
         inputEfectivo.focus();
         actualizarInfoPago();
@@ -678,6 +680,9 @@ function initModalPago() {
         btnConfirmar.disabled    = true;
         btnConfirmar.textContent = "Procesando...";
 
+        const imprimir = chkImprimir.checked;
+        localStorage.setItem("pos_imprimir_ticket", imprimir ? "si" : "no");
+
         const data = await procesarPago(efectivo, tarjeta);
 
         if (String(data?.status).toLowerCase() === "ok") {
@@ -690,6 +695,7 @@ function initModalPago() {
                     ticket_texto:     data.ticket_texto,
                     venta_id:         data.venta_id,
                     url_html:         data.url_html,
+                    imprimir:         imprimir,
                 }
             }));
 
@@ -714,17 +720,24 @@ function initModalResultado() {
     const boxImpresion = document.getElementById("resultado-impresion");
 
     document.addEventListener("pago-exito", async (e) => {
-        const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html } = e.detail;
-        console.log(`[POS:ui] pago-exito → venta_id=${venta_id} total=${total} cambio=${cambio}`);
+        const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html, imprimir } = e.detail;
+        console.log(`[POS:ui] pago-exito → venta_id=${venta_id} total=${total} cambio=${cambio} imprimir=${imprimir}`);
 
         document.getElementById("resultado-total-venta").textContent = formatearMoneda(total);
         document.getElementById("resultado-recibido").textContent    = formatearMoneda(pagado_efectivo + pagado_tarjeta);
         document.getElementById("resultado-cambio").textContent      = formatearMoneda(cambio);
 
+        modal.classList.remove("pos-modal--hidden");
+
+        if (imprimir === false) {
+            const link = url_html ? `<a href="${url_html}" target="_blank" style="color:inherit;font-weight:900;text-decoration:underline">Ver ticket</a>` : "";
+            boxImpresion.innerHTML = `Ticket no impreso (desmarcado). ${link}`;
+            boxImpresion.className = "pos-resultado-impresion pos-resultado-impresion--warn";
+            return;
+        }
+
         boxImpresion.textContent = "Enviando a impresora...";
         boxImpresion.className   = "pos-resultado-impresion";
-
-        modal.classList.remove("pos-modal--hidden");
 
         const res = await imprimirTicket(ticket_texto, venta_id);
 

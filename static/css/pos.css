@@ -861,6 +861,17 @@
   margin-bottom: 1rem;
   font-family: 'Courier New', monospace;
 }
+.pos-pago-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--pos-negro);
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+.pos-pago-checkbox input { width: 1.1rem; height: 1.1rem; cursor: pointer; }
 .pos-pago-info--falta  { color: var(--pos-rosa); }
 .pos-pago-info--cambio { color: #16a34a; }
 .pos-pago-info--error  {
