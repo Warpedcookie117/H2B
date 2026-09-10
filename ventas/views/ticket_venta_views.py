@@ -97,3 +97,14 @@ def ticket_venta_termico(request, venta_id):
     venta = get_object_or_404(Venta, id=venta_id)
     imprimir_silencioso(generar_texto_ticket(venta))
     return redirect("ventas:ticket_venta", venta_id)
+
+
+@login_required
+def ticket_venta_texto_json(request, venta_id):
+    """Devuelve el texto del ticket de venta como JSON para que el agente POS lo imprima."""
+    empleado = getattr(request.user, "empleado", None)
+    if not empleado or empleado.rol not in ("cajero", "dueño"):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    venta = get_object_or_404(Venta, id=venta_id)
+    return JsonResponse({"ticket_texto": generar_texto_ticket(venta)})

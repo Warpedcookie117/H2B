@@ -24,11 +24,12 @@ from ventas.views.ofertas_views import (
 )
 # Tickets de venta
 from ventas.views.ticket_venta_views import (
-    
+
     tickets_ventas,
-    ticket_venta, 
-    ticket_venta_pdf, 
-    ticket_venta_termico
+    ticket_venta,
+    ticket_venta_pdf,
+    ticket_venta_termico,
+    ticket_venta_texto_json,
 
 )
 
@@ -73,7 +74,8 @@ urlpatterns = [
     path("ticket-venta/<int:venta_id>/", ticket_venta, name="ticket_venta"),
     path("ticket-venta/<int:venta_id>/pdf/", ticket_venta_pdf, name="ticket_venta_pdf"),
     path("ticket-venta/<int:venta_id>/termico/", ticket_venta_termico, name="ticket_venta_termico"),
-    
+    path("ticket-venta/<int:venta_id>/texto/", ticket_venta_texto_json, name="ticket_venta_texto"),
+
     # ============================
     # Cortes de caja
     # ============================

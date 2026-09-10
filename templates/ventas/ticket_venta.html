@@ -238,12 +238,14 @@
   <!-- ── ACCIONES ── -->
   <div class="flex flex-wrap gap-3 anim-up d6">
 
-    <a href="{% url 'ventas:ticket_venta_termico' venta.id %}"
-       class="btn-90s flex-1 border-4 border-black shadow-[4px_4px_0_0_black]
+    <button id="btn-reimprimir-venta"
+            type="button"
+            data-url-texto="{% url 'ventas:ticket_venta_texto' venta.id %}"
+            class="btn-90s flex-1 border-4 border-black shadow-[4px_4px_0_0_black]
               bg-black text-white font-black text-xs uppercase tracking-widest py-3
               flex items-center justify-center gap-2">
       🖨 Reimprimir térmica
-    </a>
+    </button>
 
     {% if venta.caja %}
     <a href="{% url 'ventas:tickets_ventas' venta.caja.sucursal.id %}"
@@ -257,4 +259,35 @@
   </div>
 
 </div>
+
+<script type="module">
+import { imprimirTicket } from "{% static 'js/pos/impresion.js' %}";
+
+const btn = document.getElementById("btn-reimprimir-venta");
+btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.textContent = "⏳ Enviando...";
+    try {
+        const resp = await fetch(btn.dataset.urlTexto);
+        const data = await resp.json();
+        const res  = await imprimirTicket(data.ticket_texto, null);
+        if (res.ok) {
+            btn.textContent = "✓ Enviado";
+            setTimeout(() => { btn.disabled = false; btn.textContent = "🖨 Reimprimir térmica"; }, 2000);
+        } else if (res.noConfig) {
+            alert("No hay impresora térmica configurada.\nConfigúrala en el POS → Configuración.");
+            btn.disabled = false; btn.textContent = "🖨 Reimprimir térmica";
+        } else if (res.noAgent) {
+            alert("El agente POS (pos_agent.exe) no está corriendo.");
+            btn.disabled = false; btn.textContent = "🖨 Reimprimir térmica";
+        } else {
+            alert("Error al imprimir: " + (res.error || "desconocido"));
+            btn.disabled = false; btn.textContent = "🖨 Reimprimir térmica";
+        }
+    } catch {
+        alert("Error de conexión.");
+        btn.disabled = false; btn.textContent = "🖨 Reimprimir térmica";
+    }
+});
+</script>
 {% endblock %}

@@ -660,7 +660,11 @@ function initModalPago() {
         infoBox.className   = "pos-pago-info";
         btnConfirmar.disabled     = false;
         btnConfirmar.textContent  = "Confirmar";
-        chkImprimir.checked = localStorage.getItem("pos_imprimir_ticket") !== "no";
+        // Siempre listo para imprimir por default — que el cajero tenga que
+        // presionar activamente para NO imprimir, no al revés. Si se quedara
+        // recordado desde la venta anterior, un cajero olvidadizo dejaría de
+        // imprimir tickets sin darse cuenta.
+        chkImprimir.checked = true;
         modal.classList.remove("pos-modal--hidden");
         inputEfectivo.focus();
         actualizarInfoPago();
@@ -685,7 +689,6 @@ function initModalPago() {
         btnConfirmar.textContent = "Procesando...";
 
         const imprimir = chkImprimir.checked;
-        localStorage.setItem("pos_imprimir_ticket", imprimir ? "si" : "no");
 
         const data = await procesarPago(efectivo, tarjeta);
 
