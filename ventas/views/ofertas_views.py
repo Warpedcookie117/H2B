@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
@@ -24,13 +25,18 @@ def modal_oferta_view(request, oferta_id=None):
     if not _es_dueno(request.user):
         raise PermissionDenied
 
-    oferta       = Oferta.objects.filter(id=oferta_id).select_related("producto").first() if oferta_id else None
+    oferta       = Oferta.objects.filter(id=oferta_id).select_related("producto").prefetch_related("productos_combo").first() if oferta_id else None
     padres, subs = _categorias_agrupadas()
+    productos_combo = (
+        [{"id": p.id, "nombre": p.nombre} for p in oferta.productos_combo.all()]
+        if oferta else []
+    )
 
     html = render_to_string("ventas/oferta_form.html", {
-        "oferta":        oferta,
-        "padres":        padres,
-        "subcategorias": subs,
+        "oferta":          oferta,
+        "padres":          padres,
+        "subcategorias":   subs,
+        "productos_combo": productos_combo,
     }, request=request)
 
     return JsonResponse({"html": html})
@@ -43,7 +49,10 @@ def buscar_producto_view(request):
     q = request.GET.get("q", "").strip()
     if len(q) < 2:
         return JsonResponse([], safe=False)
-    productos = Producto.objects.filter(activo=True, nombre__icontains=q).order_by("nombre")[:15]
+    productos = Producto.objects.filter(
+        Q(nombre__icontains=q) | Q(codigo_barras__icontains=q),
+        activo=True,
+    ).order_by("nombre")[:15]
     return JsonResponse([{"id": p.id, "nombre": p.nombre} for p in productos], safe=False)
 
 
@@ -67,9 +76,11 @@ def guardar_oferta_view(request, oferta_id=None):
     fecha_fin  = request.POST.get("fecha_fin") or None
     descripcion = request.POST.get("descripcion", "").strip()
 
+    producto_combo_ids = [pid for pid in request.POST.getlist("producto_combo[]") if pid]
+
     if not nombre:
         return JsonResponse({"ok": False, "msg": "El nombre es obligatorio."})
-    if aplica_a not in ("producto", "categoria"):
+    if aplica_a not in ("producto", "categoria", "combo"):
         return JsonResponse({"ok": False, "msg": "Elige a qué aplica la oferta."})
     if tipo not in ("porcentaje", "fijo", "2x1", "nxprecio"):
         return JsonResponse({"ok": False, "msg": "Elige el tipo de descuento."})
@@ -77,6 +88,11 @@ def guardar_oferta_view(request, oferta_id=None):
         return JsonResponse({"ok": False, "msg": "Selecciona el producto."})
     if aplica_a == "categoria" and not cat_id:
         return JsonResponse({"ok": False, "msg": "Selecciona la categoría."})
+    if aplica_a == "combo":
+        if tipo != "nxprecio":
+            return JsonResponse({"ok": False, "msg": "Un combo solo puede ser de tipo «N piezas por $X»."})
+        if len(producto_combo_ids) < 2:
+            return JsonResponse({"ok": False, "msg": "Elige al menos 2 productos distintos para el combo."})
     if tipo in ("porcentaje", "fijo", "nxprecio") and not valor:
         return JsonResponse({"ok": False, "msg": "Escribe el valor del descuento."})
     if tipo == "nxprecio" and not cantidad_n:
@@ -107,13 +123,22 @@ def guardar_oferta_view(request, oferta_id=None):
 
     if aplica_a == "producto":
         oferta.categoria = None
-    else:
+    elif aplica_a == "categoria":
         oferta.producto = None
+    else:  # combo
+        oferta.producto  = None
+        oferta.categoria = None
 
     if tipo == "2x1":
         oferta.valor = None
 
     oferta.save()
+
+    if aplica_a == "combo":
+        oferta.productos_combo.set(Producto.objects.filter(id__in=producto_combo_ids))
+    else:
+        oferta.productos_combo.clear()
+
     return JsonResponse({"ok": True, "msg": "Oferta guardada."})
 
 

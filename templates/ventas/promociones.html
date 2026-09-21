@@ -287,6 +287,11 @@
                 en <span class="prom-chip prom-chip--green">{{ o.producto.nombre }}</span>
               {% elif o.aplica_a == 'categoria' and o.categoria %}
                 en <span class="prom-chip prom-chip--cat">{{ o.categoria.nombre }}</span>
+              {% elif o.aplica_a == 'combo' %}
+                entre
+                {% for p in o.productos_combo.all %}
+                  <span class="prom-chip prom-chip--green">{{ p.nombre }}</span>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
               {% endif %}
               {% if o.fecha_inicio or o.fecha_fin %}
                 <span style="font-size:.7rem;color:#9ca3af;">

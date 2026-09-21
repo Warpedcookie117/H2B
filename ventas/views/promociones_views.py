@@ -30,7 +30,7 @@ def promociones_view(request):
     promociones  = Promocion.objects.select_related(
         "categoria_disparadora", "producto_regalo", "categoria_regalo"
     ).all()
-    ofertas      = Oferta.objects.select_related("producto", "categoria").all()
+    ofertas      = Oferta.objects.select_related("producto", "categoria").prefetch_related("productos_combo").all()
     padres, subs = _categorias_agrupadas()
     productos    = Producto.objects.filter(activo=True).order_by("nombre")
 

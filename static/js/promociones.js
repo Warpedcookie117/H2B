@@ -526,6 +526,17 @@
       show(document.getElementById('sec_oferta_producto'),  a === 'producto');
       show(document.getElementById('sec_oferta_categoria'), a === 'categoria');
       show(secFiltros, a === 'categoria');
+      show(document.getElementById('sec_oferta_combo'),     a === 'combo');
+      // Un combo solo tiene sentido como "N piezas por $X" — si el dueño
+      // elige combo, se fuerza y bloquea el tipo para que el backend nunca
+      // tenga que rechazar una combinación que la UI debió prevenir.
+      if (a === 'combo') {
+        tipo.value    = 'nxprecio';
+        tipo.disabled = true;
+        updateTipo();
+      } else {
+        tipo.disabled = false;
+      }
     }
 
     tipo.addEventListener('change', updateTipo);
@@ -583,6 +594,63 @@
     document.addEventListener('click', function _cerrarResultados(e) {
       if (!e.target.closest('#sec_oferta_producto')) {
         resultados?.classList.add('hidden');
+      }
+    });
+
+    // ── Chips de productos del combo ────────────────────────────
+    const comboBuscar     = document.getElementById('id_oferta_combo_buscar');
+    const comboResultados = document.getElementById('id_oferta_combo_resultados');
+    const comboChips      = document.getElementById('oferta_combo_chips');
+    let comboTimer;
+
+    function comboIdsElegidos() {
+      return Array.from(comboChips?.querySelectorAll('.combo-chip') || [])
+        .map(chip => chip.dataset.id);
+    }
+
+    function agregarChipCombo(id, nombre) {
+      if (!comboChips || comboIdsElegidos().includes(String(id))) return;
+      const chip = document.createElement('span');
+      chip.className = 'combo-chip inline-flex items-center gap-1 border-2 border-black bg-[#CCFF00] px-2 py-1 text-xs font-black';
+      chip.dataset.id = id;
+      chip.innerHTML = `${nombre}
+        <input type="hidden" name="producto_combo[]" value="${id}">
+        <button type="button" class="font-black hover:text-red-600">✕</button>`;
+      chip.querySelector('button').addEventListener('click', () => chip.remove());
+      comboChips.appendChild(chip);
+    }
+
+    comboBuscar?.addEventListener('input', () => {
+      const q = comboBuscar.value.trim();
+      clearTimeout(comboTimer);
+      if (q.length < 2) { comboResultados.classList.add('hidden'); return; }
+      comboTimer = setTimeout(async () => {
+        const res  = await fetch('/ventas/api/buscar-producto/?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        comboResultados.innerHTML = '';
+        if (!data.length) {
+          comboResultados.innerHTML = '<p class="px-3 py-2 text-xs font-semibold text-gray-500">Sin resultados</p>';
+        } else {
+          data.forEach(p => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full text-left px-3 py-2 font-semibold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors';
+            btn.textContent = p.nombre;
+            btn.addEventListener('click', () => {
+              agregarChipCombo(p.id, p.nombre);
+              comboBuscar.value = '';
+              comboResultados.classList.add('hidden');
+            });
+            comboResultados.appendChild(btn);
+          });
+        }
+        comboResultados.classList.remove('hidden');
+      }, 280);
+    });
+
+    document.addEventListener('click', function _cerrarResultadosCombo(e) {
+      if (!e.target.closest('#sec_oferta_combo')) {
+        comboResultados?.classList.add('hidden');
       }
     });
   }

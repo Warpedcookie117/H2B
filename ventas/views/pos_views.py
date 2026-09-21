@@ -124,13 +124,17 @@ def pos_view(request):
         models.Q(fecha_inicio__isnull=True) | models.Q(fecha_inicio__lte=hoy)
     ).filter(
         models.Q(fecha_fin__isnull=True) | models.Q(fecha_fin__gte=hoy)
-    )
-    ofertas_data = list(ofertas_qs.values(
-        "id", "nombre", "tipo", "aplica_a",
-        "producto_id", "categoria_id",
-        "valor", "cantidad_n",
-        "filtros_atributos",
-    ))
+    ).prefetch_related("productos_combo")
+    ofertas_data = [{
+        "id": o.id, "nombre": o.nombre, "tipo": o.tipo, "aplica_a": o.aplica_a,
+        "producto_id": o.producto_id, "categoria_id": o.categoria_id,
+        "valor": o.valor, "cantidad_n": o.cantidad_n,
+        "filtros_atributos": o.filtros_atributos,
+        "productos_combo_ids": (
+            list(o.productos_combo.values_list("id", flat=True))
+            if o.aplica_a == "combo" else []
+        ),
+    } for o in ofertas_qs]
 
     es_dueno = empleado.rol == "dueño"
 

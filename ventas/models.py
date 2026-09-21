@@ -251,6 +251,7 @@ class Oferta(models.Model):
     APLICA_A = [
         ('producto',  'Producto específico'),
         ('categoria', 'Categoría completa'),
+        ('combo',     'Combo de productos específicos'),
     ]
 
     nombre      = models.CharField(max_length=150)
@@ -265,6 +266,12 @@ class Oferta(models.Model):
     categoria = models.ForeignKey(
         Categoria, null=True, blank=True, on_delete=models.SET_NULL,
         related_name='ofertas',
+    )
+    # Solo se usa cuando aplica_a='combo': lista explícita de productos que
+    # cuentan para el combo (en cualquier combinación entre ellos), en vez
+    # de un producto único o una categoría completa. Ver tipo='nxprecio'.
+    productos_combo = models.ManyToManyField(
+        Producto, blank=True, related_name='ofertas_combo',
     )
 
     tipo       = models.CharField(max_length=20, choices=TIPO)

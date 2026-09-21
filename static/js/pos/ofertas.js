@@ -19,6 +19,8 @@ export function aplicarOfertas() {
             if (_aplicarAProducto(oferta)) aplicadas++;
         } else if (oferta.aplica_a === "categoria") {
             if (_aplicarACategoria(oferta)) aplicadas++;
+        } else if (oferta.aplica_a === "combo") {
+            if (_aplicarACombo(oferta)) aplicadas++;
         }
     }
 
@@ -71,6 +73,20 @@ function _aplicarACategoria(oferta) {
     } else {
         items.forEach(i => _aplicarTipoItem(i, oferta));
     }
+    return true;
+}
+
+function _aplicarACombo(oferta) {
+    const ids   = (oferta.productos_combo_ids || []).map(String);
+    const items = carrito.filter(i => _esElegible(i) && ids.includes(String(i.id)));
+    if (!items.length) return false;
+
+    console.log(`[POS:ofertas] aplicando oferta combo "${oferta.nombre}" (${items.length} producto(s) distinto(s) elegibles)`);
+
+    // El combo siempre es nxprecio (impuesto desde el form de administración)
+    // — reutiliza la misma lógica de agrupar-en-bloques-de-N que ya usa
+    // _aplicarACategoria, solo cambia cómo se seleccionaron los items.
+    _aplicarNxPrecioCategoria(oferta, items);
     return true;
 }
 
