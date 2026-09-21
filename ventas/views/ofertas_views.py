@@ -25,10 +25,22 @@ def modal_oferta_view(request, oferta_id=None):
     if not _es_dueno(request.user):
         raise PermissionDenied
 
-    oferta       = Oferta.objects.filter(id=oferta_id).select_related("producto").prefetch_related("productos_combo").first() if oferta_id else None
+    oferta       = Oferta.objects.filter(id=oferta_id).select_related("producto").prefetch_related(
+        "productos_combo__valores_atributo__atributo"
+    ).first() if oferta_id else None
     padres, subs = _categorias_agrupadas()
     productos_combo = (
-        [{"id": p.id, "nombre": p.nombre} for p in oferta.productos_combo.all()]
+        [
+            {
+                "id": p.id,
+                "nombre": p.nombre,
+                "atributos_texto": " · ".join(
+                    f"{va.atributo.nombre}: {va.valor}"
+                    for va in p.valores_atributo.all() if va.valor
+                ),
+            }
+            for p in oferta.productos_combo.all()
+        ]
         if oferta else []
     )
 
@@ -52,8 +64,21 @@ def buscar_producto_view(request):
     productos = Producto.objects.filter(
         Q(nombre__icontains=q) | Q(codigo_barras__icontains=q),
         activo=True,
-    ).order_by("nombre")[:15]
-    return JsonResponse([{"id": p.id, "nombre": p.nombre} for p in productos], safe=False)
+    ).prefetch_related("valores_atributo__atributo").order_by("nombre")[:15]
+
+    result = []
+    for p in productos:
+        # Variantes del mismo producto (ej. distintos colores) comparten
+        # nombre — sin los atributos, el buscador las muestra idénticas y
+        # es imposible saber cuál se está eligiendo.
+        atributos = {va.atributo.nombre: va.valor for va in p.valores_atributo.all()}
+        result.append({
+            "id": p.id,
+            "nombre": p.nombre,
+            "atributos": atributos,
+            "codigo_barras": p.codigo_barras or "",
+        })
+    return JsonResponse(result, safe=False)
 
 
 @login_required

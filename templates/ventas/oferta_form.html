@@ -194,7 +194,7 @@
       {% for p in productos_combo %}
       <span class="combo-chip inline-flex items-center gap-1 border-2 border-black bg-[#CCFF00] px-2 py-1 text-xs font-black"
             data-id="{{ p.id }}">
-        {{ p.nombre }}
+        {{ p.nombre }}{% if p.atributos_texto %} <span style="opacity:.7;font-weight:600;">({{ p.atributos_texto }})</span>{% endif %}
         <input type="hidden" name="producto_combo[]" value="{{ p.id }}">
         <button type="button" class="font-black hover:text-red-600"
                 onclick="this.closest('.combo-chip').remove()">✕</button>

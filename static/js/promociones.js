@@ -21,6 +21,25 @@
     setTimeout(() => el.classList.add('hidden'), 3500);
   }
 
+  // Variantes del mismo producto (ej. distintos colores/tallas) comparten
+  // nombre — sin mostrar sus atributos, los resultados del buscador se ven
+  // idénticos y es imposible saber cuál se está eligiendo.
+  function _atributosTexto(atributos) {
+    const entradas = Object.entries(atributos || {}).filter(([, v]) => v);
+    return entradas.map(([k, v]) => `${k}: ${v}`).join(' · ');
+  }
+
+  function _renderResultadoProducto(p) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-full text-left px-3 py-2 font-semibold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors';
+    const attrTxt = _atributosTexto(p.atributos);
+    btn.innerHTML = attrTxt
+      ? `<span>${p.nombre}</span><br><span style="font-size:.72rem;font-weight:600;opacity:.7;">${attrTxt}</span>`
+      : `<span>${p.nombre}</span>`;
+    return btn;
+  }
+
   // ── Accordion trigger sync ────────────────────────────────────
   const DOT_COLORS = {
     paquete: {
@@ -155,6 +174,10 @@
   }
 
   // ── Modo toggle (Paquetes / Ofertas) ──────────────────────────
+  // Se guarda en sessionStorage para sobrevivir el location.reload() que
+  // corre togglePromo/toggleOferta/ejecutarEliminar — sin esto, pausar o
+  // borrar una oferta siempre te regresaba a "Paquetes y regalos" aunque
+  // estuvieras parado en "Ofertas y descuentos".
   function setModo(modo) {
     document.querySelectorAll('.prom-modo__btn').forEach(b =>
       b.classList.toggle('activo', b.dataset.modo === modo)
@@ -163,6 +186,7 @@
     const secOfe = document.getElementById('seccionOfertas');
     if (secPaq) secPaq.style.display = modo === 'paquetes' ? '' : 'none';
     if (secOfe) secOfe.style.display = modo === 'ofertas'  ? '' : 'none';
+    try { sessionStorage.setItem('prom_modo', modo); } catch (e) { /* modo privado, etc. */ }
   }
 
   // ── Modal principal ────────────────────────────────────────────
@@ -575,13 +599,11 @@
           resultados.innerHTML = '<p class="px-3 py-2 text-xs font-semibold text-gray-500">Sin resultados</p>';
         } else {
           data.forEach(p => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'w-full text-left px-3 py-2 font-semibold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors';
-            btn.textContent = p.nombre;
+            const btn = _renderResultadoProducto(p);
             btn.addEventListener('click', () => {
+              const attrTxt = _atributosTexto(p.atributos);
               hiddenId.value    = p.id;
-              buscarInput.value = p.nombre;
+              buscarInput.value = attrTxt ? `${p.nombre} (${attrTxt})` : p.nombre;
               resultados.classList.add('hidden');
             });
             resultados.appendChild(btn);
@@ -608,12 +630,12 @@
         .map(chip => chip.dataset.id);
     }
 
-    function agregarChipCombo(id, nombre) {
+    function agregarChipCombo(id, etiqueta) {
       if (!comboChips || comboIdsElegidos().includes(String(id))) return;
       const chip = document.createElement('span');
       chip.className = 'combo-chip inline-flex items-center gap-1 border-2 border-black bg-[#CCFF00] px-2 py-1 text-xs font-black';
       chip.dataset.id = id;
-      chip.innerHTML = `${nombre}
+      chip.innerHTML = `${etiqueta}
         <input type="hidden" name="producto_combo[]" value="${id}">
         <button type="button" class="font-black hover:text-red-600">✕</button>`;
       chip.querySelector('button').addEventListener('click', () => chip.remove());
@@ -632,12 +654,11 @@
           comboResultados.innerHTML = '<p class="px-3 py-2 text-xs font-semibold text-gray-500">Sin resultados</p>';
         } else {
           data.forEach(p => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'w-full text-left px-3 py-2 font-semibold text-sm text-black hover:bg-black hover:text-white border-b-2 border-gray-100 last:border-0 transition-colors';
-            btn.textContent = p.nombre;
+            const btn = _renderResultadoProducto(p);
             btn.addEventListener('click', () => {
-              agregarChipCombo(p.id, p.nombre);
+              const attrTxt  = _atributosTexto(p.atributos);
+              const etiqueta = attrTxt ? `${p.nombre} <span style="opacity:.7;font-weight:600;">(${attrTxt})</span>` : p.nombre;
+              agregarChipCombo(p.id, etiqueta);
               comboBuscar.value = '';
               comboResultados.classList.add('hidden');
             });
@@ -825,6 +846,10 @@
     filtrar('todos', false);
     actualizarConteosOfertas();
     filtrarOfertas('todos', false);
+
+    let modoInicial = 'paquetes';
+    try { modoInicial = sessionStorage.getItem('prom_modo') || 'paquetes'; } catch (e) { /* modo privado, etc. */ }
+    setModo(modoInicial);
   }
 
   // ── API pública ────────────────────────────────────────────────
