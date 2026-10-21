@@ -5,12 +5,14 @@
 
 <div class="max-w-md mx-auto mt-10 mb-10 space-y-4">
 
-  <!-- BOTÓN VOLVER -->
+  <!-- BOTÓN VOLVER (si la caja se borró no hay sucursal a la cual volver) -->
+  {% if corte.caja %}
   <a href="{% url 'ventas:tickets_cortes_caja' corte.caja.sucursal.id %}"
      class="inline-block border-4 border-black shadow-[4px_4px_0_0_black]
             bg-white font-black text-xs uppercase tracking-widest px-4 py-2">
     ← Ver todos los cortes
   </a>
+  {% endif %}
 
   <!-- TICKET -->
   <div id="ticket-area"
@@ -21,7 +23,7 @@
       <h1 class="text-xl font-black uppercase tracking-widest">COMERCIALIZADORA MODELO</h1>
       <h2 class="text-base font-black uppercase tracking-widest">CORTE CAJA</h2>
       <p class="text-sm font-bold">{{ fecha|date:"d/m/Y H:i" }}</p>
-      <p class="text-sm font-bold">Caja: <span class="font-black">{{ caja.nombre }}</span></p>
+      <p class="text-sm font-bold">Caja: <span class="font-black">{% firstof caja.nombre corte.caja_nombre "Caja eliminada" %}</span></p>
     </div>
 
     <!-- TOTAL GLOBAL -->
@@ -33,20 +35,64 @@
     <!-- VENTAS POR DUEÑO -->
     <div class="border-b-4 border-black pb-4 space-y-3">
       <p class="text-xs font-black uppercase tracking-widest text-center mb-2">VENTAS POR DUEÑO</p>
-      {% for nombre, datos in resumen_duenos.items %}
-      <div class="border-2 border-black bg-white p-2 space-y-0.5">
-        <div class="flex justify-between">
-          <span class="font-black text-sm uppercase">{{ nombre }}</span>
-          <span class="font-black text-sm">${{ datos.total }}</span>
+      {% for fila in filas_duenos %}
+      {# Filas especiales (sin dueña, servicios sin responsable…): mismo recuadro, estilo discreto. #}
+      <div class="{% if fila.especial %}border-2 border-dashed border-gray-500 bg-gray-100 text-gray-700{% else %}border-2 border-black bg-white{% endif %} p-2 space-y-0.5">
+        {% comment %}
+          Vendió = lo que le toca de las ventas (ya con descuento). En su caja / en su Clip =
+          dónde quedó físicamente el dinero: la que más vendió en cada cuenta cobra TODA la
+          tarjeta en SU Clip (reparto.py). Lo que se deben entre ellas NO va en el
+          corte (lo ve la cajera): solo sale en el dashboard de cada dueña.
+        {% endcomment %}
+        <p class="font-black text-sm uppercase">{{ fila.nombre }}</p>
+        {% if fila.especial %}
+        <p class="text-[10px] font-bold uppercase tracking-wide text-gray-500 pl-2">⚠ Sin dueña · avisar a la encargada</p>
+        {% endif %}
+        <div class="flex justify-between text-sm pl-2">
+          <span class="font-black">🛍 Vendió</span>
+          <span class="font-black whitespace-nowrap">${{ fila.total|floatformat:2 }}</span>
         </div>
         <div class="flex justify-between text-xs pl-2">
-          <span class="font-semibold text-gray-600">💵 Efectivo</span>
-          <span class="font-bold">${{ datos.efectivo }}</span>
+          <span class="font-semibold text-gray-600">💵 {% if fila.especial %}Efectivo{% else %}En su caja{% endif %}</span>
+          <span class="font-bold">${{ fila.efectivo|floatformat:2 }}</span>
         </div>
         <div class="flex justify-between text-xs pl-2">
-          <span class="font-semibold text-gray-600">💳 Tarjeta</span>
-          <span class="font-bold">${{ datos.tarjeta }}</span>
+          <span class="font-semibold text-gray-600">💳 {% if fila.especial %}Tarjeta{% else %}En su Clip{% endif %}</span>
+          <span class="font-bold">${{ fila.tarjeta|floatformat:2 }}</span>
         </div>
+        {% if fila.servicios %}
+        {# Los servicios siempre son de la responsable de servicios: van dentro de SU recuadro. #}
+        <div class="border-t-2 border-dotted border-black mt-1.5 pt-1.5 space-y-0.5 text-xs">
+          {% if not fila.especial %}
+          <div class="flex justify-between pl-2">
+            <span class="font-semibold text-gray-600">📦 Sus productos</span>
+            <span class="font-bold">${{ fila.productos|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% if fila.servicios.sin_registro %}
+          <div class="flex justify-between pl-2">
+            <span class="font-semibold text-gray-600">🧾 Productos sin registro (x{{ fila.servicios.sin_registro.cantidad }})</span>
+            <span class="font-bold">${{ fila.servicios.sin_registro.total|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% if fila.servicios.solo_servicios %}
+          <div class="flex justify-between pl-2">
+            <span class="font-black">🛠 Servicios</span>
+            <span class="font-black">${{ fila.servicios.solo_servicios_total|floatformat:2 }}</span>
+          </div>
+          {% for c in fila.servicios.solo_servicios %}
+          <div class="flex justify-between gap-2 pl-6 text-gray-700">
+            <span class="min-w-0 break-words">· {{ c.concepto }} (x{{ c.cantidad }})</span>
+            <span class="font-semibold whitespace-nowrap">${{ c.total|floatformat:2 }}</span>
+          </div>
+          {% endfor %}
+          {% endif %}
+          <div class="flex justify-between pl-2 font-black border-t border-dotted border-gray-400 pt-0.5">
+            <span>Servicios agregados (incl. sin registro)</span>
+            <span>${{ fila.servicios.total|floatformat:2 }}</span>
+          </div>
+        </div>
+        {% endif %}
       </div>
       {% empty %}
       <p class="text-sm text-gray-500 text-center">Sin ventas en este corte.</p>
@@ -60,23 +106,73 @@
       <div class="border-4 border-black bg-white p-3 space-y-1">
         <div class="flex justify-between text-sm">
           <span class="font-semibold">💵 TOTAL EFECTIVO EN CAJA</span>
-          <span class="font-black">${{ total_efectivo }}</span>
+          <span class="font-black">${{ total_efectivo|floatformat:2 }}</span>
         </div>
         <div class="flex justify-between text-sm">
           <span class="font-semibold">💳 TOTAL TARJETA EN CAJA</span>
-          <span class="font-black">${{ total_tarjeta }}</span>
+          <span class="font-black">${{ total_tarjeta|floatformat:2 }}</span>
         </div>
       </div>
 
-      <!-- DEBE HABER -->
-      <div class="border-4 border-black bg-black text-white p-4 text-center">
-        <p class="text-xs font-black uppercase tracking-widest opacity-70">
-          EN {{ caja.nombre|upper }} DEBE HABER
+      <!-- DEBE HABER: efectivo por cajón de cada dueña. Σ líneas == total_efectivo
+           exacto (reparto.py); solo se omiten filas con efectivo 0. -->
+      <div class="border-4 border-black bg-black text-white p-4 space-y-2">
+        <p class="text-xs font-black uppercase tracking-widest opacity-70 text-center">
+          DEBE HABER EN EFECTIVO POR CAJÓN
         </p>
-        <p class="text-4xl font-black mt-1">${{ total_efectivo }}</p>
-        <p class="text-xs font-black uppercase tracking-widest opacity-70 mt-1">
-          EN EFECTIVO, CUENTA BIEN.
-        </p>
+        <div class="space-y-1">
+          {% for fila in filas_duenos %}{% if not fila.especial and fila.efectivo != 0 %}
+          <div class="flex justify-between items-baseline gap-2">
+            <span class="text-sm font-black uppercase">Cajón {{ fila.nombre }}{% if fila.servicios %}
+              <span class="block text-[10px] font-bold normal-case tracking-wide opacity-70">(incluye servicios)</span>{% endif %}
+            </span>
+            <span class="text-lg font-black whitespace-nowrap">${{ fila.efectivo|floatformat:2 }}</span>
+          </div>
+          {% endif %}{% endfor %}
+          {% for fila in filas_duenos %}{% if fila.especial and fila.efectivo != 0 %}
+          <div class="flex justify-between items-baseline gap-2 border border-dashed border-white/50 px-2 py-1">
+            <span class="text-sm font-bold">⚠ {{ fila.nombre }}
+              <span class="block text-[10px] font-bold tracking-wide opacity-70">Sin dueña · avisar a la encargada</span>
+            </span>
+            <span class="text-lg font-black whitespace-nowrap">${{ fila.efectivo|floatformat:2 }}</span>
+          </div>
+          {% endif %}{% endfor %}
+          {% if not total_efectivo %}
+          <p class="text-xs font-bold opacity-70 text-center">Sin efectivo en este corte.</p>
+          {% endif %}
+        </div>
+        <div class="flex justify-between items-baseline gap-2 border-t-2 border-dashed border-white pt-2">
+          <span class="text-sm font-black uppercase tracking-widest">TOTAL</span>
+          <span class="text-3xl font-black whitespace-nowrap">${{ total_efectivo|floatformat:2 }}</span>
+        </div>
+        <p class="text-xs font-black uppercase tracking-widest opacity-70 text-center">CUENTA BIEN.</p>
+      </div>
+
+      <!-- EN LOS CLIPS: lo cobrado con tarjeta en la terminal de cada dueña.
+           Σ líneas == total_tarjeta exacto; solo se omiten filas con tarjeta 0. -->
+      <div class="border-4 border-black bg-white p-4 space-y-2">
+        <p class="text-xs font-black uppercase tracking-widest text-center">💳 EN LOS CLIPS</p>
+        <div class="space-y-1">
+          {% for fila in clips %}
+          {% if fila.especial %}
+          <div class="flex justify-between items-baseline gap-2 border border-dashed border-gray-500 px-2 py-1">
+            <span class="text-sm font-bold">⚠ {{ fila.nombre }}</span>
+            <span class="text-lg font-black whitespace-nowrap">${{ fila.tarjeta|floatformat:2 }}</span>
+          </div>
+          {% else %}
+          <div class="flex justify-between items-baseline gap-2">
+            <span class="text-sm font-black uppercase">Clip {{ fila.nombre }}</span>
+            <span class="text-lg font-black whitespace-nowrap">${{ fila.tarjeta|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          {% empty %}
+          <p class="text-xs font-bold text-gray-500 text-center">Sin tarjeta en este corte.</p>
+          {% endfor %}
+        </div>
+        <div class="flex justify-between items-baseline gap-2 border-t-2 border-dashed border-black pt-2">
+          <span class="text-sm font-black uppercase tracking-widest">TOTAL EN CLIPS</span>
+          <span class="text-2xl font-black whitespace-nowrap">${{ total_tarjeta|floatformat:2 }}</span>
+        </div>
       </div>
     </div>
 

@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from ventas.models import Venta, VentaDetalle, Promocion
 from inventario.services.inventario_service import InventarioService
@@ -209,12 +210,19 @@ class POSService:
                     precio_unitario=d["precio_unitario"],
                     subtotal=d["subtotal"],
                 )
-                InventarioService.salida_inteligente(
-                    producto=producto,
-                    cantidad=d["cantidad"],
-                    empleado=empleado,
-                    sucursal=sucursal
-                )
+                try:
+                    InventarioService.salida_inteligente(
+                        producto=producto,
+                        cantidad=d["cantidad"],
+                        empleado=empleado,
+                        sucursal=sucursal
+                    )
+                except ValidationError as e:
+                    # Como ValueError, procesar_venta lo responde con este mensaje y la
+                    # cajera ve QUÉ producto no tiene stock (si no, solo "Error al
+                    # procesar la venta"). El atomic deshace la venta completa.
+                    regalo = " (regalo)" if d["tipo"] == "regalo" else ""
+                    raise ValueError(f'"{producto.nombre}"{regalo}: {" ".join(e.messages)}') from e
 
         # 8) Generar ticket (impresión la maneja el cliente via QZ Tray)
         ticket_texto = generar_texto_ticket(venta)

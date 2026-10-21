@@ -26,11 +26,14 @@ import {
     validarStock,
     validarPago,
     validarMontosPago,
-    procesarPago
+    procesarPago,
+    pedirClipDeLaVenta
 } from "./pago.js";
 
 import { actualizarTotales } from "./totales.js";
 import { imprimirTicket } from "./impresion.js";
+import { pintarReparto } from "./reparto.js";
+import { aplicarStockDeVenta } from "./stock.js";
 
 
 // ============================================================
@@ -572,11 +575,34 @@ function initModalPago() {
     const infoBox       = document.getElementById("pago-info");
     const totalDisplay  = document.getElementById("pago-total-display");
     const chkImprimir   = document.getElementById("pago-imprimir-ticket");
+    const avisoClip     = document.getElementById("pago-clip");
+
+    // A quién le toca el Clip de esta cuenta (lo calcula el backend al abrir
+    // el modal). `peticionClip` descarta respuestas de una apertura anterior.
+    let clipNombre   = null;
+    let peticionClip = 0;
 
     // Muestra un error de captura (tarjeta/efectivo inválidos) dentro del modal
     function mostrarErrorPago(msg) {
         infoBox.textContent = msg;
         infoBox.className   = "pos-pago-info pos-pago-info--error";
+    }
+
+    // 💳 Cobra $70.00 en el Clip de Anais — solo si hay tarjeta. El nombre
+    // viene de la BD: textContent, nunca innerHTML.
+    function actualizarAvisoClip() {
+        if (!avisoClip) return;
+        const tarjeta = parsearMonto(inputTarjeta.value);
+        const visible = Boolean(clipNombre) && tarjeta > 0 && tarjeta <= totalConDescuento();
+        avisoClip.hidden = !visible;
+        if (!visible) return;
+
+        const monto  = document.createElement("strong");
+        const nombre = document.createElement("strong");
+        monto.textContent  = `$${formatearMoneda(tarjeta)}`;
+        nombre.textContent = clipNombre;
+        nombre.className   = "pos-pago-clip__duena";
+        avisoClip.replaceChildren("💳 Cobra ", monto, " en el Clip de ", nombre);
     }
 
     // Inserta comas de miles en vivo mientras el cajero escribe, sin perder
@@ -639,6 +665,7 @@ function initModalPago() {
         inp.addEventListener("input", () => {
             formatearEntradaMonto(inp);
             actualizarInfoPago();
+            actualizarAvisoClip();
         });
     });
 
@@ -668,6 +695,15 @@ function initModalPago() {
         modal.classList.remove("pos-modal--hidden");
         inputEfectivo.focus();
         actualizarInfoPago();
+
+        clipNombre = null;
+        actualizarAvisoClip();
+        const peticion = ++peticionClip;
+        pedirClipDeLaVenta().then(clip => {
+            if (peticion !== peticionClip) return;   // ya se abrió otra cuenta
+            clipNombre = clip?.nombre || null;
+            actualizarAvisoClip();
+        });
     };
 
     // Cerrar sin procesar
@@ -693,6 +729,10 @@ function initModalPago() {
         const data = await procesarPago(efectivo, tarjeta);
 
         if (String(data?.status).toLowerCase() === "ok") {
+            // Cards al día con lo que quedó, aunque no llegue el websocket.
+            try { aplicarStockDeVenta(data.stock); }
+            catch (err) { console.error("[POS:ui] stock tras la venta", err); }
+
             document.dispatchEvent(new CustomEvent("pago-exito", {
                 detail: {
                     total:            data.total_venta,
@@ -703,6 +743,8 @@ function initModalPago() {
                     venta_id:         data.venta_id,
                     url_html:         data.url_html,
                     imprimir:         imprimir,
+                    // Opcional: respuestas viejas no lo traen → null (no se pinta nada)
+                    reparto_efectivo: data.reparto_efectivo ?? null,
                 }
             }));
 
@@ -727,7 +769,7 @@ function initModalResultado() {
     const boxImpresion = document.getElementById("resultado-impresion");
 
     document.addEventListener("pago-exito", async (e) => {
-        const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html, imprimir } = e.detail;
+        const { total, cambio, pagado_efectivo, pagado_tarjeta, ticket_texto, venta_id, url_html, imprimir, reparto_efectivo } = e.detail;
         console.log(`[POS:ui] pago-exito → venta_id=${venta_id} total=${total} cambio=${cambio} imprimir=${imprimir}`);
 
         document.getElementById("resultado-total-venta").textContent = formatearMoneda(total);
@@ -735,6 +777,16 @@ function initModalResultado() {
         document.getElementById("resultado-cambio").textContent      = formatearMoneda(cambio);
 
         modal.classList.remove("pos-modal--hidden");
+
+        // ¿Cómo acomodo el dinero? Va antes de imprimir y aislado en su
+        // try/catch: si el reparto falla, el ticket se imprime igual. Si se
+        // pinta completo, ya dice lo recibido y la feria: se esconden los
+        // campos sueltos "Monto recibido" / "Cambio".
+        let conReparto = false;
+        try { conReparto = pintarReparto(document.getElementById("resultado-reparto"), reparto_efectivo) === true; }
+        catch (err) { console.error("[POS:ui] reparto", err); }
+        const recibidoCambio = document.getElementById("resultado-recibido-cambio");
+        if (recibidoCambio) recibidoCambio.hidden = conReparto;
 
         if (imprimir === false) {
             const link = url_html ? `<a href="${url_html}" target="_blank" style="color:inherit;font-weight:900;text-decoration:underline">Ver ticket</a>` : "";

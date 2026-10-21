@@ -1,63 +1,36 @@
-from django.shortcuts import redirect, render
+import logging
+
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render
-from ventas.models import CorteCaja
 from django.http import HttpResponse, JsonResponse
 from reportlab.pdfgen import canvas
 from ventas.services.ticket_service import generar_texto_ticket, imprimir_silencioso
-from sucursales.models import Sucursal
+from ventas.services.reparto import (
+    desglose_como_dict,
+    desglose_por_dueno,
+    totales_caja,
+    ventas_para_desglose,
+)
+from ventas.services.deudas_service import registrar_deudas_de_corte, ventas_pendientes_de_corte
 from django.utils import timezone
 from django.contrib import messages
-from django.db.models import Sum
-from ventas.models import Venta
+from ventas.models import CorteCaja, Venta
 from sucursales.models import Sucursal, Caja
 
+logger = logging.getLogger(__name__)
 
 
 
 @login_required
 def ticket_corte(request, corte_id):
-    corte = get_object_or_404(CorteCaja, id=corte_id)
+    corte = get_object_or_404(CorteCaja.objects.select_related("caja__sucursal"), id=corte_id)
 
-    resumen_duenos = {}
-
-    for venta in corte.ventas.all():
-        for item in venta.detalles.all():
-            if item.producto:
-                empleado_dueno = item.producto.dueño
-                if empleado_dueno:
-                    nombre_dueno = empleado_dueno.user.first_name or empleado_dueno.user.username
-                else:
-                    nombre_dueno = "Sin dueño"
-            else:
-                nombre_dueno = item.nombre_snapshot or "PRODUCTO ELIMINADO"
-
-            subtotal = float(item.subtotal)
-
-            if nombre_dueno not in resumen_duenos:
-                resumen_duenos[nombre_dueno] = {"total": 0.0, "efectivo": 0.0, "tarjeta": 0.0}
-
-            resumen_duenos[nombre_dueno]["total"] += subtotal
-
-            if venta.metodo_pago == "efectivo":
-                resumen_duenos[nombre_dueno]["efectivo"] += subtotal
-            elif venta.metodo_pago == "tarjeta":
-                resumen_duenos[nombre_dueno]["tarjeta"] += subtotal
-            elif venta.metodo_pago == "mixto":
-                total_venta = float(venta.total)
-                if total_venta > 0:
-                    proporcion = subtotal / total_venta
-                    efectivo_neto = float(venta.pagado_efectivo) - float(venta.cambio)
-                    resumen_duenos[nombre_dueno]["efectivo"] += proporcion * efectivo_neto
-                    resumen_duenos[nombre_dueno]["tarjeta"]  += proporcion * float(venta.pagado_tarjeta)
-
-    for d in resumen_duenos.values():
-        d["total"]    = round(d["total"],    2)
-        d["efectivo"] = round(d["efectivo"], 2)
-        d["tarjeta"]  = round(d["tarjeta"],  2)
-
-    total_efectivo = round(sum(float(v.pagado_efectivo) - float(v.cambio) for v in corte.ventas.all()), 2)
-    total_tarjeta  = round(sum(float(v.pagado_tarjeta) for v in corte.ventas.all()), 2)
+    # Todo sale de reparto.py: Σ filas == totales de la caja, al centavo.
+    tot = totales_caja(corte.ventas.all())
+    # Las deudas entre dueñas YA NO van en el corte (lo ve la cajera): son
+    # sensibles y cada dueña las ve en su dashboard (deudas_service).
+    filas = desglose_por_dueno(ventas_para_desglose(corte.ventas.all()))
 
     return render(request, "ventas/ticket_corte.html", {
         "corte": corte,
@@ -65,9 +38,12 @@ def ticket_corte(request, corte_id):
         "empleado": corte.empleado,
         "fecha": corte.fecha,
         "total_general": corte.total_general,
-        "resumen_duenos": resumen_duenos,
-        "total_efectivo": total_efectivo,
-        "total_tarjeta": total_tarjeta,
+        "resumen_duenos": desglose_como_dict(filas),
+        "filas_duenos": filas,
+        # Lo que entró al Clip de cada dueña; Σ == total_tarjeta.
+        "clips": [f for f in filas if f["tarjeta"] != 0],
+        "total_efectivo": tot["efectivo"],
+        "total_tarjeta": tot["tarjeta"],
     })
 
 @login_required
@@ -161,76 +137,58 @@ def corte_del_dia(request):
 
     caja = Caja.objects.get(id=caja_id)
 
-    # 2. Fecha actual — localtime() porque now() es UTC y pasadas las 6pm
-    # hora de Monterrey ya cae en el dia siguiente en UTC. Esto solo se usa
-    # como fallback cuando la caja NUNCA ha tenido corte (ver abajo).
-    hoy = timezone.localtime(timezone.now()).date()
+    # 2. Instante del corte (t0): todo lo que se cobró hasta aquí entra en
+    # este corte y nada de lo posterior.
+    t0 = timezone.now()
 
-    # 3. Buscar el último corte de esta caja
-    ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()
+    # 3-4. Ventas a incluir: (último corte de esta caja, t0]; si la caja
+    # nunca ha tenido corte, las de hoy (hora local). El criterio vive en
+    # deudas_service para que las deudas "de hoy" del dashboard salgan de
+    # exactamente las mismas ventas que va a tomar este corte.
+    ventas = ventas_pendientes_de_corte(caja, t0)
 
-    # 4. Ventas a incluir en este corte
-    if ultimo_corte:
-        ventas = Venta.objects.filter(caja=caja, fecha__gt=ultimo_corte.fecha)
-    else:
-        ventas = Venta.objects.filter(caja=caja, fecha__date=hoy)
+    # Se fija el conjunto UNA vez: el total, el desglose y el M2M salen
+    # exactamente de las mismas ventas aunque entre otra mientras tanto.
+    ids = list(ventas.values_list("id", flat=True))
+    ventas = Venta.objects.filter(id__in=ids)
 
-    # 5. Total general
-    total_general = ventas.aggregate(total=Sum("total"))["total"] or 0
+    # 5. Total general y 6. total por dueño (reparto.py: ya con descuento,
+    # servicios dentro de la fila de la responsable de servicios).
+    total_general = totales_caja(ventas)["total"]
+    totales_dueno = {
+        f["nombre"]: float(f["total"])
+        for f in desglose_por_dueno(ventas_para_desglose(ventas))
+    }
 
-    # 6. Totales por dueño con desglose efectivo/tarjeta
-    totales_dueno = {}
-    resumen_duenos = {}
+    with transaction.atomic():
+        # 7. Crear el corte
+        corte = CorteCaja.objects.create(
+            caja=caja,
+            caja_nombre=caja.nombre,
+            empleado=request.user.empleado,
+            total_general=total_general,
+            total_por_dueno=totales_dueno
+        )
 
-    for venta in ventas:
-        for item in venta.detalles.all():
-            if item.producto:
-                empleado_dueno = item.producto.dueño
-                nombre_dueno = (
-                    empleado_dueno.user.get_full_name()
-                    or empleado_dueno.user.username
-                ) if empleado_dueno else "Sin dueño"
-            else:
-                nombre_dueno = item.nombre_snapshot or "PRODUCTO ELIMINADO"
+        # fecha es auto_now_add (el momento del INSERT, un poco después de t0).
+        # El siguiente corte toma ventas con fecha > corte.fecha, así que una
+        # venta cobrada entre t0 y el INSERT no entraría en ninguno de los dos.
+        # Con fecha = t0 esa venta cae en el siguiente corte y no queda huérfana.
+        CorteCaja.objects.filter(pk=corte.pk).update(fecha=t0)
+        corte.fecha = t0
 
-            subtotal = float(item.subtotal)
+        # ⭐ Guardar ventas del corte
+        corte.ventas.set(ventas)
 
-            totales_dueno.setdefault(nombre_dueno, 0)
-            totales_dueno[nombre_dueno] += subtotal
-
-            if nombre_dueno not in resumen_duenos:
-                resumen_duenos[nombre_dueno] = {"total": 0, "efectivo": 0, "tarjeta": 0}
-
-            resumen_duenos[nombre_dueno]["total"] += subtotal
-
-            if venta.metodo_pago == "efectivo":
-                resumen_duenos[nombre_dueno]["efectivo"] += subtotal
-            elif venta.metodo_pago == "tarjeta":
-                resumen_duenos[nombre_dueno]["tarjeta"] += subtotal
-            elif venta.metodo_pago == "mixto":
-                total_venta = float(venta.total)
-                if total_venta > 0:
-                    proporcion = subtotal / total_venta
-                    efectivo_neto = float(venta.pagado_efectivo) - float(venta.cambio)
-                    resumen_duenos[nombre_dueno]["efectivo"] += proporcion * efectivo_neto
-                    resumen_duenos[nombre_dueno]["tarjeta"]  += proporcion * float(venta.pagado_tarjeta)
-
-    # Redondear
-    for d in resumen_duenos.values():
-        d["total"] = round(d["total"], 2)
-        d["efectivo"] = round(d["efectivo"], 2)
-        d["tarjeta"] = round(d["tarjeta"], 2)
-
-    # 7. Crear el corte
-    corte = CorteCaja.objects.create(
-        caja=caja,
-        empleado=request.user.empleado,
-        total_general=total_general,
-        total_por_dueno=totales_dueno
-    )
-
-    # ⭐ Guardar ventas del corte
-    corte.ventas.set(ventas)
+        # Deudas entre dueñas → historial del dashboard de cada una. Si esto
+        # falla NO se tumba el corte: el corte es lo importante (la cajera
+        # cierra caja e imprime); registrar_deudas_de_corte usa su propio
+        # atomic (savepoint), así que un error ahí no deja la transacción
+        # rota, y se puede volver a registrar después (es idempotente).
+        try:
+            registrar_deudas_de_corte(corte)
+        except Exception:
+            logger.exception("registrar_deudas_de_corte falló corte=%s", corte.pk)
 
     # 8. Imprimir ticket térmico automáticamente
     imprimir_silencioso(generar_texto_ticket(corte))

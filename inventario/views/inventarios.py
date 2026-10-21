@@ -413,7 +413,11 @@ def aprobar_solicitud(request, solicitud_id):
     if solicitud.estado != "pendiente":
         return render(request, "inventario/solicitudajuste/error_procesada.html")
 
-    InventarioService.aplicar_ajuste(solicitud, request.user.empleado)
+    try:
+        InventarioService.aplicar_ajuste(solicitud, request.user.empleado)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect("inventario:solicitudes_pendientes")
 
     solicitud.estado = "aprobado"
     solicitud.fecha_respuesta = timezone.now()
@@ -458,7 +462,11 @@ def aprobar_solicitud_panel(request, solicitud_id):
         messages.error(request, "Esta solicitud ya fue procesada.")
         return redirect("inventario:solicitudes_pendientes")
 
-    InventarioService.aplicar_ajuste(solicitud, empleado)
+    try:
+        InventarioService.aplicar_ajuste(solicitud, empleado)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect("inventario:solicitudes_pendientes")
 
     solicitud.estado = "aprobado"
     solicitud.fecha_respuesta = timezone.now()
@@ -517,13 +525,23 @@ def solicitudes_pendientes(request):
     solicitudes_data = []
 
     for s in solicitudes:
-        inventario = Inventario.objects.get(
+        inventario = Inventario.objects.filter(
             producto=s.producto,
             ubicacion=s.ubicacion
-        )
+        ).first()
+
+        # Si el inventario se eliminó de esa ubicación después de la solicitud,
+        # se muestra marcada y solo se puede rechazar (aprobar no tiene sobre qué aplicar)
+        if not inventario:
+            solicitudes_data.append({
+                "solicitud": s,
+                "inventario_eliminado": True,
+            })
+            continue
 
         solicitudes_data.append({
             "solicitud": s,
+            "inventario_eliminado": False,
             "cantidad_actual": inventario.cantidad_actual,
             "delta": inventario.cantidad_actual - s.cantidad,
         })
@@ -653,6 +671,23 @@ def eliminar_inventario_ubicacion(request, producto_id, ubicacion_id):
         return JsonResponse({
             "success": False,
             "errors": ["No existe inventario en esta ubicación."]
+        })
+
+    # No borrar mientras haya solicitudes de ajuste esperando al dueño:
+    # quedarían huérfanas y romperían su panel de pendientes
+    pendientes = SolicitudAjuste.objects.filter(
+        producto_id=producto_id,
+        ubicacion_id=ubicacion_id,
+        estado="pendiente"
+    ).count()
+
+    if pendientes:
+        return JsonResponse({
+            "success": False,
+            "errors": [
+                f"Este producto tiene solicitudes de ajuste pendientes en esta ubicación ({pendientes}). "
+                "El dueño debe aprobarlas o rechazarlas antes de eliminar el inventario."
+            ]
         })
 
     inventario.delete()

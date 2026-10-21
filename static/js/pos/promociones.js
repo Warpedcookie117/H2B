@@ -300,25 +300,42 @@ function _renderOpciones(productos, promo, itemIdx, pendingCount) {
             `<span style="background:#EDE7FF;border:1px solid #111;padding:0 4px;border-radius:2px;">${k}: <strong>${v}</strong></span>`
         ).join("&nbsp;");
 
-        const stockTxt = p.stock != null ? `Stock: ${p.stock}` : "";
+        const bodega   = Number(p.stock_bodega) || 0;
+        const stockTxt = p.stock != null
+            ? `Stock: ${p.stock}${bodega > 0 ? ` (+${bodega} en bodega)` : ""}`
+            : "";
         const label    = [p.nombre, ...Object.values(p.atributos || {})].join(" ");
+
+        // Sin stock (piso + bodega, menos lo que ya va en este carrito): al
+        // cobrar el servidor rechazaría TODA la venta, así que no se deja escoger.
+        // stock null = el servidor no lo calculó (sin sucursal) → no se bloquea.
+        const enCarrito  = carrito.filter(i => i.id === p.id).reduce((s, i) => s + (Number(i.cantidad) || 0), 0);
+        const sinStock   = p.stock != null && (Number(p.stock) || 0) + bodega - enCarrito <= 0;
 
         const btn = document.createElement("button");
         btn.className     = "regalo-opcion-btn";
         btn.dataset.label = label;
+        btn.disabled      = sinStock;
         btn.style.cssText = [
-            "width:100%", "border:3px solid black", "background:#00F5D4",
-            "font-weight:900", "padding:.6rem 1rem", "box-shadow:3px 3px 0 0 black",
-            "cursor:pointer", "text-align:left",
+            "width:100%", "border:3px solid black", `background:${sinStock ? "#E5E7EB" : "#00F5D4"}`,
+            "font-weight:900", "padding:.6rem 1rem", `box-shadow:${sinStock ? "none" : "3px 3px 0 0 black"}`,
+            `cursor:${sinStock ? "not-allowed" : "pointer"}`, "text-align:left",
             "transition:transform .1s,box-shadow .1s",
             "display:flex", "flex-direction:column", "gap:.2rem",
+            ...(sinStock ? ["opacity:.6"] : []),
         ].join(";");
 
         btn.innerHTML = `
             <span style="font-size:.9rem;text-transform:uppercase;letter-spacing:.04em;">${p.nombre}</span>
             ${attrHtml ? `<span style="font-size:.78rem;font-weight:600;color:#1e293b;text-transform:none;display:flex;flex-wrap:wrap;gap:.3rem;">${attrHtml}</span>` : ""}
             ${stockTxt ? `<span style="font-size:.72rem;font-weight:500;color:#4b5563;text-transform:none;">${stockTxt}</span>` : ""}
+            ${sinStock ? `<span style="font-size:.72rem;font-weight:900;color:#B00020;">Sin stock${enCarrito ? " (ya va en el carrito)" : ""}</span>` : ""}
         `;
+
+        if (sinStock) {
+            opciones.appendChild(btn);
+            return;
+        }
 
         btn.onmouseover = () => { btn.style.transform = "translate(-1px,-1px)"; btn.style.boxShadow = "5px 5px 0 0 black"; };
         btn.onmouseout  = () => { btn.style.transform = ""; btn.style.boxShadow = "3px 3px 0 0 black"; };

@@ -12,8 +12,6 @@ class SucursalMiddleware:
         sucursal_id = request.session.get("sucursal_actual")
         caja_id = request.session.get("caja_actual")
 
-        print(">>> caja_id en sesión:", caja_id)
-
         # -------------------------
         # SUCURSAL
         # -------------------------

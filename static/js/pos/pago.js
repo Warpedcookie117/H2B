@@ -117,33 +117,61 @@ export function validarPago(efectivo, tarjeta) {
 // 3. Procesar venta (llamar backend)
 // ============================================================
 
+// El carrito tal como lo espera el backend (procesar_venta y clip_de_la_venta)
+function carritoParaServidor() {
+    return carrito.map(p => {
+        if (p.es_servicio) return {
+            es_servicio:     true,
+            nombre_servicio: p.nombre,
+            cantidad:        1,
+            precio_aplicado: Number(p.precio_aplicado) || 0,
+        };
+        if (p.es_regalo) return {
+            es_regalo:      true,
+            producto_id:    p.id,
+            promo_id:       p.promo_id ?? null,
+            promo_nombre:   p.promo_nombre,
+            cantidad:       Number(p.cantidad) || 1,
+            precio_aplicado: 0,
+        };
+        return {
+            producto_id:     p.id,
+            cantidad:        Number(p.cantidad) || 1,
+            precio_aplicado: Number(p.precio_aplicado) || Number(p.precios?.men) || 0,
+        };
+    });
+}
+
+// En qué Clip se cobra la tarjeta de este carrito (el de la dueña que más
+// vende en la cuenta). Solo es un aviso: si falla devuelve null y el cobro
+// sigue igual.
+export async function pedirClipDeLaVenta() {
+    try {
+        const resp = await fetch("/ventas/pos/clip-de-la-venta/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify({ carrito: carritoParaServidor() })
+        });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        console.log("[POS:pago] clip de la venta:", data.clip);
+        return data.clip ?? null;
+    } catch (e) {
+        console.warn("[POS:pago] no se pudo saber el Clip:", e);
+        return null;
+    }
+}
+
 export async function procesarPago(efectivo, tarjeta) {
     console.log(`[POS:pago] procesarPago → efectivo=${efectivo} tarjeta=${tarjeta} descuento=${descuentoPct}%`);
 
     onPagoIniciado();
 
     const payload = {
-        carrito: carrito.map(p => {
-            if (p.es_servicio) return {
-                es_servicio:     true,
-                nombre_servicio: p.nombre,
-                cantidad:        1,
-                precio_aplicado: Number(p.precio_aplicado) || 0,
-            };
-            if (p.es_regalo) return {
-                es_regalo:      true,
-                producto_id:    p.id,
-                promo_id:       p.promo_id ?? null,
-                promo_nombre:   p.promo_nombre,
-                cantidad:       Number(p.cantidad) || 1,
-                precio_aplicado: 0,
-            };
-            return {
-                producto_id:     p.id,
-                cantidad:        Number(p.cantidad) || 1,
-                precio_aplicado: Number(p.precio_aplicado) || Number(p.precios?.men) || 0,
-            };
-        }),
+        carrito: carritoParaServidor(),
         pagado_efectivo: Number(efectivo) || 0,
         pagado_tarjeta: Number(tarjeta) || 0,
         descuento_pct: descuentoPct,

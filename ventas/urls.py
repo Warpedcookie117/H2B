@@ -1,7 +1,9 @@
 from django.urls import path
 
 # POS
-from ventas.views.pos_views import pos_view, procesar_venta, stock_productos, set_dueno_servicios, producto_card
+from ventas.views.pos_views import (
+    pos_view, procesar_venta, stock_productos, set_dueno_servicios, producto_card, clip_de_la_venta,
+)
 
 # Promociones
 from ventas.views.promociones_views import (
@@ -37,8 +39,10 @@ from ventas.views.ticket_venta_views import (
 from ventas.views.ventas_views import (
     
     ventas_por_cajero,
-    api_ventas_hoy
-) 
+    api_ventas_hoy,
+    api_deuda_pagada,
+    api_deuda_hoy_pagada,
+)
 
 # Tickets de corte
 from ventas.views.ticket_corte_views import (
@@ -65,6 +69,7 @@ urlpatterns = [
     path("stock-productos/", stock_productos, name="stock_productos"),
     path("pos/producto-card/<int:producto_id>/", producto_card, name="producto_card"),
     path("pos/set-dueno-servicios/", set_dueno_servicios, name="set_dueno_servicios"),
+    path("pos/clip-de-la-venta/", clip_de_la_venta, name="clip_de_la_venta"),
 
 
     # ============================
@@ -91,6 +96,8 @@ urlpatterns = [
     # ============================
     path("ventas-por-cajero/", ventas_por_cajero, name="ventas_por_cajero"),
     path("api/ventas/hoy/", api_ventas_hoy, name="api_ventas_hoy"),
+    path("api/deudas/<int:deuda_id>/pagada/", api_deuda_pagada, name="api_deuda_pagada"),
+    path("api/deudas/hoy/pagada/", api_deuda_hoy_pagada, name="api_deuda_hoy_pagada"),
 
     # ============================
     # Promociones

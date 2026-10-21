@@ -53,7 +53,7 @@
           Solicitud #{{ s.solicitud.id }}
         </span>
         <span class="font-black text-black text-xs uppercase tracking-widest">
-          ⏳ Pendiente
+          {% if s.inventario_eliminado %}⚠️ Sin inventario{% else %}⏳ Pendiente{% endif %}
         </span>
       </div>
 
@@ -77,6 +77,17 @@
         <!-- CANTIDADES — lo más importante -->
         <div class="grid grid-cols-2 gap-3">
 
+          {% if s.inventario_eliminado %}
+          <div class="border-4 border-black p-4 bg-[#FFBE0B] col-span-2">
+            <p class="font-black text-sm text-black uppercase tracking-wide">
+              ⚠️ El inventario de este producto en esta ubicación fue eliminado
+            </p>
+            <p class="font-semibold text-sm text-black mt-1">
+              Ya no hay sobre qué aplicar el ajuste (pedían dejarlo en {{ s.solicitud.cantidad }}).
+              Solo se puede rechazar.
+            </p>
+          </div>
+          {% else %}
           <div class="border-4 border-black p-4 bg-[#3A86FF]">
             <p class="text-[10px] font-black uppercase tracking-widest text-white/80">Cantidad actual</p>
             <p class="font-black text-3xl text-white mt-0.5">{{ s.cantidad_actual }}</p>
@@ -89,6 +100,7 @@
               (−{{ s.delta }} piezas)
             </p>
           </div>
+          {% endif %}
 
           <div class="border-4 border-black p-3 bg-white col-span-2">
             <p class="text-[10px] font-black uppercase tracking-widest text-gray-500">Motivo</p>
@@ -113,6 +125,7 @@
         <!-- BOTONES APROBAR / RECHAZAR -->
         <div class="grid grid-cols-2 gap-3 pt-1">
 
+          {% if not s.inventario_eliminado %}
           <a href="{% url 'inventario:aprobar_solicitud_panel' s.solicitud.id %}"
              class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#06D6A0]
                     text-black font-black text-sm uppercase tracking-widest
@@ -121,9 +134,10 @@
                     transition-all duration-100">
             ✅ Aprobar
           </a>
+          {% endif %}
 
           <a href="{% url 'inventario:rechazar_solicitud_panel' s.solicitud.id %}"
-             class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
+             class="{% if s.inventario_eliminado %}col-span-2 {% endif %}border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FF006E]
                     text-white font-black text-sm uppercase tracking-widest
                     py-3 flex items-center justify-center gap-2
                     hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_black]

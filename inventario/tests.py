@@ -2,12 +2,15 @@ import io
 from types import SimpleNamespace
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 from PIL import Image
 
+from inventario.models import Inventario, Producto, SolicitudAjuste, Ubicacion
 from inventario.services.imagen_service import ImagenService
 from inventario.signals import borrar_foto_anterior
 from inventario.templatetags import cloudinary_helpers as ch
+from tienda_temp.models import Empleado, Usuario
 
 
 def _subida(imagen, nombre="foto.jpg", formato="JPEG", **guardar):
@@ -196,3 +199,102 @@ class CatalogoDeTamañosTest(SimpleTestCase):
 
         for helper in HELPERS:
             self.assertEqual(helper(Local()), "/media/productos/x.jpg", helper.__name__)
+
+
+# El hasher real tarda ~1.4 s por usuario; en tests no importa la seguridad.
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class SolicitudHuerfanaTest(TestCase):
+    """
+    Una solicitud de ajuste pendiente cuyo inventario se eliminó de la
+    ubicación después de crearla. Pasó en producción (oct 2026): el panel de
+    pendientes de la dueña tronaba con DoesNotExist y no podía entrar.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        user = Usuario.objects.create_user(
+            username="fabiola", email="fabiola@test.local", password="x"
+        )
+        cls.duena = Empleado.objects.create(
+            user=user, rol="dueño", direccion="x", numero_contacto="1",
+            contacto_emergencia="x", descripcion_contacto_emergencia="x",
+        )
+        cls.piso = Ubicacion.objects.create(nombre="Piso", direccion="x", tipo="piso")
+        cls.producto = Producto.objects.create(
+            nombre="Bolsa", precio_mayoreo=10, precio_menudeo=10, dueño=cls.duena
+        )
+        cls.otro = Producto.objects.create(
+            nombre="Aretes", precio_mayoreo=10, precio_menudeo=10, dueño=cls.duena
+        )
+        Inventario.objects.create(producto=cls.otro, ubicacion=cls.piso, cantidad_actual=8)
+
+    def setUp(self):
+        self.client.force_login(self.duena.user)
+        # Huérfana: no hay Inventario de self.producto en el piso
+        self.huerfana = self._solicitud(self.producto)
+        self.normal = self._solicitud(self.otro)
+
+    def _solicitud(self, producto):
+        return SolicitudAjuste.objects.create(
+            producto=producto, ubicacion=self.piso, usuario=self.duena.user, cantidad=3
+        )
+
+    def test_el_panel_abre_aunque_haya_una_huerfana(self):
+        resp = self.client.get(reverse("inventario:solicitudes_pendientes"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "fue eliminado")
+
+    def test_la_huerfana_no_ofrece_aprobar_y_las_demas_si(self):
+        resp = self.client.get(reverse("inventario:solicitudes_pendientes"))
+
+        self.assertNotContains(
+            resp, reverse("inventario:aprobar_solicitud_panel", args=[self.huerfana.id])
+        )
+        self.assertContains(
+            resp, reverse("inventario:rechazar_solicitud_panel", args=[self.huerfana.id])
+        )
+        self.assertContains(
+            resp, reverse("inventario:aprobar_solicitud_panel", args=[self.normal.id])
+        )
+
+    def test_aprobar_huerfana_desde_el_panel_no_truena_ni_la_cierra(self):
+        resp = self.client.get(
+            reverse("inventario:aprobar_solicitud_panel", args=[self.huerfana.id])
+        )
+
+        self.assertRedirects(resp, reverse("inventario:solicitudes_pendientes"))
+        self.huerfana.refresh_from_db()
+        self.assertEqual(self.huerfana.estado, "pendiente")
+
+    def test_aprobar_huerfana_desde_el_correo_no_truena_ni_la_cierra(self):
+        resp = self.client.get(
+            reverse("inventario:aprobar_solicitud", args=[self.huerfana.id])
+        )
+
+        self.assertRedirects(resp, reverse("inventario:solicitudes_pendientes"))
+        self.huerfana.refresh_from_db()
+        self.assertEqual(self.huerfana.estado, "pendiente")
+
+    def test_la_huerfana_se_puede_rechazar(self):
+        self.client.get(reverse("inventario:rechazar_solicitud_panel", args=[self.huerfana.id]))
+
+        self.huerfana.refresh_from_db()
+        self.assertEqual(self.huerfana.estado, "rechazado")
+
+    def test_no_deja_eliminar_inventario_con_solicitudes_pendientes(self):
+        url = reverse("inventario:eliminar_inventario_ubicacion", args=[self.otro.id, self.piso.id])
+
+        resp = self.client.delete(url)
+
+        self.assertFalse(resp.json()["success"])
+        self.assertTrue(Inventario.objects.filter(producto=self.otro, ubicacion=self.piso).exists())
+
+    def test_elimina_inventario_si_no_hay_pendientes(self):
+        self.client.get(reverse("inventario:rechazar_solicitud_panel", args=[self.normal.id]))
+        url = reverse("inventario:eliminar_inventario_ubicacion", args=[self.otro.id, self.piso.id])
+
+        resp = self.client.delete(url)
+
+        self.assertTrue(resp.json()["success"])
+        self.assertFalse(Inventario.objects.filter(producto=self.otro, ubicacion=self.piso).exists())

@@ -90,6 +90,20 @@ function aplicarCambioStock(productoId, pisoNuevo, bodegaNuevo = null) {
     }
 }
 
+// Stock que quedó de lo recién vendido (llave `stock` de la respuesta del
+// cobro). Valores absolutos, igual que el WS: si también llega el mensaje
+// del WS no se descuenta doble. Así las cards quedan al día aunque el WS
+// esté caído (p. ej. Redis apagado).
+export function aplicarStockDeVenta(stock) {
+    if (!stock || typeof stock !== "object") return;
+    Object.entries(stock).forEach(([id, s]) => {
+        const piso   = Number(s?.piso);
+        const bodega = Number(s?.bodega);
+        if (!Number.isFinite(piso)) return;
+        aplicarCambioStock(Number(id), piso, Number.isFinite(bodega) ? bodega : null);
+    });
+}
+
 // ============================================================
 // Aplicar cambios del detalle del producto a la card
 // (el buscador y el carrito leen estos data-attributes al agregar)

@@ -5,7 +5,8 @@ class UsuarioAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
 
 class EmpleadoAdmin(admin.ModelAdmin):
-    list_display = ('user', 'rol', 'edad')
+    list_display = ('user', 'rol', 'edad', 'prioridad_cambio')
+    list_editable = ('prioridad_cambio',)
 
 class ClienteAdmin(admin.ModelAdmin):
     list_display = ('get_username', 'direccion', 'numero_contacto')

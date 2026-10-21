@@ -1,7 +1,8 @@
 import json
+from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Sum, F, Value, Q
-from django.db.models.functions import TruncMonth, Coalesce
+from django.db.models import Sum, F, Value, Q, FloatField
+from django.db.models.functions import TruncMonth, Coalesce, Cast
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -12,6 +13,7 @@ from django.utils.timezone import localtime
 from django.contrib.auth.decorators import login_required
 from sucursales.models import Sucursal
 from ventas.models import Venta, VentaDetalle
+from ventas.services.reparto import totales_caja
 from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
 from inventario.services.filtros_service import filtrar_productos, nombres_filtros, parse_filtros
 
@@ -270,21 +272,39 @@ def dashboard_dueno(request):
     productos_dueno = Producto.objects.filter(dueño=empleado, activo=True).count()
 
     # ============================================================
-    # 2) Ventas del mes SOLO de mis productos
-    #    Suma los subtotales de VentaDetalle donde el producto
-    #    es mío, en el mes actual. Usa subtotal del detalle
-    #    para no contar el total de la venta completa.
+    # 2) Ventas del mes SOLO de mis productos, YA con descuento.
+    #    Cada renglón mío vale subtotal * venta.total / venta.subtotal:
+    #    su parte del total cobrado (el subtotal del renglón es antes
+    #    del descuento de la venta y lo inflaba).
+    #    Es UNA sola query a propósito: recorrer el mes en Python con
+    #    reparto.py (el reparto exacto a centavos del corte) cargaría a
+    #    los 3 workers de Gunicorn en cada carga del dashboard. El
+    #    divisor venta.subtotal es una aproximación: puede diferir unos
+    #    centavos del reparto exacto (redondeo por venta, ofertas nxprecio
+    #    donde Σ renglones ≠ venta.subtotal). Ventas con subtotal 0 se
+    #    excluyen (división entre 0 y no aportan nada).
+    #    Cast a float: SQLite (local/tests) guarda 600.00 como entero y
+    #    haría división ENTERA (333*900/1000 = 299, no 299.70); con
+    #    DecimalField Django lo envuelve en CAST(... AS NUMERIC) y sigue
+    #    truncando. En float el error es de ~1e-12, invisible al redondear
+    #    a centavos, y el cálculo es el mismo en SQLite y en Postgres.
     # ============================================================
     ventas_mes_dueno = (
         VentaDetalle.objects
         .filter(
             producto__dueño=empleado,
             venta__fecha__month=ahora_local.month,
-            venta__fecha__year=ahora_local.year
+            venta__fecha__year=ahora_local.year,
+            venta__subtotal__gt=0,
         )
-        .aggregate(total=Sum("subtotal"))
+        .aggregate(total=Sum(
+            Cast("subtotal", FloatField())
+            * Cast("venta__total", FloatField())
+            / Cast("venta__subtotal", FloatField())
+        ))
         .get("total") or 0
     )
+    ventas_mes_dueno = Decimal(str(ventas_mes_dueno)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     # ============================================================
     # 2b) $ vendido de mis productos AHORITA (hoy) — efectivo/tarjeta.
@@ -325,10 +345,13 @@ def dashboard_dueno(request):
 
     # ============================================================
     # 4) Ventas HOY por sucursal → por caja → efectivo y tarjeta
-    #    Recorre todas las sucursales y sus cajas.
-    #    Por cada caja suma pagado_efectivo y pagado_tarjeta
-    #    de las ventas de hoy — sin importar dueño del producto,
-    #    porque esto es para saber cuánto hay físicamente en caja.
+    #    Recorre todas las sucursales y sus cajas, con las ventas
+    #    de hoy — sin importar dueño del producto, porque esto es
+    #    para saber cuánto hay físicamente en caja.
+    #    totales_caja (reparto.py, el mismo cálculo que el corte):
+    #    efectivo NETO = pagado_efectivo - cambio, o sea lo que
+    #    físicamente queda en el cajón (sumar solo pagado_efectivo
+    #    inflaba el efectivo); total = Σ venta.total, ya con descuento.
     # ============================================================
     from sucursales.models import Sucursal, Caja
 
@@ -347,15 +370,8 @@ def dashboard_dueno(request):
         for caja in sucursal.cajas.all().order_by("nombre"):
             ventas_caja = Venta.objects.filter(caja=caja, fecha__date=hoy)
 
-            efectivo = ventas_caja.aggregate(
-                total=Sum("pagado_efectivo")
-            ).get("total") or 0
-
-            tarjeta = ventas_caja.aggregate(
-                total=Sum("pagado_tarjeta")
-            ).get("total") or 0
-
-            total = efectivo + tarjeta
+            t = totales_caja(ventas_caja)
+            efectivo, tarjeta, total = t["efectivo"], t["tarjeta"], t["total"]
 
             ultima_venta = ventas_caja.order_by("-fecha").first()
             ultima_actualizacion = ultima_venta.fecha if ultima_venta else None
@@ -375,13 +391,14 @@ def dashboard_dueno(request):
 
             # Desglose de SOLO mis productos en esta caja — en $0 si hoy
             # no vendí nada ahí, para que la caja no "desaparezca" de la lista.
-            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0})
+            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0, "saldo": 0})
             ventas_hoy_dueno_por_caja.append({
                 "sucursal": sucursal.nombre,
                 "caja": caja.nombre,
                 "efectivo": mis["efectivo"],
                 "tarjeta": mis["tarjeta"],
                 "total": mis["total"],
+                "saldo": mis["saldo"],   # > 0 le deben, < 0 debe (cobros en el Clip de otra)
             })
 
         ventas_por_sucursal.append({
@@ -398,6 +415,14 @@ def dashboard_dueno(request):
         })
 
     # ============================================================
+    # 5) Mis deudas con las otras dueñas (solo las mías; ya no salen
+    #    en el corte). Render inicial: se refresca por polling con
+    #    /ventas/api/ventas/hoy/ ("mis_deudas", misma forma).
+    # ============================================================
+    from ventas.services.deudas_service import deudas_hoy, historial
+    mis_deudas = {"hoy": deudas_hoy(empleado), "historial": historial(empleado)}
+
+    # ============================================================
     # CONTEXTO FINAL
     # ============================================================
     context = {
@@ -411,6 +436,7 @@ def dashboard_dueno(request):
         "mas_vendidos_tienda_hoy": list(mas_vendidos_tienda_hoy),
         "ventas_por_sucursal": ventas_por_sucursal,       # cards de cajas
         "ventas_chart_sucursal": ventas_chart_sucursal,   # chart de sucursales
+        "mis_deudas": mis_deudas,                          # {"hoy": {...}, "historial": [...]}
         # Explorador de más vendidos: solo las categorías padre. Las
         # subcategorías y los atributos se piden por AJAX al elegir.
         "categorias_padre": Categoria.objects.filter(padre__isnull=True).order_by("nombre"),

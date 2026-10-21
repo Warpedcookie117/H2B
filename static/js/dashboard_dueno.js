@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chartMasVendidosTiendaHoy = initChartBarras("chartMasVendidosTiendaHoy", window.INIT_MAS_VENDIDOS_TIENDA_HOY, "#FFBE0B");
     setInterval(actualizarVentasHoy, 10000);
     initToggleMes();
+    initCuentasDuenas();
     initExplorador();
 });
 
@@ -317,6 +318,272 @@ function initChartVentasHoySucursal() {
     });
 }
 
+// ============================================================
+// CUENTAS CON OTRAS DUEÑAS (card acordeón)
+// Lo que una dueña cobró en su Clip y es de otra. Es sensible: ya no sale en
+// el corte, solo aquí. Datos: contexto `mis_deudas` (json_script) al cargar y
+// `data.mis_deudas` en cada polling de /ventas/api/ventas/hoy/.
+// Todo se arma con createElement/textContent: los nombres vienen de la BD.
+// El <details> nunca se reemplaza, así que abierto/cerrado se conserva.
+// ============================================================
+let misDeudas = null;
+const deudasEnviando = new Set();   // ids con POST en curso
+let avisoDeudasTimer = null;
+
+// |monto| → "$50.00" (redondeado a centavos: floats de la API).
+function dineroDeuda(monto) {
+    const centavos = Math.abs(Math.round((Number(monto) || 0) * 100));
+    return `$${(centavos / 100).toFixed(2)}`;
+}
+
+function centavosDe(monto) {
+    return Math.round((Number(monto) || 0) * 100);
+}
+
+function nodoDeuda(tag, className, texto) {
+    const nodo = document.createElement(tag);
+    if (className) nodo.className = className;
+    if (texto != null) nodo.textContent = texto;
+    return nodo;
+}
+
+function initCuentasDuenas() {
+    const card = document.getElementById("card-cuentas-duenas");
+    if (!card) return;
+    let inicial = null;
+    try {
+        const script = document.getElementById("init-mis-deudas");
+        inicial = script ? JSON.parse(script.textContent) : null;
+    } catch (e) {
+        console.error("mis_deudas inicial ilegible:", e);
+    }
+    pintarCuentasDuenas(inicial);
+}
+
+function pintarCuentasDuenas(md, forzar = false) {
+    const card = document.getElementById("card-cuentas-duenas");
+    if (!card) return;
+
+    // Si nada cambió no se toca el DOM (no se pierde el foco del teclado
+    // en los botones cada 10 s).
+    const firma = JSON.stringify(md ?? null) + "|" + [...deudasEnviando].sort().join(",");
+    if (!forzar && card.dataset.firma === firma) return;
+    card.dataset.firma = firma;
+
+    misDeudas = (md && typeof md === "object") ? md : null;
+    card.hidden = !misDeudas;
+    if (!misDeudas) return;
+
+    const hoy = misDeudas.hoy || {};
+    const historial = Array.isArray(misDeudas.historial) ? misDeudas.historial : [];
+
+    // --- Encabezado (cerrado): hoy, neteado por persona ---
+    const elResumen = document.getElementById("cuentas-resumen");
+    if (elResumen) {
+        const lineas = (hoy.resumen || [])
+            .filter(r => centavosDe(r.monto) !== 0)
+            .map(r => nodoDeuda("span", "block", centavosDe(r.monto) < 0
+                ? `Le debes ${dineroDeuda(r.monto)} a ${r.con_nombre}`
+                : `${r.con_nombre} te debe ${dineroDeuda(r.monto)}`));
+        if (!lineas.length) lineas.push(nodoDeuda("span", "block", "Hoy nadie te debe ni le debes"));
+        elResumen.replaceChildren(...lineas);
+    }
+
+    const elTotales = document.getElementById("cuentas-totales");
+    if (elTotales) {
+        const partes = [];
+        if (centavosDe(hoy.total_debes)) partes.push(`Debes ${dineroDeuda(hoy.total_debes)}`);
+        if (centavosDe(hoy.total_te_deben)) partes.push(`Te deben ${dineroDeuda(hoy.total_te_deben)}`);
+        elTotales.textContent = partes.join(" · ");
+        elTotales.hidden = !partes.length;
+    }
+
+    // Pagos en corto de hoy (todavía sin corte): se pintan como historial.
+    const pagadasHoy = Array.isArray(hoy.pagadas) ? hoy.pagadas : [];
+
+    // Aviso discreto en el encabezado si quedan deudas viejas sin pagar.
+    const elPrevias = document.getElementById("cuentas-previas");
+    if (elPrevias) {
+        const pendientes = historial.filter(d => !d.pagada).length;
+        const avisos = [...historial, ...pagadasHoy].filter(d => d.aviso).length;
+        const partes = [];
+        if (pendientes) partes.push(`📌 ${pendientes} pendiente${pendientes === 1 ? "" : "s"} de cortes anteriores`);
+        if (avisos) partes.push(`⚠ ${avisos} aviso${avisos === 1 ? "" : "s"}`);
+        elPrevias.textContent = partes.join(" · ");
+        elPrevias.hidden = !partes.length;
+    }
+
+    // --- Abierta (a): hoy, por caja — pendientes con "Ya se pagó" y lo ya pagado en corto ---
+    const elHoy = document.getElementById("cuentas-hoy");
+    if (elHoy) {
+        const items = (hoy.items || []).filter(it => centavosDe(it.monto) !== 0);
+        if (!items.length && !pagadasHoy.length) {
+            elHoy.replaceChildren(nodoDeuda("p", "text-sm font-bold text-black/60", "Hoy nadie te debe ni le debes"));
+        } else {
+            elHoy.replaceChildren(...items.map(filaDeudaHoy), ...pagadasHoy.map(filaHistorialDeuda));
+        }
+    }
+
+    // --- Abierta (b): cortes anteriores, con "Ya se pagó" ---
+    const elHist = document.getElementById("cuentas-historial");
+    if (elHist) {
+        if (!historial.length) {
+            elHist.replaceChildren(nodoDeuda("p", "text-sm font-bold text-black/60", "No hay deudas de cortes anteriores"));
+        } else {
+            elHist.replaceChildren(...historial.map(filaHistorialDeuda));
+        }
+    }
+}
+
+const CLASES_BOTON_DEUDA =
+    `flex-shrink-0 border-4 border-black shadow-[4px_4px_0_0_black] px-3 py-2 text-xs font-black uppercase tracking-widest
+     transition-all duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait`;
+
+// Deuda de hoy (sin corte todavía): "Caja Anais: Anais te debe $10.00 · desde las 4:12 pm" + [Ya se pagó]
+function filaDeudaHoy(it) {
+    const clave = `hoy-${it.caja_id}-${it.con_id}`;
+    const fila = nodoDeuda("div",
+        "bg-white border-2 border-black px-3 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2");
+    fila.appendChild(nodoDeuda("p", "min-w-0 text-sm font-bold text-black break-words",
+        (it.yo_debo
+            ? `${it.caja}: le debes ${dineroDeuda(it.monto)} a ${it.con_nombre}`
+            : `${it.caja}: ${it.con_nombre} te debe ${dineroDeuda(it.monto)}`)
+            + (it.desde_txt ? ` · ${it.desde_txt}` : "")));
+
+    const enviando = deudasEnviando.has(clave);
+    const btn = nodoDeuda("button", `${CLASES_BOTON_DEUDA} bg-black text-white`,
+        enviando ? "Guardando…" : "Ya se pagó");
+    btn.type = "button";
+    btn.disabled = enviando || it.caja_id == null;   // respuesta vieja sin caja_id
+    btn.addEventListener("click", () => marcarDeudaHoyPagada(it));
+    fila.appendChild(btn);
+    return fila;
+}
+
+function filaHistorialDeuda(d) {
+    const pagada = !!d.pagada;
+    const fila = nodoDeuda("div",
+        `border-2 border-black px-3 py-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 ${pagada ? "bg-gray-100" : "bg-white"}`);
+    fila.dataset.deudaId = d.id;
+
+    const info = nodoDeuda("div", "min-w-0 space-y-1");
+    const cuanto = d.yo_debo
+        ? `Le debes ${dineroDeuda(d.monto)} a ${d.con_nombre}`
+        : `${d.con_nombre} te debe ${dineroDeuda(d.monto)}`;
+    info.appendChild(nodoDeuda("p",
+        `text-sm font-bold text-black break-words ${pagada ? "line-through decoration-2 text-black/50" : ""}`,
+        [d.fecha_txt, d.caja, cuanto].filter(Boolean).join(" · ")));
+
+    info.appendChild(nodoDeuda("span",
+        `inline-block border-2 border-black px-2 py-0.5 text-[11px] font-black uppercase tracking-widest ${
+            pagada ? "bg-[#06D6A0] text-black" : "bg-[#FF006E] text-white"}`,
+        pagada ? "Pagada ✓" : "Pendiente"));
+
+    if (d.aviso) {
+        info.appendChild(nodoDeuda("p",
+            "bg-[#FFBE0B] border-2 border-black px-2 py-1 text-xs font-black text-black",
+            `⚠ ${d.aviso}`));
+    }
+    fila.appendChild(info);
+
+    const enviando = deudasEnviando.has(d.id);
+    const btn = nodoDeuda("button",
+        `${CLASES_BOTON_DEUDA} ${pagada ? "bg-white text-black" : "bg-black text-white"}`,
+        enviando ? "Guardando…" : (pagada ? "Marcar como no pagada" : "Ya se pagó"));
+    btn.type = "button";
+    btn.disabled = enviando;
+    btn.addEventListener("click", () => marcarDeudaPagada(d.id, !pagada));
+    fila.appendChild(btn);
+
+    return fila;
+}
+
+function csrfTokenDeudas() {
+    const input = document.querySelector('#card-cuentas-duenas input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : "";
+}
+
+function avisoCuentasDuenas(texto) {
+    const aviso = document.getElementById("cuentas-aviso");
+    if (!aviso) return;
+    aviso.textContent = texto;
+    aviso.hidden = false;
+    clearTimeout(avisoDeudasTimer);
+    avisoDeudasTimer = setTimeout(() => { aviso.hidden = true; }, 5000);
+}
+
+async function marcarDeudaPagada(id, pagada) {
+    if (deudasEnviando.has(id)) return;
+    deudasEnviando.add(id);
+    pintarCuentasDuenas(misDeudas, true);   // botón deshabilitado
+
+    try {
+        const resp = await fetch(`/ventas/api/deudas/${encodeURIComponent(id)}/pagada/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": csrfTokenDeudas() },
+            body: JSON.stringify({ pagada }),
+        });
+        let data = null;
+        try { data = await resp.json(); } catch { /* respuesta sin JSON */ }
+
+        if (!resp.ok || !data || data.status !== "ok") {
+            avisoCuentasDuenas(resp.status === 404
+                ? "Esa cuenta ya no está disponible."
+                : "No se pudo guardar. Intenta de nuevo.");
+            return;
+        }
+        // deuda null: era un pago en corto de hoy y se desmarcó; el polling
+        // de abajo la regresa como pendiente.
+        if (data.deuda && misDeudas && Array.isArray(misDeudas.historial)) {
+            misDeudas = {
+                ...misDeudas,
+                historial: misDeudas.historial.map(d => (d.id === id ? data.deuda : d)),
+            };
+        }
+    } catch (e) {
+        console.error("Error marcando deuda:", e);
+        avisoCuentasDuenas("Sin conexión. No se guardó; intenta de nuevo.");
+    } finally {
+        deudasEnviando.delete(id);
+        pintarCuentasDuenas(misDeudas, true);
+        actualizarVentasHoy();   // trae todo ya actualizado sin esperar 10 s
+    }
+}
+
+// "Ya se pagó" en una deuda de hoy (sin corte todavía): pago en corto.
+async function marcarDeudaHoyPagada(it) {
+    const clave = `hoy-${it.caja_id}-${it.con_id}`;
+    if (deudasEnviando.has(clave)) return;
+    deudasEnviando.add(clave);
+    pintarCuentasDuenas(misDeudas, true);   // botón deshabilitado
+
+    try {
+        const resp = await fetch("/ventas/api/deudas/hoy/pagada/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": csrfTokenDeudas() },
+            body: JSON.stringify({ caja_id: it.caja_id, con_id: it.con_id, monto: it.monto }),
+        });
+        let data = null;
+        try { data = await resp.json(); } catch { /* respuesta sin JSON */ }
+
+        if (!resp.ok || !data || data.status !== "ok") {
+            avisoCuentasDuenas(
+                resp.status === 409 ? "La cuenta cambió (entró otra venta o ya la marcaron). Revísala y vuelve a picarle."
+                : resp.status === 404 ? "Esa cuenta ya no está disponible."
+                : "No se pudo guardar. Intenta de nuevo.");
+        }
+    } catch (e) {
+        console.error("Error marcando deuda de hoy:", e);
+        avisoCuentasDuenas("Sin conexión. No se guardó; intenta de nuevo.");
+    } finally {
+        deudasEnviando.delete(clave);
+        pintarCuentasDuenas(misDeudas, true);
+        actualizarVentasHoy();   // trae la cuenta ya con el pago
+    }
+}
+
 function actualizarVentasHoy() {
     fetch("/ventas/api/ventas/hoy/")
         .then(r => r.json())
@@ -335,7 +602,13 @@ function actualizarVentasHoy() {
                 if (elEf) elEf.textContent = `$${data.mis_ventas.efectivo}`;
                 if (elTa) elTa.textContent = `$${data.mis_ventas.tarjeta}`;
                 if (elTo) elTo.textContent = `$${data.mis_ventas.total}`;
+                // `saldo` (si la API lo sigue mandando) se ignora aquí: las
+                // deudas entre dueñas van en la card "Cuentas con otras dueñas".
             }
+
+            // Card "Cuentas con otras dueñas": misma respuesta, sin otro fetch.
+            // Respuesta sin la llave (API vieja) → se deja como está.
+            if ("mis_deudas" in data) pintarCuentasDuenas(data.mis_deudas);
 
             // Desglose por caja de "mis productos" dentro de esa misma tarjeta
             (data.mis_cajas || []).forEach(caja => {

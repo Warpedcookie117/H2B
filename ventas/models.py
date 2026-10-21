@@ -138,6 +138,64 @@ class CorteCaja(models.Model):
         return f"Corte de {nombre} – {self.fecha.date()}"
 
 
+class DeudaEntreDuenas(models.Model):
+    """
+    Lo que una dueña le quedó debiendo a otra en un corte (regla de la
+    receptora, ver ventas/services/reparto.py), ya neteado por pareja.
+    Es información sensible: NO sale en el corte (lo ve la cajera), solo en
+    el dashboard de las dos dueñas involucradas. Se registra al cerrar el
+    corte (deudas_service.registrar_deudas_de_corte); las no pagadas nunca
+    se borran y de las pagadas se conservan las 5 más recientes por dueña.
+
+    Pago "en corto": si una deuda de HOY (todavía sin corte) se marca como
+    pagada, se guarda aquí con antes_del_corte=True y corte vacío; al hacer
+    el corte de esa caja se le asigna el corte y el corte solo registra lo
+    que quedó pendiente.
+    """
+    corte = models.ForeignKey(
+        CorteCaja, on_delete=models.CASCADE, null=True, blank=True, related_name="deudas_duenas",
+    )
+    # Caja de las ventas: dice a qué corte pendiente pertenece un pago en corto.
+    caja = models.ForeignKey(Caja, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    antes_del_corte = models.BooleanField(default=False)
+    deudor = models.ForeignKey(
+        Empleado, on_delete=models.SET_NULL, null=True, blank=True, related_name="deudas_como_deudor",
+    )
+    acreedor = models.ForeignKey(
+        Empleado, on_delete=models.SET_NULL, null=True, blank=True, related_name="deudas_como_acreedor",
+    )
+    # Snapshots: el nombre sigue visible aunque se borre la Empleado.
+    deudor_nombre = models.CharField(max_length=150)
+    acreedor_nombre = models.CharField(max_length=150)
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    # Fecha de las VENTAS (la más reciente), no la del corte: el corte
+    # automático se genera hasta el día siguiente.
+    fecha = models.DateTimeField()
+    caja_nombre = models.CharField(max_length=100, blank=True, null=True)
+    creada = models.DateTimeField(auto_now_add=True)
+
+    pagada = models.BooleanField(default=False)
+    pagada_por = models.ForeignKey(
+        Empleado, on_delete=models.SET_NULL, null=True, blank=True, related_name="deudas_marcadas_pagadas",
+    )
+    pagada_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        constraints = [
+            # Lo que registra el corte, una vez por pareja. Los pagos en corto
+            # no entran: puede haber varios de la misma pareja en un corte.
+            models.UniqueConstraint(
+                fields=["corte", "deudor", "acreedor"],
+                condition=models.Q(antes_del_corte=False),
+                name="deuda_unica_por_corte",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.deudor_nombre} → {self.acreedor_nombre} ${self.monto}"
+
+
 class Promocion(models.Model):
     TIPO_CONDICION = [
         ('categoria',       'Categoría de producto'),

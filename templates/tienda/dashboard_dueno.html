@@ -72,15 +72,15 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total en Efectivo</p>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">En tu caja (efectivo)</p>
           <p id="dueno-ahorita-efectivo" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.efectivo|default:0 }}</p>
         </div>
         <div>
-          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total en Tarjeta</p>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">En tu Clip (tarjeta)</p>
           <p id="dueno-ahorita-tarjeta" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.tarjeta|default:0 }}</p>
         </div>
         <div>
-          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Total hoy sumao</p>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Vendiste hoy</p>
           <p id="dueno-ahorita-total" class="text-3xl font-black text-[#FF006E] tabular-nums">${{ ventas_hoy_dueno.total|default:0 }}</p>
         </div>
       </div>
@@ -107,6 +107,64 @@
       </div>
     </div>
   </div>
+
+  <!-- CUENTAS CON OTRAS DUEÑAS — sensible: ya NO sale en el corte (lo ve e
+       imprime la cajera), solo aquí. Acordeón nativo <details>: cerrado
+       muestra lo de HOY neteado por persona; abierto, el detalle por caja y
+       los cortes anteriores con "Ya se pagó". dashboard_dueno.js lo repinta
+       con data.mis_deudas del polling sin tocar el atributo open.
+       mis_deudas puede ser None → la card va oculta. -->
+  <div class="relative">
+    <details id="card-cuentas-duenas"
+             class="group border-4 border-black shadow-[8px_8px_0_0_black] bg-white"
+             {% if not mis_deudas %}hidden{% endif %}>
+      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none bg-[#FFBE0B] p-6
+                      flex items-start justify-between gap-4
+                      focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-black">
+        <span class="block min-w-0 space-y-2">
+          <span class="block text-2xl font-extrabold text-black uppercase tracking-wide">💸 Cuentas con otras dueñas</span>
+          <span id="cuentas-resumen" class="block space-y-1 text-base font-black text-black">
+            {% for r in mis_deudas.hoy.resumen %}{% if r.monto < 0 %}
+            <span class="block">Le debes ${{ r.monto|floatformat:2|cut:"-" }} a {{ r.con_nombre }}</span>{% elif r.monto > 0 %}
+            <span class="block">{{ r.con_nombre }} te debe ${{ r.monto|floatformat:2 }}</span>{% endif %}{% empty %}
+            <span class="block">Hoy nadie te debe ni le debes</span>{% endfor %}
+          </span>
+          {% with debes=mis_deudas.hoy.total_debes te_deben=mis_deudas.hoy.total_te_deben %}
+          <span id="cuentas-totales" class="block text-xs font-black uppercase tracking-widest text-black/70"
+                {% if not debes and not te_deben %}hidden{% endif %}>{% if debes %}Debes ${{ debes|floatformat:2 }}{% endif %}{% if debes and te_deben %} · {% endif %}{% if te_deben %}Te deben ${{ te_deben|floatformat:2 }}{% endif %}</span>
+          {% endwith %}
+          <span id="cuentas-previas" class="block text-xs font-bold text-black/70" hidden></span>
+        </span>
+        <span aria-hidden="true"
+              class="text-2xl font-black leading-none transition-transform duration-300 group-open:rotate-180 flex-shrink-0">▼</span>
+      </summary>
+
+      <div class="border-t-4 border-black p-6 space-y-6">
+        {% csrf_token %}
+        <p id="cuentas-aviso" role="status" aria-live="polite"
+           class="bg-[#FF006E] text-white border-2 border-black px-3 py-2 text-sm font-black" hidden></p>
+
+        <section class="space-y-2">
+          <h3 class="text-xs font-black uppercase text-black/60 tracking-widest">Hoy (todavía sin corte)</h3>
+          <p class="text-xs font-bold text-black/60">
+            Puede cambiar con las siguientes ventas. Si ya se pagaron, pícale «Ya se pagó».
+            Cuando la cajera haga el corte de la caja, pasa abajo a «Cortes anteriores».
+          </p>
+          <div id="cuentas-hoy" class="space-y-2">
+            <p class="text-sm font-bold text-black/50">Cargando…</p>
+          </div>
+        </section>
+
+        <section class="space-y-2 border-t-4 border-black border-dashed pt-4">
+          <h3 class="text-xs font-black uppercase text-black/60 tracking-widest">Cortes anteriores</h3>
+          <div id="cuentas-historial" class="space-y-2">
+            <p class="text-sm font-bold text-black/50">Cargando…</p>
+          </div>
+        </section>
+      </div>
+    </details>
+  </div>
+  {{ mis_deudas|json_script:"init-mis-deudas" }}
 
   <!-- VENTAS HOY — CARDS POR CAJA -->
   <div class="relative space-y-6">

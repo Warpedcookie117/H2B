@@ -953,7 +953,53 @@
 .pos-modal-btn--cerrar    { background: var(--pos-morado);  color: var(--pos-blanco); }
 .pos-btn-block { width: 100%; margin-top: 1rem; }
 
-/* RESULTADO */
+/* 💳 Cobra $70.00 en el Clip de Anais — aviso en el modal de cobro */
+.pos-pago-clip {
+  margin: -0.25rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--pos-negro);
+  background: #CFF5FF;   /* cyan pálido: tarjeta */
+  color: var(--pos-negro);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+}
+.pos-pago-clip[hidden] { display: none; }
+.pos-pago-clip strong { font-family: 'Courier New', monospace; white-space: nowrap; }
+.pos-pago-clip .pos-pago-clip__duena {
+  font-family: inherit;
+  white-space: normal;
+  background: var(--pos-amarillo);
+  padding: 0 0.25rem;
+  border: 2px solid var(--pos-negro);
+}
+
+/* RESULTADO — TOTAL DE LA CUENTA en grande; abajo "¿Cómo acomodo el dinero?" */
+#modal-resultado .pos-modal-content {
+  max-width: 46rem;
+  /* Ochentero: lavanda con puntitos en vez de blanco liso */
+  background-color: var(--pos-panel-carrito);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.13) 1px, transparent 1.6px);
+  background-size: 14px 14px;
+}
+.pos-resultado-field--total .pos-resultado-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--pos-font-bold);
+}
+.pos-resultado-field--total .pos-resultado-valor { font-size: 2.4rem; line-height: 1.1; }
+
+/* Respaldo (solo si no se pinta el reparto): Recibido / Cambio en una fila */
+.pos-resultado-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.pos-resultado-resumen[hidden] { display: none; }
+.pos-resultado-resumen .pos-resultado-field { flex: 1 1 9rem; margin-bottom: 0; }
 .pos-resultado-field  { text-align: center; margin-bottom: 1rem; }
 .pos-resultado-label  { font-size: 0.9rem; font-weight: 700; color: var(--pos-negro); }
 .pos-resultado-valor  { font-size: 1.75rem; font-weight: var(--pos-font-bold); font-family: 'Courier New', monospace; }
@@ -1120,3 +1166,253 @@
 }
 .pos-header-badge--sucursal { background: var(--pos-amarillo); color: var(--pos-negro); }
 .pos-header-badge--caja     { background: var(--pos-cyan);     color: var(--pos-negro); }
+
+/* ============================
+   RESULTADO — ¿CÓMO ACOMODO EL DINERO?
+   (lo pinta static/js/pos/reparto.js dentro de #modal-resultado)
+     [Recibí en efectivo $X]  [Tarjeta: $X Todo fue al Clip de …]
+     [La feria es de $X. Tómala de la caja de …]
+     De la caja de …
+     [Le pones $X en efectivo a …] [Le pones …] [Le pones …] …
+   ============================ */
+.pos-resultado-reparto {
+  display: block;
+  margin: 0.9rem 0 0.25rem;
+  color: var(--pos-negro);
+  text-align: center;
+  line-height: 1.35;
+  overflow-wrap: anywhere;   /* nombres largos no rompen el modal */
+}
+.pos-resultado-reparto[hidden] { display: none; }
+/* Franja ochentera bajo el total (solo adorno: no es ningún tipo de pago) */
+.pos-resultado-reparto::before {
+  content: "";
+  display: block;
+  height: 14px;
+  margin-bottom: 0.9rem;
+  border: 3px solid var(--pos-negro);
+  background: linear-gradient(90deg,
+    var(--pos-rosa) 0 20%, var(--pos-naranja) 20% 40%, var(--pos-amarillo) 40% 60%,
+    var(--pos-cyan) 60% 80%, var(--pos-morado) 80% 100%);
+}
+/* Sin depender del reset de Tailwind: el espacio entre bloques lo pone esto */
+.pos-resultado-reparto > * { margin: 0; }
+.pos-resultado-reparto > * + * { margin-top: 0.75rem; }
+
+/* Letreros: "¿Cómo acomodo el dinero?" y "De la caja de …", mismo tamaño */
+.pos-resultado-reparto__titulo,
+.pos-resultado-reparto__leyenda {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0.3rem 1rem;
+  border: 3px solid var(--pos-negro);
+  box-shadow: var(--pos-sombra-sm);
+  color: var(--pos-blanco);
+  font-size: 1.2rem;
+  font-weight: var(--pos-font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+  transform: rotate(-1deg);
+  /* Brillan como los botones de redes del footer: destello que cruza + resplandor que late */
+  position: relative;
+  overflow: hidden;
+  animation: pos-letrero-pulso 2.5s ease-in-out infinite;
+}
+.pos-resultado-reparto__titulo::after,
+.pos-resultado-reparto__leyenda::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.45) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: pos-letrero-brillo 2s linear infinite;
+  pointer-events: none;
+}
+.pos-resultado-reparto__titulo  { background: var(--pos-morado); --pos-brillo: rgba(131, 56, 236, 0.7); }
+.pos-resultado-reparto__leyenda { background: var(--pos-negro);  --pos-brillo: rgba(255, 190, 11, 0.8); }
+@keyframes pos-letrero-brillo {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes pos-letrero-pulso {
+  0%, 100% { box-shadow: var(--pos-sombra-sm), 0 0 0 0 transparent; }
+  50%      { box-shadow: var(--pos-sombra-sm), 0 0 12px 4px var(--pos-brillo); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pos-resultado-reparto__titulo,
+  .pos-resultado-reparto__leyenda,
+  .pos-resultado-reparto__titulo::after,
+  .pos-resultado-reparto__leyenda::after { animation: none; }
+}
+.pos-resultado-reparto > .pos-resultado-reparto__leyenda { margin-top: 1.1rem; }
+.pos-resultado-reparto__leyenda .pos-resultado-reparto__duena {
+  color: var(--pos-negro);
+  text-transform: none;
+}
+
+.pos-resultado-reparto__principal {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Nombre de la dueña: resaltado tipo marcatextos */
+.pos-resultado-reparto__duena {
+  font-weight: var(--pos-font-bold);
+  background: var(--pos-amarillo);
+  padding: 0 0.25rem;
+  border: 2px solid var(--pos-negro);
+  -webkit-box-decoration-break: clone;
+          box-decoration-break: clone;
+}
+
+.pos-resultado-reparto__monto {
+  font-family: 'Courier New', monospace;
+  font-weight: var(--pos-font-bold);
+  font-size: 1.1em;
+  white-space: nowrap;
+}
+
+/* Cards: [Recibí en efectivo] [Tarjeta] a lo ancho; las de cada dueña con
+   tamaño fijo, centradas, y bajan de renglón si no caben (las que sean) */
+.pos-resultado-reparto__pagos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.6rem;
+}
+.pos-resultado-reparto__cajas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.pos-resultado-reparto__pago,
+.pos-resultado-reparto__caja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.6rem 0.5rem;
+  border: 3px solid var(--pos-negro);
+  box-shadow: var(--pos-sombra-sm);
+  background: var(--pos-blanco);
+}
+.pos-resultado-reparto__pago--efectivo { background: #DCFCE7; }   /* verde tenue: efectivo */
+.pos-resultado-reparto__pago--tarjeta  { background: #CFF5FF; }   /* azul tenue: tarjeta */
+/* Efectivo que se le pone a cada dueña: verde lima (sigue siendo efectivo) */
+.pos-resultado-reparto__caja {
+  flex: 0 1 12.5rem;
+  min-width: 0;
+  padding-top: 0;   /* la franja de la dueña va pegada arriba */
+  background: var(--pos-card-1);
+}
+/* Franja con el color de la dueña (reparto.js pone --pos-franja en cada card) */
+.pos-resultado-reparto__caja::before {
+  content: "";
+  align-self: stretch;
+  height: 14px;
+  margin: 0 -0.5rem 0.45rem;
+  background: var(--pos-franja, var(--pos-negro));
+  border-bottom: 3px solid var(--pos-negro);
+}
+.pos-resultado-reparto__caja .pos-resultado-reparto__duena { background: var(--pos-blanco); }
+
+.pos-resultado-reparto__texto {
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.pos-resultado-reparto__cifra {
+  font-family: 'Courier New', monospace;
+  font-weight: var(--pos-font-bold);
+  font-size: 1.6rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.pos-resultado-reparto__pago--efectivo .pos-resultado-reparto__cifra,
+.pos-resultado-reparto__caja .pos-resultado-reparto__cifra { color: var(--pos-verde); }
+.pos-resultado-reparto__pago--tarjeta .pos-resultado-reparto__cifra { color: var(--pos-azul); }
+
+/* La feria es de $290.00. Tómala de la caja de Anais */
+.pos-resultado-reparto__feria {
+  padding: 0.45rem 0.6rem;
+  border: 3px solid var(--pos-negro);
+  box-shadow: var(--pos-sombra-sm);
+  background: var(--pos-amarillo);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.pos-resultado-reparto__feria .pos-resultado-reparto__duena { background: var(--pos-blanco); }
+
+.pos-resultado-reparto__aviso {
+  padding: 0.4rem 0.5rem;
+  border: 2px solid var(--pos-negro);
+  background: var(--pos-amarillo);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* ⚠ Anais le debe $50.00 a Yare — lo que no alcanzó en efectivo */
+.pos-resultado-reparto__deudas {
+  padding: 0.4rem 0.5rem;
+  border: 3px solid var(--pos-negro);
+  border-left-width: 8px;
+  background: var(--pos-card-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+}
+.pos-resultado-reparto__deudas > * { margin: 0; }
+.pos-resultado-reparto__deuda {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.pos-resultado-reparto__deuda .pos-resultado-reparto__monto { color: #B00020; }
+.pos-resultado-reparto__deudas-nota {
+  font-size: 0.75rem;
+  font-style: italic;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Con el reparto visible el modal crece: en pantallas bajas se deja hacer
+   scroll dentro del modal en vez de cortarse arriba y abajo. Solo aplica
+   cuando el reparto se muestra, así el modal queda igual que antes sin él. */
+#modal-resultado .pos-modal-content:has(> .pos-resultado-reparto:not([hidden])) {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+@media (max-height: 700px) {
+  .pos-resultado-field--total .pos-resultado-valor { font-size: 1.9rem; }
+  .pos-resultado-reparto              { margin-top: 0.5rem; }
+  .pos-resultado-reparto::before      { height: 10px; margin-bottom: 0.5rem; }
+  .pos-resultado-reparto > * + *      { margin-top: 0.45rem; }
+  .pos-resultado-reparto__titulo,
+  .pos-resultado-reparto__leyenda     { font-size: 1.05rem; padding: 0.2rem 0.8rem; }
+  .pos-resultado-reparto__pago        { padding: 0.35rem 0.4rem; }
+  .pos-resultado-reparto__caja        { padding: 0 0.4rem 0.35rem; }
+  .pos-resultado-reparto__caja::before { height: 10px; margin: 0 -0.4rem 0.3rem; }
+  .pos-resultado-reparto__cifra       { font-size: 1.3rem; }
+  .pos-resultado-reparto__feria       { padding: 0.3rem 0.5rem; font-size: 0.95rem; }
+  .pos-resultado-reparto__deuda       { font-size: 0.95rem; line-height: 1.45; }
+  .pos-resultado-resumen .pos-resultado-valor { font-size: 1.4rem; }
+}
+
+/* Pantallas angostas: que nada fuerce scroll lateral */
+@media (max-width: 480px) {
+  .pos-resultado-reparto__pagos { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+  .pos-resultado-reparto__caja  { flex-basis: 9rem; }
+  .pos-resultado-reparto__titulo,
+  .pos-resultado-reparto__leyenda { font-size: 1rem; }
+  .pos-resultado-reparto__feria,
+  .pos-resultado-reparto__deuda { font-size: 0.9rem; }
+}

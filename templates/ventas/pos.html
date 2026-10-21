@@ -256,6 +256,9 @@
                 class="pos-pago-input">
         </div>
 
+        {# En qué Clip se cobra la tarjeta — lo llena static/js/pos/ui.js #}
+        <p id="pago-clip" class="pos-pago-clip" hidden></p>
+
         <!-- Mensaje dinámico en vivo -->
         <div id="pago-info" class="pos-pago-info"></div>
 
@@ -288,20 +291,26 @@
 
         <h2 class="pos-modal-titulo">✅ Venta realizada</h2>
 
-        <div class="pos-resultado-field">
-            <p class="pos-resultado-label">Total de la venta:</p>
+        <div class="pos-resultado-field pos-resultado-field--total">
+            <p class="pos-resultado-label">Total de la cuenta</p>
             <p class="pos-resultado-valor pos-resultado-valor--total">$<span id="resultado-total-venta">0.00</span></p>
         </div>
 
-        <div class="pos-resultado-field">
-            <p class="pos-resultado-label">Monto recibido:</p>
-            <p class="pos-resultado-valor pos-resultado-valor--recibido">$<span id="resultado-recibido">0.00</span></p>
+        {# Respaldo: si no se pinta "¿Cómo acomodo el dinero?", ui.js deja esto visible #}
+        <div id="resultado-recibido-cambio" class="pos-resultado-resumen">
+            <div class="pos-resultado-field">
+                <p class="pos-resultado-label">Monto recibido:</p>
+                <p class="pos-resultado-valor pos-resultado-valor--recibido">$<span id="resultado-recibido">0.00</span></p>
+            </div>
+
+            <div class="pos-resultado-field">
+                <p class="pos-resultado-label">Cambio:</p>
+                <p class="pos-resultado-valor pos-resultado-valor--cambio">$<span id="resultado-cambio">0.00</span></p>
+            </div>
         </div>
 
-        <div class="pos-resultado-field">
-            <p class="pos-resultado-label">Cambio:</p>
-            <p class="pos-resultado-valor pos-resultado-valor--cambio">$<span id="resultado-cambio">0.00</span></p>
-        </div>
+        {# ¿Cómo acomodo el dinero? — lo llena static/js/pos/reparto.js #}
+        <div id="resultado-reparto" class="pos-resultado-reparto" hidden></div>
 
         <div id="resultado-impresion" class="pos-resultado-impresion"></div>
 

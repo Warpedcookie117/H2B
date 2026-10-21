@@ -282,12 +282,14 @@ def productos_regalo_view(request, promo_id):
             productos_qs = productos_qs.filter(id__in=ids)
 
     if sucursal_id:
-        productos_qs = productos_qs.annotate(
-            stock_piso=Coalesce(
+        # Piso y bodega: al cobrar, el regalo también puede salir de bodega
+        # (InventarioService.salida_inteligente). El POS bloquea los que no tienen nada.
+        def _stock(tipo):
+            return Coalesce(
                 Sum(
                     Case(
                         When(
-                            inventarios__ubicacion__tipo="piso",
+                            inventarios__ubicacion__tipo=tipo,
                             inventarios__ubicacion__sucursal_id=sucursal_id,
                             then="inventarios__cantidad_actual",
                         ),
@@ -296,7 +298,7 @@ def productos_regalo_view(request, promo_id):
                 ),
                 0,
             )
-        )
+        productos_qs = productos_qs.annotate(stock_piso=_stock("piso"), stock_bodega=_stock("bodega"))
 
     result = []
     for p in productos_qs.order_by("nombre"):
@@ -309,6 +311,7 @@ def productos_regalo_view(request, promo_id):
             "id":        p.id,
             "nombre":    p.nombre,
             "stock":     getattr(p, "stock_piso", None),
+            "stock_bodega": getattr(p, "stock_bodega", None),
             "atributos": atributos,
         })
 

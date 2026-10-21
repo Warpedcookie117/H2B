@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from inventario.models import Inventario, Producto, Ubicacion
-from sucursales.models import Sucursal
+from sucursales.models import Caja, Sucursal
 from tienda_temp.models import Empleado
 from ventas.models import IdempotencyKey, Oferta, Promocion
 from ventas.services.pos_service import POSService
@@ -273,7 +273,37 @@ def procesar_venta(request):
             venta = resultado["venta"]
             ticket_texto = resultado["ticket_texto"]
 
-            return respond({
+            # A qué cajón va el efectivo (modal del POS). La venta YA está guardada:
+            # cualquier falla aquí solo omite la llave — nunca debe convertir un cobro
+            # exitoso en error (la cajera reintentaría y se duplicaría la venta).
+            # Import perezoso dentro del try: si el módulo no carga, el POS sigue cobrando.
+            reparto = None
+            try:
+                from ventas.services.reparto import reparto_efectivo_venta
+                reparto = reparto_efectivo_venta(venta.pk)
+                # idem_obj.commit guarda en un JSONField sin encoder: un Decimal
+                # (o un NaN, que PostgreSQL rechaza) tronaría allá, ya fuera de este try.
+                json.dumps(reparto, allow_nan=False)
+            except Exception:
+                logger.exception("reparto_efectivo_venta falló venta=%s", venta.pk)
+                reparto = None
+
+            # Lo que quedó de lo vendido, para que el POS actualice esas cards
+            # aunque el websocket no llegue (Redis caído). Valores absolutos, igual
+            # que el WS: si llegan los dos no se descuenta doble. Opcional, como
+            # el reparto: si falla se omite y el cobro sigue "ok".
+            stock = None
+            try:
+                ids = {int(i["producto_id"]) for i in carrito_real
+                       if not i["es_servicio"] and i["producto_id"]}
+                stock = _stock_por_producto(sucursal_id, ids)
+                if stock is not None:
+                    stock = {str(pid): s for pid, s in stock.items()}
+            except Exception:
+                logger.exception("stock tras la venta falló venta=%s", venta.pk)
+                stock = None
+
+            payload = {
                 "status": "ok",
                 "venta_id": venta.id,
                 "total_venta": float(venta.total),
@@ -286,7 +316,12 @@ def procesar_venta(request):
                 "url_pdf": reverse("ventas:ticket_venta_pdf", args=[venta.id]),
                 "url_termico": reverse("ventas:ticket_venta_termico", args=[venta.id]),
                 "ticket_texto": ticket_texto,
-            })
+            }
+            if reparto is not None:
+                payload["reparto_efectivo"] = reparto
+            if stock is not None:
+                payload["stock"] = stock
+            return respond(payload)
 
         except ValueError as e:
             return respond({"status": "error", "message": str(e)}, status=400)
@@ -297,6 +332,32 @@ def procesar_venta(request):
 
     finally:
         cache.delete(lock_key)
+
+
+@login_required
+@require_POST
+def clip_de_la_venta(request):
+    """
+    Aviso del modal de cobro: en qué Clip se cobra la tarjeta de este
+    carrito (el de la dueña que más vende en la cuenta). Solo lee.
+    """
+    empleado = request.user.empleado
+    if empleado.rol not in ["cajero", "dueno", "dueño"]:
+        return JsonResponse({"status": "error", "message": "No tienes permiso"}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        carrito = data.get("carrito") or []
+        caja_id = request.session.get("caja_actual")
+        caja = (Caja.objects.select_related("sucursal__dueño_servicios__user")
+                .filter(id=caja_id).first()) if caja_id else None
+        from ventas.services.reparto import clip_de_carrito
+        clip = clip_de_carrito(carrito, caja)
+    except Exception:
+        logger.exception("clip_de_la_venta falló")
+        return JsonResponse({"status": "error", "message": "No se pudo calcular el Clip."}, status=400)
+
+    return JsonResponse({"status": "ok", "clip": clip})
 
 
 @login_required
@@ -345,6 +406,15 @@ def stock_productos(request):
     if not sucursal_id:
         return JsonResponse({"error": "Sin sucursal"}, status=400)
 
+    return JsonResponse(_stock_por_producto(sucursal_id) or {})
+
+
+def _stock_por_producto(sucursal_id, producto_ids=None):
+    """
+    {producto_id: {"piso": n, "bodega": n}} en la sucursal; solo los
+    producto_ids si se pasan (los que no tienen registro salen en 0).
+    None si la sucursal no tiene piso.
+    """
     ubs = {
         ub["tipo"]: ub["id"]
         for ub in Ubicacion.objects.filter(
@@ -355,13 +425,15 @@ def stock_productos(request):
     bodega_id = ubs.get("bodega")
 
     if not piso_id:
-        return JsonResponse({})
+        return None
 
     ub_ids = [x for x in [piso_id, bodega_id] if x]
+    invs = Inventario.objects.filter(ubicacion_id__in=ub_ids)
     data = {}
-    for inv in Inventario.objects.filter(ubicacion_id__in=ub_ids).values(
-        "producto_id", "ubicacion_id", "cantidad_actual"
-    ):
+    if producto_ids is not None:
+        invs = invs.filter(producto_id__in=producto_ids)
+        data = {pid: {"piso": 0, "bodega": 0} for pid in producto_ids}
+    for inv in invs.values("producto_id", "ubicacion_id", "cantidad_actual"):
         pid = inv["producto_id"]
         if pid not in data:
             data[pid] = {"piso": 0, "bodega": 0}
@@ -370,7 +442,7 @@ def stock_productos(request):
         elif inv["ubicacion_id"] == bodega_id:
             data[pid]["bodega"] = inv["cantidad_actual"]
 
-    return JsonResponse(data)
+    return data
 
 
 @login_required

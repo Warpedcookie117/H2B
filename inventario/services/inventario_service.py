@@ -183,10 +183,17 @@ class InventarioService:
     @staticmethod
     def aplicar_ajuste(solicitud, empleado_responsable):
         with transaction.atomic():
-            inv = Inventario.objects.select_for_update().get(
+            inv = Inventario.objects.select_for_update().filter(
                 producto=solicitud.producto,
                 ubicacion=solicitud.ubicacion
-            )
+            ).first()
+
+            # El inventario se pudo eliminar de esa ubicación después de crear la solicitud
+            if not inv:
+                raise ValidationError(
+                    "El inventario de este producto en esta ubicación ya fue eliminado. "
+                    "La solicitud no se puede aprobar, solo rechazar."
+                )
 
             cantidad_actual = inv.cantidad_actual
             nueva_cantidad = solicitud.cantidad

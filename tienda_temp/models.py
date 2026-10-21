@@ -31,6 +31,11 @@ class Empleado(PerfilBase):
     rol = models.CharField(max_length=50, choices=ROL_CHOICES)
     contacto_emergencia = models.CharField(max_length=100)
     descripcion_contacto_emergencia = models.TextField(max_length=100)
+    prioridad_cambio = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="Desempate para dar el cambio cuando dos dueñas venden lo mismo en una cuenta. "
+                  "1 = primero. Vacío = después de las que tienen número, por orden alfabético.",
+    )
 
     def __str__(self):
         return f"{self.user.username} ({self.rol})"

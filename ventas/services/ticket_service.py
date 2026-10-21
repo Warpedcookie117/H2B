@@ -157,79 +157,136 @@ def generar_texto_ticket(obj):
     # TICKET DE CORTE DE CAJA
     # ============================================================
     if isinstance(obj, CorteCaja):
+        # Import local: pos_service importa este módulo; así no hay ciclos.
+        from ventas.services.reparto import desglose_y_deudas, totales_caja, ventas_para_desglose
+
         corte = obj
 
         total_general = float(corte.total_general)
 
-        resumen_duenos = {}
+        # Mismo desglose que la vista web del corte (reparto.py): montos ya
+        # con descuento, regalos fuera y servicios dentro de la fila de la
+        # responsable de servicios. Σ filas == totales de la caja, exacto.
+        # Una sola pasada: el queryset de ventas_para_desglose se consume al iterar.
+        # Las deudas entre duenas NO van en el corte (son sensibles: solo en
+        # el dashboard de cada duena); se descarta el segundo valor.
+        filas_duenos, _ = desglose_y_deudas(ventas_para_desglose(corte.ventas.all()))
+        tot = totales_caja(corte.ventas.all())
+        total_efectivo_caja = tot["efectivo"]
+        total_tarjeta_caja = tot["tarjeta"]
 
-        for v in corte.ventas.all():
-            for item in v.detalles.all():
-                snap = item.atributos_snapshot or {}
-                # Regalos en $0 no cuentan para ingresos de nadie
-                if snap.get("tipo") == "regalo":
-                    continue
-
-                if item.producto and item.producto.dueño:
-                    u = item.producto.dueño.user
-                    nombre_dueno = u.first_name or u.username
-                elif snap.get("tipo") == "servicio":
-                    nombre_dueno = "Servicios"
-                else:
-                    nombre_dueno = item.nombre_snapshot or "SIN DUEÑO"
-
-                subtotal = float(item.subtotal)
-
-                if nombre_dueno not in resumen_duenos:
-                    resumen_duenos[nombre_dueno] = {"total": 0.0, "efectivo": 0.0, "tarjeta": 0.0}
-
-                resumen_duenos[nombre_dueno]["total"] += subtotal
-
-                if v.metodo_pago == "efectivo":
-                    resumen_duenos[nombre_dueno]["efectivo"] += subtotal
-                elif v.metodo_pago == "tarjeta":
-                    resumen_duenos[nombre_dueno]["tarjeta"] += subtotal
-                elif v.metodo_pago == "mixto":
-                    total_venta = float(v.total)
-                    if total_venta > 0:
-                        proporcion = subtotal / total_venta
-                        efectivo_neto = float(v.pagado_efectivo) - float(v.cambio)
-                        resumen_duenos[nombre_dueno]["efectivo"] += proporcion * efectivo_neto
-                        resumen_duenos[nombre_dueno]["tarjeta"]  += proporcion * float(v.pagado_tarjeta)
-
-        for d in resumen_duenos.values():
-            d["total"]    = round(d["total"],    2)
-            d["efectivo"] = round(d["efectivo"], 2)
-            d["tarjeta"]  = round(d["tarjeta"],  2)
-
-        total_efectivo_caja = round(sum(float(v.pagado_efectivo) - float(v.cambio) for v in corte.ventas.all()), 2)
-        total_tarjeta_caja  = round(sum(float(v.pagado_tarjeta) for v in corte.ventas.all()), 2)
+        # La caja pudo haberse borrado (FK SET_NULL): queda el snapshot.
+        nombre_caja = corte.caja.nombre if corte.caja else (corte.caja_nombre or "Caja eliminada")
 
         lineas.append(_c(cfg.nombre_empresa))
         lineas.append(_c("CORTE CAJA"))
         lineas.append(_c(f"Fecha: {timezone.localtime(corte.fecha).strftime('%d/%m/%Y %H:%M')}"))
-        lineas.append(_c(f"Caja: {corte.caja.nombre}"))
+        lineas.append(_c(f"Caja: {nombre_caja}"))
         lineas.append(_sep())
-        lineas.append(_c(f"TOTAL EN CAJA TARJETA + EFECTIVO: ${total_general:.2f}"))
+        # En una sola línea no cabía en ANCHO (se cortaba en la térmica).
+        lineas.append(_c("TOTAL EN CAJA"))
+        lineas.append(_c("TARJETA + EFECTIVO"))
+        lineas.append(_c(f"${total_general:.2f}"))
         lineas.append(_sep())
         lineas.append(_c("VENTAS POR DUENO"))
         lineas.append(_sep())
-        for dueno, data in resumen_duenos.items():
-            lineas.append(f"  {dueno}")
-            lineas.append(f"  Total vendido: ${data['total']:.2f}")
-            if dueno != "Servicios":
-                lineas.append(f"  Efectivo:      ${data['efectivo']:.2f}")
-                lineas.append(f"  Tarjeta:       ${data['tarjeta']:.2f}")
+
+        def renglon(etiqueta, monto):
+            """'etiqueta ..... $monto' a ANCHO; si no cabe, el monto baja a la derecha."""
+            precio = f"${monto:.2f}"
+            if len(etiqueta) + 1 + len(precio) <= ANCHO:
+                return [etiqueta + precio.rjust(ANCHO - len(etiqueta))]
+            return [etiqueta[:ANCHO], precio.rjust(ANCHO)]
+
+        def renglon_concepto(c):
+            """'  - Concepto x14   $860.00' en UNA línea: se recorta el concepto, no el monto."""
+            sufijo = f" x{c['cantidad']}"
+            cabe = ANCHO - len("  - ") - len(sufijo) - 1 - len(f"${c['total']:.2f}")
+            concepto = c["concepto"]
+            if len(concepto) > cabe:
+                concepto = concepto[:max(cabe - 1, 0)].rstrip() + "."
+            return renglon(f"  - {concepto}{sufijo}", c["total"])
+
+        aviso_sin_duena = "  (sin duena: avisar)"
+
+        for fila in filas_duenos:
+            lineas.append(f"  {fila['nombre']}"[:ANCHO])
+            if fila["especial"]:
+                lineas.append(aviso_sin_duena)
+            # Vendio = lo que le toca (ya con descuento); caja/Clip = donde
+            # quedo el dinero. La que mas vendio en cada cuenta cobra TODA la
+            # tarjeta en SU Clip (reparto.py). Lo que se deben entre ellas no
+            # se imprime aqui: solo sale en el dashboard de cada duena.
+            lineas += renglon("  Vendio:", fila["total"])
+            if fila["especial"]:
+                lineas += renglon("  Efectivo:", fila["efectivo"])
+                lineas += renglon("  Tarjeta:", fila["tarjeta"])
+            else:
+                lineas += renglon("  En su caja:", fila["efectivo"])
+                lineas += renglon("  En su Clip:", fila["tarjeta"])
+            serv = fila["servicios"]
+            if serv:
+                # Servicios (incl. "Prod. sin registro"): siempre de la
+                # responsable de servicios, dentro de SU bloque.
+                lineas.append(_sep_punteado().rstrip())
+                if not fila["especial"]:
+                    lineas += renglon("  Sus productos:", fila["productos"])
+                # Cobro rápido aparte de los servicios de verdad (por concepto).
+                sr = serv["sin_registro"]
+                if sr:
+                    lineas += renglon(f"  Sin registro x{sr['cantidad']}:", sr["total"])
+                if serv["solo_servicios"]:
+                    lineas += renglon("  Servicios:", serv["solo_servicios_total"])
+                    for c in serv["solo_servicios"]:
+                        lineas += renglon_concepto(c)
+                lineas += renglon("  Total agregado:", serv["total"])
             lineas.append(_sep("-"))
         lineas.append(_sep())
         lineas.append(_c("DETALLE DEL CORTE"))
         lineas.append(_sep())
-        lineas.append(f"TOTAL EFECTIVO EN CAJA: ${total_efectivo_caja:.1f}")
-        lineas.append(f"TOTAL TARJETA EN CAJA:  ${total_tarjeta_caja:.1f}")
+        # Etiqueta + monto no caben en ANCHO: el monto va abajo, a la derecha.
+        lineas.append("TOTAL EFECTIVO EN CAJA:")
+        lineas.append(f"${total_efectivo_caja:.2f}".rjust(ANCHO))
+        lineas.append("TOTAL TARJETA EN CAJA:")
+        lineas.append(f"${total_tarjeta_caja:.2f}".rjust(ANCHO))
         lineas.append(_sep())
-        lineas.append(_c(f"EN {corte.caja.nombre.upper()} DEBE HABER"))
-        lineas.append(_c(f"${total_efectivo_caja:.2f} EN EFECTIVO"))
+
+        # Efectivo por cajón físico de cada dueña (ya no "EN CAJA X DEBE
+        # HABER": tras repartir cada venta, el efectivo no está todo en el
+        # cajón de esta computadora). Σ líneas == total_efectivo exacto
+        # (reparto.py); solo se omiten las filas con efectivo 0.
+        lineas.append(_c("DEBE HABER EN EFECTIVO"))
+        lineas.append(_c("POR CAJON:"))
+        cajones = [f for f in filas_duenos if not f["especial"] and f["efectivo"] != 0]
+        sin_cajon = [f for f in filas_duenos if f["especial"] and f["efectivo"] != 0]
+        for fila in cajones:
+            lineas += renglon(f"Cajon {fila['nombre']}", fila["efectivo"])
+            if fila["servicios"]:
+                lineas.append("  (incluye servicios)")
+        for fila in sin_cajon:
+            lineas += renglon(fila["nombre"], fila["efectivo"])
+            lineas.append(aviso_sin_duena)
+        if not cajones and not sin_cajon:
+            lineas.append(_c("(sin efectivo)"))
+        lineas.append(_sep_punteado().rstrip())
+        lineas += renglon("TOTAL", total_efectivo_caja)
         lineas.append(_c("CUENTA BIEN."))
+        lineas.append(_sep())
+
+        # Lo cobrado con tarjeta en la terminal de cada duena. Σ == tarjeta
+        # de la caja exacto; solo se omiten las filas con tarjeta 0.
+        lineas.append(_c("EN LOS CLIPS"))
+        clips = [f for f in filas_duenos if f["tarjeta"] != 0]
+        for fila in clips:
+            if fila["especial"]:
+                lineas += renglon(fila["nombre"], fila["tarjeta"])
+                lineas.append(aviso_sin_duena)
+            else:
+                lineas += renglon(f"Clip {fila['nombre']}", fila["tarjeta"])
+        if not clips:
+            lineas.append(_c("(sin tarjeta)"))
+        lineas.append(_sep_punteado().rstrip())
+        lineas += renglon("TOTAL CLIPS", total_tarjeta_caja)
         lineas.append(_sep())
         lineas.append(_c("GRACIAS POR SU TRABAJO"))
 
