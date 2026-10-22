@@ -300,6 +300,20 @@ def _reparto(venta):
     return filas, empleados
 
 
+def _como_pago(monto, pago_cent):
+    """
+    (efectivo, tarjeta) de `monto` según cómo pagó el cliente esa venta;
+    pago_cent = [efectivo neto, tarjeta] de la venta en centavos. Mayor
+    residuo: efectivo + tarjeta == monto. OJO: NO es dónde quedó el dinero
+    (eso es _repartir_fisico); es el "¿lo pagaron en efectivo o con
+    tarjeta?" que la responsable de servicios ve por concepto en el corte.
+    """
+    if sum(pago_cent) == 0:
+        return CERO, CERO
+    efectivo, tarjeta = _repartir(monto, pago_cent)
+    return efectivo, tarjeta
+
+
 def _pesos(filas, idx):
     """Pesos en centavos de esas filas: su total; si todo es 0, su base."""
     pesos = [_centavos(filas[i]["total"]) for i in idx]
@@ -423,6 +437,8 @@ def desglose_y_deudas(ventas):
         receptora = None
         if any(f["grupo"].cajon_id is not None for f in filas_venta):
             receptora = ("empleado", _orden_receptora(filas_venta, emps)[0])
+        # Cómo pagó el cliente esta venta: para el efectivo/tarjeta por servicio.
+        pago_cent = [_centavos(efectivo_neto(venta)), _centavos(venta.pagado_tarjeta)]
         for f in filas_venta:
             g = f["grupo"]
             fila = acc.get(g.clave)
@@ -452,10 +468,15 @@ def desglose_y_deudas(ventas):
             serv["total"] += f["total"]
             serv["efectivo"] += f["efectivo"]
             serv["tarjeta"] += f["tarjeta"]
-            c = serv["conceptos"].setdefault(f["concepto"], {"concepto": f["concepto"],
-                                                              "cantidad": 0, "total": CERO})
+            c = serv["conceptos"].setdefault(f["concepto"], {
+                "concepto": f["concepto"], "cantidad": 0, "total": CERO,
+                "pago_efectivo": CERO, "pago_tarjeta": CERO,
+            })
             c["cantidad"] += f["cantidad"]
             c["total"] += f["total"]
+            pago_ef, pago_tj = _como_pago(f["total"], pago_cent)
+            c["pago_efectivo"] += pago_ef
+            c["pago_tarjeta"] += pago_tj
 
     filas = list(acc.values())
     for fila in filas:
@@ -472,6 +493,9 @@ def desglose_y_deudas(ventas):
             serv["sin_registro"] = next((c for c in serv["conceptos"] if es_sr(c)), None)
             serv["solo_servicios"] = [c for c in serv["conceptos"] if not es_sr(c)]
             serv["solo_servicios_total"] = sum((c["total"] for c in serv["solo_servicios"]), CERO)
+            # Cómo lo pagaron (no dónde quedó): por concepto y sumado.
+            serv["pago_efectivo"] = sum((c["pago_efectivo"] for c in serv["conceptos"]), CERO)
+            serv["pago_tarjeta"] = sum((c["pago_tarjeta"] for c in serv["conceptos"]), CERO)
 
     _nombres_unicos(filas, empleados)
     filas.sort(key=lambda f: (

@@ -69,10 +69,19 @@
             <span class="font-bold">${{ fila.productos|floatformat:2 }}</span>
           </div>
           {% endif %}
+          {% comment %}
+            Debajo de cada concepto: cómo lo PAGÓ el cliente (pago_efectivo /
+            pago_tarjeta, reparto._como_pago). No es "En su caja / En su Clip"
+            de arriba, que es dónde quedó el dinero.
+          {% endcomment %}
           {% if fila.servicios.sin_registro %}
           <div class="flex justify-between pl-2">
             <span class="font-semibold text-gray-600">🧾 Productos sin registro (x{{ fila.servicios.sin_registro.cantidad }})</span>
             <span class="font-bold">${{ fila.servicios.sin_registro.total|floatformat:2 }}</span>
+          </div>
+          <div class="flex justify-end gap-3 pl-6 text-[11px] font-semibold text-gray-600">
+            <span>Pagó en efectivo ${{ fila.servicios.sin_registro.pago_efectivo|floatformat:2 }}</span>
+            <span>Pagó con tarjeta ${{ fila.servicios.sin_registro.pago_tarjeta|floatformat:2 }}</span>
           </div>
           {% endif %}
           {% if fila.servicios.solo_servicios %}
@@ -85,11 +94,19 @@
             <span class="min-w-0 break-words">· {{ c.concepto }} (x{{ c.cantidad }})</span>
             <span class="font-semibold whitespace-nowrap">${{ c.total|floatformat:2 }}</span>
           </div>
+          <div class="flex justify-end gap-3 pl-6 text-[11px] font-semibold text-gray-600">
+            <span>Pagó en efectivo ${{ c.pago_efectivo|floatformat:2 }}</span>
+            <span>Pagó con tarjeta ${{ c.pago_tarjeta|floatformat:2 }}</span>
+          </div>
           {% endfor %}
           {% endif %}
           <div class="flex justify-between pl-2 font-black border-t border-dotted border-gray-400 pt-0.5">
             <span>Servicios agregados (incl. sin registro)</span>
             <span>${{ fila.servicios.total|floatformat:2 }}</span>
+          </div>
+          <div class="flex justify-end gap-3 pl-6 text-[11px] font-black">
+            <span>Pagó en efectivo ${{ fila.servicios.pago_efectivo|floatformat:2 }}</span>
+            <span>Pagó con tarjeta ${{ fila.servicios.pago_tarjeta|floatformat:2 }}</span>
           </div>
         </div>
         {% endif %}

@@ -174,6 +174,19 @@ class FormatoCorteTestCase(VentasBaseTestCase):
 
 class TicketCorteWebFormatoTest(FormatoCorteTestCase):
 
+    def test_servicios_dicen_como_se_pagaron(self):
+        # Por concepto, cómo PAGÓ el cliente (proporcional a su cuenta). Sin
+        # registro: 60 en una cuenta en efectivo + 45 de la mixta (200 ef /
+        # 115 tj → 28.57 / 16.43). Copias: cuenta toda con tarjeta.
+        corte = self.crear_corte(self.ventas_con_servicios())
+        response, texto = self.pagina(corte)
+        rosa = self.recuadros(texto, response.context["filas_duenos"])["Rosa"]
+        for s in ("Productos sin registro (x14) $105.00 Pagó en efectivo $88.57 Pagó con tarjeta $16.43",
+                  "Copias (x30) $15.00 Pagó en efectivo $0.00 Pagó con tarjeta $15.00",
+                  "Servicios agregados (incl. sin registro) $120.00 "
+                  "Pagó en efectivo $88.57 Pagó con tarjeta $31.43"):
+            self.assertIn(s, rosa)
+
     def test_servicios_dentro_del_recuadro_de_la_responsable(self):
         corte = self.crear_corte(self.ventas_con_servicios())
         response, texto = self.pagina(corte)
@@ -459,6 +472,19 @@ class TicketCorteTermicoFormatoTest(FormatoCorteTestCase):
         self.assertFalse([l for l in bloque_rosa if l.startswith("  - Prod. sin reg")])
         self.assertIn(renglon("  Total agregado:", 120), bloque_rosa)
         self.assertEqual(texto.count("Total agregado"), 1)
+
+        # Debajo de cada concepto y del total, cómo lo pagó el cliente
+        # (mismos montos que test_servicios_dicen_como_se_pagaron de la web).
+        def pago_tras(linea):
+            i = bloque_rosa.index(linea)
+            return bloque_rosa[i + 1:i + 3]
+
+        def pago(efectivo, tarjeta):
+            return [renglon("      Pago efectivo:", efectivo), renglon("      Pago tarjeta:", tarjeta)]
+
+        self.assertEqual(pago_tras(renglon("  Sin registro x14:", 105)), pago(D("88.57"), D("16.43")))
+        self.assertEqual(pago_tras(renglon("  - Copias x30", 15)), pago(0, 15))
+        self.assertEqual(pago_tras(renglon("  Total agregado:", 120)), pago(D("88.57"), D("31.43")))
 
         # DETALLE DEL CORTE con 2 decimales.
         i = lineas.index("TOTAL EFECTIVO EN CAJA:")

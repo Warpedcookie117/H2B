@@ -484,8 +484,10 @@ class RepartoServiciosEspecialesTest(RepartoTestCase):
         self.assertEqual(rosa["servicios"]["efectivo"], D(130))
         self.assertEqual(rosa["servicios"]["tarjeta"], CERO)
         self.assertEqual(rosa["servicios"]["conceptos"], [
-            {"concepto": "Prod. sin registro", "cantidad": 2, "total": D(100)},
-            {"concepto": "Copias", "cantidad": 1, "total": D(30)},
+            {"concepto": "Prod. sin registro", "cantidad": 2, "total": D(100),
+             "pago_efectivo": D(100), "pago_tarjeta": CERO},
+            {"concepto": "Copias", "cantidad": 1, "total": D(30),
+             "pago_efectivo": D(30), "pago_tarjeta": CERO},
         ])
         anais = desglose_como_dict(filas)["Anais"]
         self.assertEqual(anais["productos"], D(100))
@@ -537,7 +539,8 @@ class RepartoServiciosEspecialesTest(RepartoTestCase):
         self.assertEqual(esp["clave"], ("servicios_sin_responsable",))
         self.assertEqual(esp["productos"], CERO)
         self.assertEqual(esp["servicios"]["total"], D(30))
-        self.assertEqual(esp["servicios"]["conceptos"], [{"concepto": "Copias", "cantidad": 1, "total": D(30)}])
+        self.assertEqual(esp["servicios"]["conceptos"], [{"concepto": "Copias", "cantidad": 1, "total": D(30),
+                                                          "pago_efectivo": D(30), "pago_tarjeta": CERO}])
 
         _, r = self.assert_invariantes(v)
         # v2: hay sin_cajon > 0 (30 de servicios sin responsable) → "varias".
@@ -555,6 +558,26 @@ class RepartoServiciosEspecialesTest(RepartoTestCase):
         self.assertEqual(r["caso"], "sin_duena")
         self.assertIsNone(r["receptora"])
         self.assertEqual((r["queda_receptora"], r["pasar"], r["sin_cajon"]), (0.0, [], 30.0))
+
+    def test_servicios_dicen_como_se_pagaron(self):
+        # Corte con 3 cuentas: una en efectivo, una con tarjeta y una mixta.
+        # Por concepto sale cómo PAGÓ el cliente (proporcional a esa venta),
+        # aunque la tarjeta haya entrado al Clip de otra dueña.
+        efectivo = self.crear_venta([self.servicio("Copias", 30)], efectivo=50)
+        tarjeta = self.crear_venta([self.servicio("Copias", 20), self.renglon(self.prod_anais, 200)],
+                                   tarjeta=220)
+        mixta = self.crear_venta([self.servicio("Vinil", 50), self.renglon(self.prod_anais, 50)],
+                                 efectivo=40, tarjeta=60)
+        serv = desglose_como_dict(self.desglose(efectivo, tarjeta, mixta))["Rosa"]["servicios"]
+        por_concepto = {c["concepto"]: (c["total"], c["pago_efectivo"], c["pago_tarjeta"])
+                        for c in serv["conceptos"]}
+        self.assertEqual(por_concepto, {
+            "Copias": (D(50), D(30), D(20)),   # 30 en efectivo + 20 de la cuenta con tarjeta
+            "Vinil": (D(50), D(20), D(30)),    # la cuenta se pagó 40% efectivo / 60% tarjeta
+        })
+        self.assertEqual((serv["pago_efectivo"], serv["pago_tarjeta"]), (D(50), D(50)))
+        for c in serv["conceptos"]:
+            self.assertEqual(c["pago_efectivo"] + c["pago_tarjeta"], c["total"])
 
     def test_servicio_de_venta_sin_caja(self):
         v = self.crear_venta([self.servicio("Copias", 30)], efectivo=30)

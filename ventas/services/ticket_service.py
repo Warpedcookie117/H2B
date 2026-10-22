@@ -207,6 +207,14 @@ def generar_texto_ticket(obj):
                 concepto = concepto[:max(cabe - 1, 0)].rstrip() + "."
             return renglon(f"  - {concepto}{sufijo}", c["total"])
 
+        def renglones_pago(c):
+            """
+            Cómo lo pagó el cliente (no dónde quedó). "Pago ..." y no
+            "Efectivo:"/"Tarjeta:", que son las líneas de las filas especiales.
+            """
+            return (renglon("      Pago efectivo:", c["pago_efectivo"])
+                    + renglon("      Pago tarjeta:", c["pago_tarjeta"]))
+
         aviso_sin_duena = "  (sin duena: avisar)"
 
         for fila in filas_duenos:
@@ -235,11 +243,14 @@ def generar_texto_ticket(obj):
                 sr = serv["sin_registro"]
                 if sr:
                     lineas += renglon(f"  Sin registro x{sr['cantidad']}:", sr["total"])
+                    lineas += renglones_pago(sr)
                 if serv["solo_servicios"]:
                     lineas += renglon("  Servicios:", serv["solo_servicios_total"])
                     for c in serv["solo_servicios"]:
                         lineas += renglon_concepto(c)
+                        lineas += renglones_pago(c)
                 lineas += renglon("  Total agregado:", serv["total"])
+                lineas += renglones_pago(serv)
             lineas.append(_sep("-"))
         lineas.append(_sep())
         lineas.append(_c("DETALLE DEL CORTE"))
