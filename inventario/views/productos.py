@@ -257,13 +257,15 @@ def productos_por_ubicacion(request, ubicacion_id):
     else:
         page_number_raw = request.GET.get("page")
         highlight_raw   = request.GET.get("highlight", "").strip()
-        is_new          = request.GET.get("new") == "1"
         pinned_inv      = None
 
-        # Pin newly registered/variant product to the top of page 1 — only on the
-        # initial redirect (?new=1). The JS clears this param immediately via
-        # replaceState so going-back never shows the pin again.
-        if highlight_raw and is_new and not page_number_raw:
+        # Pin the highlighted product to the top of page 1 when the link doesn't
+        # bring ?page — new/variant redirects (?new=1) and "Ver en ubicación"
+        # (mis productos, dashboard). Sin el pin, si el producto cae en la
+        # página 2+ la card no se renderiza y no hay a dónde hacer scroll.
+        # The JS clears ?highlight/?new immediately via replaceState so
+        # going-back never shows the pin again.
+        if highlight_raw and not page_number_raw:
             try:
                 highlight_id = int(highlight_raw)
                 found = productos.filter(producto_id=highlight_id).first()
