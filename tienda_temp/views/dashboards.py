@@ -446,5 +446,28 @@ def dashboard_dueno(request):
     return render(request, "tienda/dashboard_dueno.html", context)
 
 
+@login_required
 def base_conocimientos(request):
-    return render(request, 'tienda/base_conocimientos.html')
+    # La guía enseña solo lo que el puesto de cada quien le deja hacer. Las
+    # banderas copian las reglas de las vistas (pos_view, puede_transferir,
+    # desactivar_producto, detalle_producto…): si cambia un permiso allá,
+    # hay que cambiarlo aquí también. Superusuario sin perfil = ve todo.
+    empleado = getattr(request.user, "empleado", None)
+    if empleado:
+        rol, rol_nombre = empleado.rol, empleado.get_rol_display()
+    elif request.user.is_superuser:
+        rol, rol_nombre = "dueño", "Administrador"
+    else:
+        rol, rol_nombre = None, ""
+
+    return render(request, 'tienda/base_conocimientos.html', {
+        "rol":              rol,
+        "rol_nombre":       rol_nombre,
+        "nombre":           request.user.first_name or request.user.username,
+        "es_empleado":      rol is not None,
+        "es_dueno":         rol == "dueño",
+        "es_ayudante":      rol == "ayudante",
+        "puede_caja":       rol in ("cajero", "dueño"),
+        "puede_desactivar": rol in ("dueño", "cajero", "almacenista"),
+        "puede_editar":     rol in ("dueño", "cajero"),
+    })

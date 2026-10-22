@@ -8,328 +8,1084 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto px-4 py-10 space-y-12">
+<div class="max-w-6xl mx-auto px-4 py-10 space-y-10">
 
   <!-- ============================================================
-       HEADER
+       HEADER — el sistema te saluda
        ============================================================ -->
-  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#8338EC] p-10 text-center relative overflow-hidden">
+  <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#8338EC] p-8 sm:p-10 text-center relative overflow-hidden">
     <div class="kb-shape-a absolute top-5  left-8   w-14 h-14 bg-[#FFBE0B] opacity-70"></div>
     <div class="kb-shape-b absolute top-6  right-10 w-10 h-10 bg-[#FF006E] opacity-60"></div>
-    <div class="kb-shape-c absolute bottom-4 left-1/3 w-12 h-12 bg-[#00F5D4] rounded-full opacity-50"></div>
+    <div class="kb-shape-c absolute bottom-4 left-8 w-12 h-12 bg-[#00F5D4] rounded-full opacity-50"></div>
     <div class="kb-shape-d absolute bottom-5 right-1/4 w-8  h-8  bg-[#CCFF00] opacity-65"></div>
 
     <div class="relative z-10 space-y-3">
-      <p class="text-white/60 font-black text-xs uppercase tracking-[0.3em]">📚 Aprende el sistema</p>
+      <p class="text-white/60 font-black text-xs uppercase tracking-[0.3em]">Aprende el sistema</p>
       <h1 class="text-3xl sm:text-5xl lg:text-7xl font-black text-white uppercase tracking-tight drop-shadow-[4px_4px_0_rgba(0,0,0,0.5)]">
         Base de Conocimientos
       </h1>
-      <p class="text-white/80 font-bold text-base max-w-2xl mx-auto leading-relaxed">
-        Todo lo que necesitas saber para operar el sistema sin miedo. Tutoriales en video proximamente —
-        por mientras, pásale el cursor a cada card para ver de qué va. 👇
+      {% if es_empleado %}
+      <p class="text-white font-bold text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+        Hola, {{ nombre }}. Soy el sistema.
+        Aquí te enseño todo lo que puedes hacer como <span class="kb-rol-chip">{{ rol_nombre }}</span>, paso por paso.
+        Si algo no te sale, regresa aquí y lo vemos otra vez.
+      </p>
+      {% else %}
+      <p class="text-white font-bold text-base max-w-2xl mx-auto leading-relaxed">
+        Esta guía es para el equipo de la tienda.
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if es_empleado %}
+
+  <!-- ============================================================
+       TICKER — tips cortos, solo los que le sirven a este puesto
+       ============================================================ -->
+  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] overflow-hidden py-2.5">
+    <div class="kb-ticker-track whitespace-nowrap font-black text-xs uppercase tracking-widest text-black">
+      {% for vuelta in "12" %}{# dos vueltas para el loop infinito #}
+      {% if puede_caja %}
+      <span class="px-8">¿12 iguales? Teclea *12, Enter y escanea una vez</span>
+      <span class="px-8">¿Hay fila? Guarda la cuenta en Pendiente y atiende al que sigue</span>
+      {% endif %}
+      {% if es_dueno %}
+      <span class="px-8">Tus ajustes pasan directo. Los de tu equipo te llegan a Solicitudes</span>
+      {% else %}
+      <span class="px-8">Si bajas piezas, le pido permiso al dueño del producto</span>
+      {% endif %}
+      <span class="px-8">Busca por marca o tono en el cuadro azul de cada almacén</span>
+      <span class="px-8">Con la cámara del celular también escaneas códigos</span>
+      <span class="px-8">Desactivar un producto no borra sus ventas</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ============================================================
+       RESUMEN — tu puesto y cuánto te enseño
+       ============================================================ -->
+  <div class="flex flex-wrap gap-4 justify-center">
+    <div class="kb-stat bg-[#3A86FF] px-6 py-3 text-center">
+      <p class="font-black text-white text-2xl sm:text-3xl">{{ rol_nombre }}</p>
+      <p class="font-black text-white/80 text-xs uppercase tracking-widest">Tu puesto</p>
+    </div>
+    <div class="kb-stat bg-[#FF006E] px-6 py-3 text-center">
+      <p id="kb-cuenta-temas" class="font-black text-white text-2xl sm:text-3xl">—</p>
+      <p class="font-black text-white/80 text-xs uppercase tracking-widest">Cosas que te enseño</p>
+    </div>
+    <div class="kb-stat bg-[#CCFF00] px-6 py-3 text-center">
+      <p id="kb-cuenta-demos" class="font-black text-black text-2xl sm:text-3xl">—</p>
+      <p class="font-black text-black/70 text-xs uppercase tracking-widest">En cámara lenta</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       CÓMO USAR ESTA GUÍA + BUSCADOR
+       ============================================================ -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white">
+    <div class="bg-black px-5 py-3">
+      <h2 class="font-black text-[#CCFF00] uppercase tracking-widest text-sm">¿Cómo le hago aquí?</h2>
+    </div>
+    <div class="p-5 space-y-4">
+      <ol class="kb-como">
+        <li>Escribe abajo lo que quieres hacer, o baja y escoge una tarjeta.</li>
+        <li>Pícale a <b>Enséñame</b> y te digo los pasos.</li>
+        <li>Si la tarjeta trae <b>Cámara lenta</b>, pícale y te lo enseño en una pantalla de ejemplo, despacito. Puedes pausarla y avanzar tú. Nada de lo que pasa ahí cambia la tienda.</li>
+      </ol>
+      <label for="kb-buscar" class="block text-xs font-black uppercase tracking-widest text-black">¿Qué quieres hacer?</label>
+      <input id="kb-buscar" type="search" autocomplete="off"
+             placeholder="Ej: cobrar, corregir piezas, etiqueta, corte..."
+             style="font-size:16px;"
+             class="w-full border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-3 font-bold text-black outline-none">
+      <p id="kb-sin-resultados" class="font-black text-sm text-black bg-[#FFBE0B] border-4 border-black px-4 py-3" hidden>
+        No encontré nada con eso. Prueba con otra palabra, por ejemplo "cobrar" o "piezas".
       </p>
     </div>
   </div>
 
   <!-- ============================================================
-       TICKER — banda animada con tips
+       LO BÁSICO — todos
        ============================================================ -->
-  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] overflow-hidden py-2.5">
-    <div class="kb-ticker-track whitespace-nowrap font-black text-xs uppercase tracking-widest text-black">
-      <!-- duplicado para loop infinito -->
-      <span class="px-8">⚡ Tip: Escanea el código de barras con la cámara de tu celular desde inventario</span>
-      <span class="px-8">📦 Los ajustes negativos requieren aprobación del dueño</span>
-      <span class="px-8">⇄ Puedes transferir varios productos a la vez con "Transferencia múltiple"</span>
-      <span class="px-8">🏷️ Los atributos se configuran por subcategoría, no por producto</span>
-      <span class="px-8">💡 Pasa el cursor sobre las cards para ver más detalles</span>
-      <span class="px-8">🚫 Desactivar un producto no elimina su historial de ventas</span>
-      <span class="px-8">⚡ Tip: Escanea el código de barras con la cámara de tu celular desde inventario</span>
-      <span class="px-8">📦 Los ajustes negativos requieren aprobación del dueño</span>
-      <span class="px-8">⇄ Puedes transferir varios productos a la vez con "Transferencia múltiple"</span>
-      <span class="px-8">🏷️ Los atributos se configuran por subcategoría, no por producto</span>
-      <span class="px-8">💡 Pasa el cursor sobre las cards para ver más detalles</span>
-      <span class="px-8">🚫 Desactivar un producto no elimina su historial de ventas</span>
+  <section class="space-y-5" data-seccion>
+    <div>
+      <p class="kb-section-label" style="background:#3A86FF; color:white;">Lo básico</p>
+      <p class="kb-seccion-voz">Empieza por aquí si eres nuevo.</p>
     </div>
-  </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-  <!-- ============================================================
-       STATS
-       ============================================================ -->
-  <div class="flex flex-wrap gap-4 justify-center">
-    <div class="kb-stat bg-[#3A86FF] px-6 py-3 text-center">
-      <p class="font-black text-white text-3xl">9</p>
-      <p class="font-black text-white/80 text-xs uppercase tracking-widest">Tutoriales</p>
-    </div>
-    <div class="kb-stat bg-[#FF006E] px-6 py-3 text-center">
-      <p class="font-black text-white text-3xl">3</p>
-      <p class="font-black text-white/80 text-xs uppercase tracking-widest">Secciones</p>
-    </div>
-    <div class="kb-stat bg-[#06D6A0] px-6 py-3 text-center">
-      <p class="font-black text-black text-3xl">∞</p>
-      <p class="font-black text-black/70 text-xs uppercase tracking-widest">Dudas resueltas</p>
-    </div>
-    <div class="kb-stat bg-[#CCFF00] px-6 py-3 text-center">
-      <p class="font-black text-black text-3xl">🎬</p>
-      <p class="font-black text-black/70 text-xs uppercase tracking-widest">Videos próximamente</p>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       SECCIÓN: INVENTARIO
-       ============================================================ -->
-  <div class="space-y-5">
-    <p class="kb-section-label" style="background:#3A86FF; color:white;">📦 Inventario</p>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-      <!-- Crear ubicación -->
-      <div class="kb-card">
+      <article class="kb-card" data-buscar="menu moverme navegar dashboard inicio perfil contraseña salir cerrar sesion">
         <div class="kb-band" style="background:#3A86FF;">
-          <p class="text-3xl">🏗️</p>
-          <h2 class="font-black text-white text-base uppercase tracking-wide mt-1 leading-tight">
-            Crear una ubicación
-          </h2>
+          <h3 class="kb-titulo text-white">Moverte por el sistema</h3>
         </div>
         <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Las ubicaciones son los "lugares físicos" donde existe el stock: un almacén central,
-            la bodega de una sucursal o el piso de venta. Sin ubicaciones no hay inventario.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
+          <p class="kb-voz">Todo lo que puedes hacer está en el menú de la izquierda y en la barra de arriba. Si te pierdes, empieza por ahí.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
         </div>
-        <ul class="kb-reveal" style="border-color:#3A86FF; background:#EFF6FF;">
-          <li>Diferencia entre almacén, bodega y piso de venta</li>
-          <li>Cómo asignar una ubicación a una sucursal</li>
-          <li>Por qué el piso de venta es lo que ve el POS</li>
-          <li>Cuántas ubicaciones puedes tener por sucursal</li>
-        </ul>
-      </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En la compu el menú está a la izquierda. En el celular, pícale al botón de las tres rayitas para abrirlo.</li>
+            <li>Arriba está <b>Dashboard</b>. Es tu pantalla de inicio: ahí te digo cómo va la tienda.</li>
+            <li>En el menú, <b>Almacenes</b> y <b>Sucursales</b> te llevan a la mercancía de cada lugar.</li>
+            <li>Arriba a la derecha está tu nombre. Ahí cambias tus datos en <b>Configuración</b> y ahí sales del sistema.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> aquí solo te enseño lo que tu puesto puede hacer. Si un compañero tiene otro botón, es porque tiene otro puesto.</p>
+        </div></div>
+      </article>
 
-      <!-- Agregar producto -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#FF006E;">
-          <p class="text-3xl">➕</p>
-          <h2 class="font-black text-white text-base uppercase tracking-wide mt-1 leading-tight">
-            Agregar un producto
-          </h2>
-        </div>
-        <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Aquí nace todo. Le das un nombre, código de barras, precios por menudeo, mayoreo
-            y docena, una foto y lo mandas a una ubicación. El sistema lo detecta automáticamente
-            si ya existe al escanear.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
-        </div>
-        <ul class="kb-reveal" style="border-color:#FF006E; background:#FFF0F6;">
-          <li>El código de barras puede escanearse con la cámara del celular</li>
-          <li>Si el producto ya existe, el sistema lo detecta y solo agrega inventario</li>
-          <li>El precio docena es opcional — déjalo vacío si no lo manejas</li>
-          <li>La foto es solo visual, no afecta el inventario</li>
-        </ul>
-      </div>
-
-      <!-- Ajustar inventario -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#FFBE0B;">
-          <p class="text-3xl">⚖️</p>
-          <h2 class="font-black text-black text-base uppercase tracking-wide mt-1 leading-tight">
-            Ajustar inventario
-          </h2>
-        </div>
-        <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Cuando el sistema dice que hay 10 pero en físico hay 8 — eso es un ajuste.
-            Si subes la cantidad pasa directo. Si bajas la cantidad, el dueño recibe
-            una notificación para aprobar o rechazar el cambio.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
-        </div>
-        <ul class="kb-reveal" style="border-color:#FFBE0B; background:#FFFBEB;">
-          <li>Ajuste positivo (subir) → pasa directo sin aprobación</li>
-          <li>Ajuste negativo (bajar) → el dueño recibe correo para aprobar</li>
-          <li>El dueño siempre puede ajustar directo sin restricciones</li>
-          <li>Todos los ajustes quedan en el historial de movimientos</li>
-        </ul>
-      </div>
-
-      <!-- Transferir -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#06D6A0;">
-          <p class="text-3xl">⇄</p>
-          <h2 class="font-black text-black text-base uppercase tracking-wide mt-1 leading-tight">
-            Transferir productos
-          </h2>
-        </div>
-        <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Mueve stock de una ubicación a otra sin perder el historial. Puedes mover
-            un solo producto o usar la transferencia múltiple para reubicar varios
-            de un jalón — perfecto para cuando llega mercancía nueva.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
-        </div>
-        <ul class="kb-reveal" style="border-color:#06D6A0; background:#F0FFF9;">
-          <li>Transferencia simple: un producto, origen → destino</li>
-          <li>Transferencia múltiple: varios productos a la vez</li>
-          <li>No puedes transferir más de lo que hay en el origen</li>
-          <li>Ayudante solo puede transferir dentro de su sucursal</li>
-        </ul>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ============================================================
-       SECCIÓN: CATÁLOGO
-       ============================================================ -->
-  <div class="space-y-5">
-    <p class="kb-section-label" style="background:#8338EC; color:white;">🏷️ Catálogo</p>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-      <!-- Atributos -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#8338EC;">
-          <p class="text-3xl">🎨</p>
-          <h2 class="font-black text-white text-base uppercase tracking-wide mt-1 leading-tight">
-            Atributos de producto
-          </h2>
-        </div>
-        <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Los atributos describen las características específicas de un producto:
-            color, talla, mililitros, aroma, tono... Se configuran por subcategoría
-            y aparecen automáticamente al registrar un producto de esa categoría.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
-        </div>
-        <ul class="kb-reveal" style="border-color:#8338EC; background:#F5F0FF;">
-          <li>Se crean desde Catálogo → Atributos</li>
-          <li>Se asignan a una subcategoría específica</li>
-          <li>Al registrar un producto de esa subcategoría, aparecen solos</li>
-          <li>Puedes tener atributos de tipo texto o lista de opciones</li>
-        </ul>
-      </div>
-
-      <!-- Categorías -->
-      <div class="kb-card">
+      <article class="kb-card" data-buscar="buscar encontrar producto escanear camara codigo filtro marca tono categoria subcategoria">
         <div class="kb-band" style="background:#00BBF9;">
-          <p class="text-3xl">📂</p>
-          <h2 class="font-black text-black text-base uppercase tracking-wide mt-1 leading-tight">
-            Categorías y subcategorías
-          </h2>
+          <h3 class="kb-titulo text-black">Encontrar un producto</h3>
         </div>
         <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            El catálogo está organizado en dos niveles: categoría padre (ej. "Perfumería")
-            y subcategoría (ej. "Perfumes de mujer"). Esto permite filtrar, reportar
-            y asignar atributos con precisión.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
+          <p class="kb-voz">¿Buscas algo? Dime el nombre o el código, o enséñame el código de barras con la cámara.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
         </div>
-        <ul class="kb-reveal" style="border-color:#00BBF9; background:#F0FAFF;">
-          <li>Una categoría padre puede tener varias subcategorías</li>
-          <li>Los atributos se asignan a la subcategoría, no a la padre</li>
-          <li>Los reportes se pueden filtrar por categoría</li>
-          <li>Un producto solo puede tener una subcategoría</li>
-        </ul>
-      </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Entra a un lugar: menú → <b>Sucursales</b> → tu sucursal → <b>Piso</b> o <b>Bodega interna</b>. O menú → <b>Almacenes</b>.</li>
+            <li>Escribe en la barra de arriba: nombre, código, marca, tono o el número del producto. Yo voy filtrando mientras escribes.</li>
+            <li>¿Traes el producto en la mano? Pícale al botón de la cámara, junto a la barra, y apunta al código de barras.</li>
+            <li>Para ver una sola categoría, usa los cuadros de <b>Todas las categorías</b> y de subcategoría.</li>
+            <li>¿Quieres todo lo de una marca? En el cuadro azul <b>Busca aquí por marca, tono, etc.</b> escoge <b>Marca</b> y luego cuál.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si no lo encuentro, a lo mejor está en otro lugar. Checa el piso, la bodega o el almacén.</p>
+        </div></div>
+      </article>
 
-      <!-- Temporadas -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#CCFF00;">
-          <p class="text-3xl">📅</p>
-          <h2 class="font-black text-black text-base uppercase tracking-wide mt-1 leading-tight">
-            Temporadas
-          </h2>
+      <article class="kb-card" data-buscar="centro inventario horas dias pico cuando se vende mas vendidos">
+        <div class="kb-band" style="background:#06D6A0;">
+          <h3 class="kb-titulo text-black">Centro de Inventario</h3>
         </div>
         <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Etiqueta tus productos según la época del año en que se venden mejor:
-            Navidad, Día de Madres, Regreso a Clases, etc. Un producto puede
-            pertenecer a varias temporadas al mismo tiempo.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
+          <p class="kb-voz">Aquí te digo cuántos productos hay en cada lugar, a qué hora y qué día se vende más, y qué es lo que más sale.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
         </div>
-        <ul class="kb-reveal" style="border-color:#CCFF00; background:#FAFFF0;">
-          <li>Un producto puede tener múltiples temporadas asignadas</li>
-          <li>Sirve para filtrar en inventario y en reportes</li>
-          <li>Las temporadas las crea el administrador del sistema</li>
-          <li>No afecta precios ni stock, es solo una etiqueta</li>
-        </ul>
-      </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Centro de Inventario</b>.</li>
+            <li>Arriba ves cuántos productos hay en cada lugar. Pícale a <b>Ver inventario</b> para entrar.</li>
+            <li>En <b>¿Cuándo se vende más?</b> te digo la hora y el día con más ventas de las últimas 4 semanas.</li>
+            <li>En <b>Más vendidos</b> ves lo que más sale.</li>
+          </ol>
+          <p class="kb-ojo"><b>Úsalo así:</b> surte el piso antes de la hora con más ventas, no a media fila.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="reporte reportes pdf imprimir lista inventario movimientos descargar">
+        <div class="kb-band" style="background:#FFBE0B;">
+          <h3 class="kb-titulo text-black">Sacar un reporte</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Necesitas una lista en papel? Aquí te la armo y te la doy en PDF.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Reportes</b>.</li>
+            <li>Escoge el tipo: <b>Inventario general</b> (qué hay y dónde), <b>Movimientos</b> (cada entrada, salida o ajuste) o <b>Resumen de movimientos</b>.</li>
+            <li>Si quieres, filtra por categoría, temporada, ubicación o dueño.</li>
+            <li>Descárgalo en PDF para imprimirlo o mandarlo.</li>
+          </ol>
+        </div></div>
+      </article>
 
     </div>
-  </div>
+  </section>
+
+  {% if puede_caja %}
+  <!-- ============================================================
+       CAJA Y VENTAS — cajero y dueño (pos_view, entrar_caja_ajax)
+       ============================================================ -->
+  <section class="space-y-5" data-seccion>
+    <div>
+      <p class="kb-section-label" style="background:#FB5607; color:white;">Caja y ventas</p>
+      <p class="kb-seccion-voz">Todo lo de cobrar. Empieza por entrar a la caja.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      <article class="kb-card" data-buscar="entrar caja abrir contraseña empezar turno">
+        <div class="kb-band" style="background:#FB5607;">
+          <h3 class="kb-titulo text-white">Entrar a la caja</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Para vender, primero entra a una caja. Te pido tu contraseña para saber que eres tú.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="entrar-caja">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Sucursales</b> → tu sucursal.</li>
+            <li>Abajo dice <b>Cajas</b>. Pícale a la caja donde vas a cobrar.</li>
+            <li>Escribe tu contraseña, la misma con la que entras al sistema, y pícale a <b>Entrar</b>.</li>
+            <li>Te abro la pantalla de <b>Punto de Venta</b>.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si ayer alguien vendió en esa caja y no hizo corte, yo lo hago solito al entrar y te enseño el ticket. Revísalo y sigue.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="vender venta escanear carrito agregar quitar producto variante color tono pistola">
+        <div class="kb-band" style="background:#FF006E;">
+          <h3 class="kb-titulo text-white">Meter productos al carrito</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Tú escaneas, yo los pongo en el carrito y te voy diciendo el total. No hagas cuentas.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="vender">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Escanea el código con la pistola. Si no tiene código, escribe el nombre en la barra <b>Escanea código o escribe nombre</b>.</li>
+            <li>También puedes picarle al producto en <b>Productos en piso</b>, a la derecha.</li>
+            <li>Para subir o bajar piezas usa <b>+</b> y <b>−</b>. Para quitar uno, la <b>✕</b>.</li>
+            <li>Si varios productos tienen el mismo código, te pregunto <b>¿Cuál variante?</b>. Escoge el color o tono que lleva el cliente.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="cantidad muchas piezas iguales docena asterisco multiplicar">
+        <div class="kb-band" style="background:#8338EC;">
+          <h3 class="kb-titulo text-white">Muchas piezas de lo mismo</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Llevan 12 iguales? No escanees 12 veces. Dime cuántas y escanea una.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="cantidad">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En la barra de escanear teclea <b>*</b> (asterisco), el número de piezas y <b>Enter</b>. Ejemplo: <b>*12</b> y Enter.</li>
+            <li>Arriba a la derecha te sale <b>×12</b>. Ya estoy esperando.</li>
+            <li>Escanea el producto una vez. Lo meto con las 12 piezas.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si te equivocaste antes de escanear, aprieta <b>Esc</b> y lo cancelo.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="precio mayoreo menudeo docena men may doc auto cambiar precio">
+        <div class="kb-band" style="background:#06D6A0;">
+          <h3 class="kb-titulo text-black">Menudeo, mayoreo y docena</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Yo cambio el precio solito según lo que lleven. Tú nada más fíjate que el cliente sepa.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li><b>Menudeo (MEN):</b> el precio normal.</li>
+            <li><b>Mayoreo (MAY):</b> lo pongo cuando la cuenta lleva 6 piezas o más y, a precio normal, pasa de $80.</li>
+            <li><b>Docena (DOC):</b> lo pongo cuando llevan 12 o más del mismo producto y ese producto tiene precio de docena.</li>
+            <li>Cada producto del carrito tiene botones <b>MEN</b>, <b>MAY</b>, <b>DOC</b> y <b>AUTO</b>. Si te autorizan otro precio, pícale. Con <b>AUTO</b> vuelvo a decidir yo.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="cobrar pagar efectivo tarjeta clip cambio feria ticket mixto venta realizada acomodar dinero">
+        <div class="kb-band" style="background:#FB5607;">
+          <h3 class="kb-titulo text-white">Cobrar y acomodar el dinero</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Cuando ya está todo, pícale a Cobrar. Yo te digo el cambio y en qué caja va cada peso.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="cobrar">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Pícale a <b>Cobrar</b>.</li>
+            <li>Escribe cuánto te dio en <b>Efectivo</b>. Si paga con tarjeta, escríbelo en <b>Tarjeta</b>. Si paga con las dos, llena las dos.</li>
+            <li>Yo te digo el <b>Cambio</b>, o cuánto <b>falta por pagar</b>.</li>
+            <li>Si hay tarjeta, te digo en qué <b>Clip</b> cobrarla. Cóbrala en ese.</li>
+            <li>¿No quiere ticket? Quítale la palomita a <b>Imprimir ticket</b>.</li>
+            <li>Pícale a <b>Confirmar</b>.</li>
+            <li>Te sale <b>Venta realizada</b>. Lee <b>¿Cómo acomodo el dinero?</b>: cuánto es la feria, de qué caja la sacas y en qué caja va el efectivo.</li>
+            <li>Pícale a <b>Aceptar</b> y atiende al siguiente.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si te digo que algo no tiene dueña asignada, déjalo en la caja donde cobraste y avísale a la encargada.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="pendiente pausar esperar fila otro cliente guardar cuenta">
+        <div class="kb-band" style="background:#FFBE0B;">
+          <h3 class="kb-titulo text-black">Cuenta pendiente</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿El cliente se fue por otra cosa y ya hay fila? Guárdame su cuenta y atiende al siguiente.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="pendiente">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Con la cuenta en el carrito, pícale a <b>Pendiente</b>.</li>
+            <li>Yo la guardo y te dejo el carrito vacío.</li>
+            <li>Arriba del carrito te sale una pestaña con esa cuenta.</li>
+            <li>Cuando el cliente regrese, pícale a su pestaña y te la regreso tal cual.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> la cuenta pendiente se queda guardada en esta compu. Si te cambias de compu, ahí no la vas a ver.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="descuento porcentaje rebaja 5 10 15 off">
+        <div class="kb-band" style="background:#3A86FF;">
+          <h3 class="kb-titulo text-white">Hacer un descuento</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Si te autorizaron descuento, yo se lo hago a toda la cuenta.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba de los productos pícale a <b>¿Descuento?</b>.</li>
+            <li>Escoge <b>5% OFF</b>, <b>10% OFF</b> o <b>15% OFF</b>.</li>
+            <li>El total de abajo ya sale con el descuento.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> es para toda la cuenta, no para un solo producto.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="consultar precio cuanto cuesta checar stock hay">
+        <div class="kb-band" style="background:#00BBF9;">
+          <h3 class="kb-titulo text-black">Checar un precio</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Te preguntan cuánto cuesta algo? Lo checo sin meterlo a la cuenta.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Pícale a <b>Consultar precio</b>.</li>
+            <li>Escanea o escribe el código.</li>
+            <li>Te digo el precio de menudeo, mayoreo y docena, y cuántas piezas hay en piso y en bodega.</li>
+            <li>Cierra con <b>Esc</b> o con <b>Cerrar</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="servicio cobrar servicio vinil globo tinte aplicacion">
+        <div class="kb-band" style="background:#8338EC;">
+          <h3 class="kb-titulo text-white">Cobrar un servicio</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Para lo que no es producto, como poner vinil en un globo o aplicar un tinte.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Pícale a <b>Cobrar servicio</b>.</li>
+            <li>Escribe qué servicio es y cuánto cobras.</li>
+            <li>Pícale a <b>Agregar al carrito</b> y cobra normal.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> ese dinero se lo doy a la dueña que tiene los servicios asignados.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="cobro rapido sin registro sin codigo sumadora calculadora producto no existe">
+        <div class="kb-band" style="background:#FF006E;">
+          <h3 class="kb-titulo text-white">Cobro rápido</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿El producto no está dado de alta? Cóbralo aquí con la sumadora.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Pícale a <b>Cobro rápido</b>.</li>
+            <li>Teclea el precio. Si son varios, usa <b>+</b> entre cada uno. Para varias piezas iguales, usa <b>×</b>.</li>
+            <li>Pícale a <b>= subtotal</b> y revisa que en <b>Precio a cobrar</b> esté la cantidad correcta.</li>
+            <li>Pícale a <b>Agregar</b>. Se va al carrito como cualquier producto.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> avísale al dueño para que lo registre. Así la próxima vez sale con su código.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="regalo promocion oferta paquete combo gratis rebaja">
+        <div class="kb-band" style="background:#CCFF00;">
+          <h3 class="kb-titulo text-black">Regalos y ofertas</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Las ofertas las pongo yo solito en el carrito. Si toca regalo, te pregunto cuál quiere el cliente.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Cuando la cuenta entra en una oferta, ya sale con el precio rebajado. No tienes que hacer nada.</li>
+            <li>Si toca regalo y el cliente puede escoger, te sale <b>¡Regalo disponible!</b>. Pregúntale cuál quiere y pícale.</li>
+            <li>Si no quiere regalo, pícale a <b>Sin regalo</b>.</li>
+            <li>Para ver qué promociones hay prendidas: menú → <b>Promociones</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="corte caja cerrar turno fin dia salir de caja ticket corte">
+        <div class="kb-band" style="background:#FB5607;">
+          <h3 class="kb-titulo text-white">Corte de caja</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Al final del turno hacemos el corte. Yo junto todo lo que se cobró y te imprimo el ticket.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="corte">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En la pantalla de venta pícale a <b>¿Estresao?</b>.</li>
+            <li>Pícale a <b>Corte de caja</b>.</li>
+            <li>Yo junto todas las ventas desde el último corte de esta caja y saco el total y lo que le toca a cada dueña.</li>
+            <li>Te imprimo el ticket del corte y te saco de la caja.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> ¿nada más vas a salir un rato? Usa <b>Salir de caja</b>. Te saco sin hacer corte.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="ticket anterior historial buscar venta corte reimprimir">
+        <div class="kb-band" style="background:#3A86FF;">
+          <h3 class="kb-titulo text-white">Buscar un ticket o un corte</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Un cliente regresa con dudas de su compra? Aquí busco su ticket.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Sucursales</b> → tu sucursal → <b>Dashboard</b>.</li>
+            <li>En <b>Últimas ventas</b> está cada ticket. En <b>Últimos cortes</b>, cada corte.</li>
+            <li>Si no lo ves, pícale a <b>Ver todos los tickets</b> (o <b>Ver todos los cortes</b>) y búscalo por número de ticket, fecha o caja.</li>
+            <li>Ábrelo para verlo o imprimirlo otra vez.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="impresora ticket no imprime agente configurar etiquetas probar">
+        <div class="kb-band" style="background:#06D6A0;">
+          <h3 class="kb-titulo text-black">La impresora no imprime</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Si no salen los tickets, casi siempre es el programa de la impresora. Vamos a revisarlo.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En la pantalla de venta: <b>¿Estresao?</b> → <b>Config impresora</b>.</li>
+            <li>Si dice <b>Agente no disponible</b>, abre <b>pos_agent.exe</b> en esta compu y vuelve a abrir Config impresora.</li>
+            <li>Escoge tu impresora de tickets y la de etiquetas.</li>
+            <li>Pícale a <b>Probar ticket</b>. Si sale bien, pícale a <b>Guardar</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+    </div>
+  </section>
+  {% endif %}
 
   <!-- ============================================================
-       SECCIÓN: PUNTO DE VENTA
+       MERCANCÍA — todos, con lo que cambia según el puesto
        ============================================================ -->
-  <div class="space-y-5">
-    <p class="kb-section-label" style="background:#FB5607; color:white;">🛒 Punto de venta</p>
+  <section class="space-y-5" data-seccion>
+    <div>
+      <p class="kb-section-label" style="background:#06D6A0; color:black;">Mercancía</p>
+      <p class="kb-seccion-voz">Todo esto se hace dentro de un lugar: piso, bodega o almacén.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-      <!-- Hacer una venta -->
-      <div class="kb-card">
-        <div class="kb-band" style="background:#FB5607;">
-          <p class="text-3xl">🛒</p>
-          <h2 class="font-black text-white text-base uppercase tracking-wide mt-1 leading-tight">
-            Hacer una venta
-          </h2>
+      <article class="kb-card" data-buscar="agregar piezas llego mercancia entrada sumar surtir">
+        <div class="kb-band" style="background:#06D6A0;">
+          <h3 class="kb-titulo text-black">Agregar piezas que llegaron</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
         </div>
         <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            El POS (punto de venta) está ligado a una caja y una sucursal. Escaneas,
-            cobras y listo. El sistema descuenta automáticamente el stock del piso
-            de venta y genera el ticket de la transacción.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
+          <p class="kb-voz">¿Llegó mercancía? Dime cuántas piezas y yo las sumo a las que ya había.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="agregar">Cámara lenta</button>
+          </div>
         </div>
-        <ul class="kb-reveal" style="border-color:#FB5607; background:#FFF4EE;">
-          <li>Debes abrir la caja antes de poder vender</li>
-          <li>Escanea con lector físico o con la cámara del celular</li>
-          <li>El POS descuenta del piso de venta automáticamente</li>
-          <li>Puedes aplicar precio menudeo, mayoreo o docena</li>
-        </ul>
-      </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Busca el producto en el lugar donde lo vas a guardar.</li>
+            <li>Pícale a <b>+ Agregar</b>.</li>
+            <li>Escribe cuántas piezas llegaron. Solo las nuevas, no el total.</li>
+            <li>Guarda. Yo las sumo.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si el producto todavía no existe en el sistema, primero regístralo (tarjeta <b>Registrar un producto nuevo</b>).</p>
+        </div></div>
+      </article>
 
-      <!-- Corte de caja -->
-      <div class="kb-card">
+      <article class="kb-card" data-buscar="ajustar corregir conteo faltan sobran piezas no cuadra">
+        <div class="kb-band" style="background:#FFBE0B;">
+          <h3 class="kb-titulo text-black">Corregir piezas</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Yo digo que hay 10 y en el anaquel hay 8? Corrígeme.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="ajustar">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Cuenta las piezas de verdad.</li>
+            <li>En ese producto pícale a <b>Ajustar</b>.</li>
+            <li>Escribe <b>cuántas hay de verdad</b> (el total, no la diferencia) y por qué.</li>
+            {% if es_dueno %}
+            <li>Guarda. Como eres dueño, el cambio pasa directo.</li>
+            {% else %}
+            <li>Guarda. Si subiste la cantidad, pasa directo.</li>
+            <li>Si la bajaste, le mando un correo al dueño del producto para que diga que sí. Mientras, se queda como estaba. Lo que te conteste lo ves en <b>Mis Solicitudes</b>.</li>
+            {% endif %}
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> para mercancía que acaba de llegar usa <b>+ Agregar</b>, no Ajustar.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="transferir mover pasar bodega piso almacen sucursal">
+        <div class="kb-band" style="background:#8338EC;">
+          <h3 class="kb-titulo text-white">Pasar mercancía a otro lugar</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Vas a subir cosas de bodega al piso? Dime a dónde y cuántas, y yo las muevo.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="transferir">Cámara lenta</button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Entra al lugar de donde sale la mercancía.</li>
+            <li>En el producto pícale a <b>Transferir</b>.</li>
+            <li>Escoge a dónde va y cuántas piezas.</li>
+            <li>Confirma. Yo las resto de aquí y las sumo allá.</li>
+          </ol>
+          {% if es_ayudante %}
+          <p class="kb-ojo"><b>Ojo:</b> con tu puesto solo puedes pasar mercancía dentro de tu misma sucursal, por ejemplo de bodega a piso. Para otra sucursal o el almacén, pídeselo a un cajero, almacenista o dueño.</p>
+          {% else %}
+          <p class="kb-ojo"><b>Ojo:</b> no puedo pasar más piezas de las que hay aquí.</p>
+          {% endif %}
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="transferencia multiple varios productos juntos de un jalon mover">
+        <div class="kb-band" style="background:#3A86FF;">
+          <h3 class="kb-titulo text-white">Pasar varios de un jalón</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Son muchos productos? No los pases uno por uno. Pásalos todos juntos.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Entra al lugar de donde sale la mercancía y pícale a <b>Transferencia múltiple</b>, arriba.</li>
+            <li>Escoge a dónde van.</li>
+            <li>Agrega cada producto con sus piezas.</li>
+            <li>Confirma y yo los paso todos.</li>
+          </ol>
+          {% if es_ayudante %}
+          <p class="kb-ojo"><b>Ojo:</b> igual que con uno solo: solo dentro de tu misma sucursal.</p>
+          {% endif %}
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="reabastecer surtir piso bodega faltante lista recolectar">
         <div class="kb-band" style="background:#FF006E;">
-          <p class="text-3xl">💰</p>
-          <h2 class="font-black text-white text-base uppercase tracking-wide mt-1 leading-tight">
-            Corte de caja
-          </h2>
+          <h3 class="kb-titulo text-white">Surtir el piso</h3>
+          <span class="kb-lenta-tag">Cámara lenta</span>
         </div>
         <div class="kb-body">
-          <p class="text-sm font-semibold text-gray-700 leading-snug">
-            Al final de cada turno se hace el corte: cuentas el efectivo en físico,
-            el sistema calcula lo que debería haber y te muestra si hay diferencia.
-            Todo queda registrado con fecha, hora y quién lo hizo.
-          </p>
-          <button class="kb-accordion-btn">Ver detalles <i class="kb-accordion-icon">▾</i></button>
+          <p class="kb-voz">Camina el piso, escanea lo que falta y yo te armo la lista para ir a la bodega.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+            <button type="button" class="kb-btn-lenta" data-demo="reabastecer">Cámara lenta</button>
+          </div>
         </div>
-        <ul class="kb-reveal" style="border-color:#FF006E; background:#FFF0F6;">
-          <li>Solo quien tiene la caja abierta puede hacer el corte</li>
-          <li>Las diferencias quedan registradas en el reporte</li>
-          <li>El corte cierra la sesión de esa caja</li>
-          <li>Puedes ver el historial de cortes desde Reportes</li>
-        </ul>
-      </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En el piso o en la bodega de tu sucursal pícale a <b>Reabastecer piso</b>.</li>
+            <li>Camina el piso y escanea lo que falte. Cada bip suma 1.</li>
+            <li>Ve a la bodega, junta todo y palomea lo que ya traes.</li>
+            <li>Pícale a <b>Confirmar orden</b>. Yo paso las piezas de bodega a piso.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> ¿lo va a juntar otra persona? Pícale a <b>Compartir lista (PDF)</b> y mándasela.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="que falta comparar piso bodega no hay faltantes">
+        <div class="kb-band" style="background:#8338EC;">
+          <h3 class="kb-titulo text-white">¿Qué falta en el otro lugar?</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Te digo qué hay aquí pero no hay en el otro lugar de tu sucursal.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Entra al piso o a la bodega de tu sucursal.</li>
+            <li>En el cuadro morado pícale a <b>¿Qué me falta en bodega?</b> (o <b>en piso</b>).</li>
+            <li>Te dejo solo los productos que hay aquí y allá no.</li>
+            <li>Para ver todo otra vez, pícale a <b>Mostrar todos</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="etiqueta codigo barras imprimir pdf galeria despego">
+        <div class="kb-band" style="background:#111;">
+          <h3 class="kb-titulo text-white">Hacer una etiqueta</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">¿Se despegó la etiqueta? Te hago otra.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En el producto pícale a <b>Etiqueta</b>.</li>
+            <li>Tócala para verla grande.</li>
+            <li>Escoge: <b>Imprimir</b> (en la impresora de etiquetas), <b>Galería</b> (la guardo en tu celular) o <b>PDF</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="nuevo producto registrar alta dar de alta crear">
+        <div class="kb-band" style="background:#FB5607;">
+          <h3 class="kb-titulo text-white">Registrar un producto nuevo</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Si es la primera vez que entra este producto a la tienda, aquí lo damos de alta.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Antes, búscalo. Si ya existe, nada más agrégale piezas.</li>
+            <li>Pícale a <b>+ Nuevo producto</b>, arriba en cualquier almacén.</li>
+            <li>Escribe el nombre y escanea el código de barras.</li>
+            <li>Pon los precios: menudeo, mayoreo y, si lleva, docena.</li>
+            <li>Escoge la categoría y la subcategoría. Te salen solos los datos que pide (marca, tono, tamaño...). Llénalos.</li>
+            <li>Toma o sube la foto.</li>
+            <li>Escoge de qué dueño es, en qué lugar lo vas a guardar y cuántas piezas llegaron.</li>
+            <li>Guarda. Te llevo a ese lugar con el producto marcado en verde.</li>
+          </ol>
+          {% if es_dueno %}
+          <p class="kb-ojo"><b>Ojo:</b> como eres dueño, también puedes poner el <b>costo</b>. Nadie más lo ve.</p>
+          {% endif %}
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="detalle editar cambiar nombre foto precio datos producto">
+        <div class="kb-band" style="background:#00BBF9;">
+          <h3 class="kb-titulo text-black">Ver o cambiar un producto</h3>
+        </div>
+        <div class="kb-body">
+          {% if es_dueno %}
+          <p class="kb-voz">Aquí ves todo de un producto y lo puedes cambiar completo.</p>
+          {% elif puede_editar %}
+          <p class="kb-voz">Aquí ves todo de un producto. Lo básico lo puedes cambiar tú.</p>
+          {% else %}
+          <p class="kb-voz">Aquí ves todo de un producto: precios, datos y dónde hay piezas.</p>
+          {% endif %}
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En el producto pícale a <b>Ver detalle</b>.</li>
+            <li>Ahí ves sus precios, sus datos y en qué lugares hay piezas.</li>
+            {% if es_dueno %}
+            <li>Puedes cambiar todo: nombre, foto, datos, precios, categoría, dueño, costo y código de barras.</li>
+            {% elif puede_editar %}
+            <li>Puedes cambiar el nombre, la descripción, los datos (marca, tono...) y la foto.</li>
+            <li>Precios, categoría, dueño y código de barras solo los cambia un dueño.</li>
+            {% else %}
+            <li>Con tu puesto aquí solo ves. Si algo está mal, avísale a un cajero o al dueño.</li>
+            {% endif %}
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="desactivar eliminar quitar producto inactivo cero piezas borrar">
+        <div class="kb-band" style="background:#FF006E;">
+          <h3 class="kb-titulo text-white">Quitar un producto</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Cuando un producto se queda en 0 piezas en un lugar, te dejo quitarlo de ahí.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Cuando un producto llega a 0 en un lugar, te sale un botón rojo.</li>
+            <li>Si dice <b>Eliminar de aquí</b>: lo quito solo de este lugar, porque hay piezas en otro.</li>
+            {% if puede_desactivar %}
+            <li>Si dice <b>Desactivar</b>: era el único lugar. Lo escondo de todo el sistema, pero sus ventas se quedan guardadas.</li>
+            <li>Los desactivados están arriba, en <b>Inactivos</b>.</li>
+            {% else %}
+            <li>Si dice <b>Desactivar</b>, pídeselo a un cajero, almacenista o dueño. Tu puesto no puede.</li>
+            {% endif %}
+          </ol>
+          {% if es_dueno %}
+          <p class="kb-ojo"><b>Ojo:</b> desde <b>Inactivos</b> tú puedes reactivarlo o borrarlo para siempre.</p>
+          {% elif puede_desactivar %}
+          <p class="kb-ojo"><b>Ojo:</b> para volver a activarlo, pídeselo a un dueño.</p>
+          {% endif %}
+          <p class="kb-ojo"><b>Ojo:</b> si alguien pidió corregir piezas de ese producto y el dueño no ha contestado, no te dejo quitarlo de ese lugar.</p>
+        </div></div>
+      </article>
+
+      {% if not es_dueno %}
+      <article class="kb-card" data-buscar="mis solicitudes solicitud aprobada rechazada ajuste respuesta dueño">
+        <div class="kb-band" style="background:#CCFF00;">
+          <h3 class="kb-titulo text-black">Mis solicitudes</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Cuando bajas piezas, el dueño tiene que darme el sí. Aquí ves qué te contestó.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba pícale a <b>Mis Solicitudes</b>.</li>
+            <li>Ves cada corrección que pediste y si está pendiente, aprobada o rechazada.</li>
+            <li>Si te la rechazaron, cuenta otra vez y platícalo con el dueño.</li>
+          </ol>
+        </div></div>
+      </article>
+      {% endif %}
 
     </div>
-  </div>
+  </section>
+
+  <!-- ============================================================
+       CATÁLOGO Y PROMOCIONES — todos ven; solo el dueño cambia
+       ============================================================ -->
+  <section class="space-y-5" data-seccion>
+    <div>
+      <p class="kb-section-label" style="background:#8338EC; color:white;">Catálogo y promociones</p>
+      {% if es_dueno %}
+      <p class="kb-seccion-voz">Así está acomodada la tienda. Tú lo puedes cambiar.</p>
+      {% else %}
+      <p class="kb-seccion-voz">Así está acomodada la tienda. Tú lo puedes ver; los cambios los hace un dueño.</p>
+      {% endif %}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      <article class="kb-card" data-buscar="categorias subcategorias acomodar familias">
+        <div class="kb-band" style="background:#8338EC;">
+          <h3 class="kb-titulo text-white">Categorías</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">La mercancía va en dos niveles: la categoría grande (Maquillaje) y la subcategoría (Labiales).</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Categorías</b>.</li>
+            {% if es_dueno %}
+            <li>Crea la categoría grande y dentro sus subcategorías.</li>
+            <li>Puedes cambiarles el nombre o borrarlas.</li>
+            {% else %}
+            <li>Ves cada categoría con sus subcategorías.</li>
+            <li>Te sirve para saber dónde buscar y cómo filtrar.</li>
+            {% endif %}
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="atributos marca tono tamaño datos caracteristicas">
+        <div class="kb-band" style="background:#00BBF9;">
+          <h3 class="kb-titulo text-black">Atributos</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Son los datos que pide cada subcategoría: marca, tono, tamaño, aroma...</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Atributos</b>.</li>
+            {% if es_dueno %}
+            <li>Escoge la subcategoría y agrégale los datos que quieres que pida.</li>
+            <li>Al registrar un producto de esa subcategoría, te los pido solitos.</li>
+            {% else %}
+            <li>Ves qué datos pide cada subcategoría.</li>
+            {% endif %}
+            <li>Con esos datos filtras en cada almacén, por ejemplo todo lo de una marca.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="temporadas navidad madres regreso a clases epoca">
+        <div class="kb-band" style="background:#CCFF00;">
+          <h3 class="kb-titulo text-black">Temporadas</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Marcan en qué época se vende mejor un producto: Navidad, Día de las Madres, regreso a clases...</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Temporadas</b>.</li>
+            {% if es_dueno %}
+            <li>Crea las temporadas que manejas.</li>
+            {% else %}
+            <li>Ves qué temporadas existen.</li>
+            {% endif %}
+            <li>Un producto puede tener varias. No cambia precios ni piezas, solo sirve para filtrar y para reportes.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="promociones ofertas regalo paquete descuento prender apagar">
+        <div class="kb-band" style="background:#FF006E;">
+          <h3 class="kb-titulo text-white">Promociones y ofertas</h3>
+        </div>
+        <div class="kb-body">
+          {% if es_dueno %}
+          <p class="kb-voz">Aquí armas lo que se rebaja o se regala. En caja yo lo aplico solito.</p>
+          {% else %}
+          <p class="kb-voz">Aquí ves qué promociones y ofertas están prendidas, para que sepas qué le toca al cliente.</p>
+          {% endif %}
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Promociones</b>.</li>
+            <li><b>Promociones:</b> regalos. Si la cuenta lleva algo de cierta categoría o pasa de cierto monto, el cliente se lleva un regalo: uno fijo, o el que escoja de una categoría.</li>
+            <li><b>Ofertas:</b> precio rebajado de un producto, de una categoría o de un paquete de varios productos.</li>
+            {% if es_dueno %}
+            <li>Créalas, cámbialas, préndelas o apágalas sin borrarlas.</li>
+            {% endif %}
+          </ol>
+        </div></div>
+      </article>
+
+    </div>
+  </section>
+
+  {% if es_dueno %}
+  <!-- ============================================================
+       SOLO DUEÑOS
+       ============================================================ -->
+  <section class="space-y-5" data-seccion>
+    <div>
+      <p class="kb-section-label" style="background:#111; color:#CCFF00;">Solo dueños</p>
+      <p class="kb-seccion-voz">Esto solo lo ves tú. Tu equipo no.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+      <article class="kb-card" data-buscar="dashboard dueño ventas mes cuanto llevo deudas ya se pago clip mas vendidos">
+        <div class="kb-band" style="background:#111;">
+          <h3 class="kb-titulo text-white">Tu dashboard</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Aquí te digo cuánto llevas vendido, cuánto hay en tu caja y quién le debe a quién.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba pícale a <b>Dashboard</b>.</li>
+            <li><b>Esto has vendido de tus productos durante este mes</b> está escondido para que nadie lo vea de reojo. Tócalo para verlo.</li>
+            <li><b>¿Cuánto llevo yo?</b> es lo de hoy: en tu caja (efectivo), en tu Clip (tarjeta) y por caja. Se actualiza solo.</li>
+            <li>Ahí mismo te digo si le debes a otra dueña o si te deben, de hoy y de cortes anteriores. Cuando se pague, pícale a <b>Ya se pagó</b>.</li>
+            <li>Abajo están las ventas por caja y sucursal, tus más vendidos y <b>Explorar más vendidos</b>.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="solicitudes pendientes aprobar rechazar ajuste correo">
+        <div class="kb-band" style="background:#FFBE0B;">
+          <h3 class="kb-titulo text-black">Aprobar correcciones de piezas</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Cuando alguien de tu equipo baja piezas de un producto tuyo, te pregunto a ti primero.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba pícale a <b>Solicitudes</b>. También te llega por correo con botones.</li>
+            <li>Ves quién lo pidió, de qué producto, en qué lugar, a cuánto lo quiere dejar y por qué.</li>
+            <li>Aprueba o rechaza. Mientras no contestes, no cambio nada.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> si subieron piezas en vez de bajarlas, eso pasa directo y no te pregunto.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="mis productos ver en ubicacion donde estan">
+        <div class="kb-band" style="background:#06D6A0;">
+          <h3 class="kb-titulo text-black">Mis productos</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Aquí ves solo tus productos y dónde hay piezas de cada uno.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba pícale a <b>Mis Productos</b>.</li>
+            <li>Busca el que quieras.</li>
+            <li><b>Ver en ubicación</b> te lleva directo a ese lugar con el producto marcado en amarillo.</li>
+          </ol>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="inactivos reactivar borrar para siempre eliminar definitivo">
+        <div class="kb-band" style="background:#FF006E;">
+          <h3 class="kb-titulo text-white">Productos inactivos</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Aquí están los productos que se desactivaron. Tú decides si regresan o se van para siempre.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Arriba pícale a <b>Inactivos</b>.</li>
+            <li><b>Reactivar:</b> el producto vuelve a salir en el sistema.</li>
+            <li><b>Borrar para siempre:</b> lo quito del todo.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> borrar para siempre no tiene regreso. Piénsalo dos veces.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="cajas sucursales crear caja borrar caja eliminar sucursal">
+        <div class="kb-band" style="background:#3A86FF;">
+          <h3 class="kb-titulo text-white">Cajas y sucursales</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Las cajas se crean y se borran desde el dashboard de cada sucursal.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>Menú → <b>Sucursales</b> → la sucursal → <b>Dashboard</b>.</li>
+            <li>En <b>Cajas</b> creas una caja nueva.</li>
+            <li>Ahí mismo puedes borrar una caja o la sucursal completa. Te pido confirmar antes.</li>
+          </ol>
+          <p class="kb-ojo"><b>Ojo:</b> borrar no tiene regreso.</p>
+        </div></div>
+      </article>
+
+      <article class="kb-card" data-buscar="formato ticket servicios responsable dueña servicios configurar">
+        <div class="kb-band" style="background:#CCFF00;">
+          <h3 class="kb-titulo text-black">Ticket y servicios</h3>
+        </div>
+        <div class="kb-body">
+          <p class="kb-voz">Tú decides qué dice el ticket y a quién le doy el dinero de los servicios.</p>
+          <div class="kb-acciones">
+            <button type="button" class="kb-accordion-btn" aria-expanded="false">Enséñame <i class="kb-accordion-icon">▾</i></button>
+          </div>
+        </div>
+        <div class="kb-reveal"><div class="kb-reveal-inner">
+          <ol class="kb-pasos">
+            <li>En la pantalla de venta: <b>¿Estresao?</b> → <b>Config impresora</b>.</li>
+            <li>En <b>¿A quién van los servicios cobrados?</b> escoge la dueña que se queda con ese dinero.</li>
+            <li>En <b>¿Cambiar el formato del ticket de venta?</b> cambias el nombre, el teléfono, la dirección y los mensajes del ticket.</li>
+          </ol>
+        </div></div>
+      </article>
+
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ============================================================
+       DEMO EN CÁMARA LENTA — el JS la llena con la escena del tema
+       ============================================================ -->
+  <dialog id="kb-demo" class="kbd-dialog" aria-labelledby="kbd-titulo">
+    <div class="kbd-head">
+      <div>
+        <p class="kbd-kicker">Cámara lenta · pantalla de ejemplo</p>
+        <h2 id="kbd-titulo" class="kbd-titulo" data-kbd="titulo">—</h2>
+      </div>
+      <button type="button" class="kbd-cerrar" data-kbd="cerrar">Cerrar</button>
+    </div>
+    <div class="kbd-progreso"><div class="kbd-progreso-barra" data-kbd="barra"></div></div>
+    <div class="kbd-pantalla" data-kbd="pantalla"></div>
+    <div class="kbd-voz">
+      <span class="kbd-voz-quien">El sistema te dice</span>
+      <p data-kbd="voz" aria-live="polite"></p>
+      <p class="kbd-paso" data-kbd="paso"></p>
+    </div>
+    <div class="kbd-controles">
+      <button type="button" data-kbd="atras">Atrás</button>
+      <button type="button" data-kbd="play" class="kbd-play">Pausa</button>
+      <button type="button" data-kbd="sig">Siguiente</button>
+      <button type="button" data-kbd="vel" aria-pressed="true">Cámara lenta: Sí</button>
+    </div>
+  </dialog>
+
+  {% include "tienda/_kb_escenas.html" %}
+
+  {% endif %}{# es_empleado #}
 
 </div>
 
-<script>
-document.querySelectorAll(".kb-accordion-btn").forEach(btn => {
-    btn.addEventListener("click", function () {
-        this.closest(".kb-card").classList.toggle("open");
-    });
-});
-</script>
+{{ rol|json_script:"kb-rol" }}
+{% endblock %}
 
+{% block scripts %}
+<script src="{% static 'js/base_conocimientos.js' %}"></script>
 {% endblock %}

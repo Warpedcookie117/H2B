@@ -8,19 +8,24 @@ from inventario.services.inventario_service import InventarioService
 from inventario.templatetags.cloudinary_helpers import foto_mini
 from inventario.models import MovimientoInventario, Producto, Inventario, SolicitudAjuste, TransferenciaInventario, Ubicacion
 from django.http import JsonResponse
-from django.db.models import Sum 
+from django.db.models import Count, Sum
+from django.db.models.functions import ExtractHour, ExtractIsoWeekDay
 from django.utils.timezone import now
+from datetime import datetime, time, timedelta
 import json
 from inventario.services.correo import enviar_correo
 from django.urls import reverse
 from inventario.utils import color_from_name
 from main import settings
-from ventas.models import IdempotencyKey
+from ventas.models import IdempotencyKey, Venta
 
 
+DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 
 
-
+def _hora_12(h):
+    """18 → '6 pm', 0 → '12 am'."""
+    return f"{(h % 12) or 12} {'am' if h < 12 else 'pm'}"
 
 
 @login_required
@@ -47,28 +52,61 @@ def dashboard_inventario(request):
             "productos_count": count,
         })
  
-    # Productos críticos (<= 5 piezas) — solo los 30 más críticos para
-    # que el dashboard se cargue rápido y sea legible. Para ver todos hay
-    # link al inventario global filtrado.
-    bajos_query = (
-        Inventario.objects
-        .select_related("producto", "ubicacion", "ubicacion__sucursal")
-        .filter(cantidad_actual__lte=5, cantidad_actual__gt=0)
-        .order_by("cantidad_actual")
-    )
-    bajos_total = bajos_query.count()
-    bajos = list(bajos_query[:30])
+    # Horas y días pico — sale SOLO de los tickets del POS (cada venta queda
+    # con fecha y hora), no de los conteos de inventario, que no son
+    # confiables. Ventana: las 4 semanas completas antes de hoy, así cada día
+    # de la semana entra exactamente 4 veces y se comparan parejo (hoy va a
+    # medias, por eso no entra).
+    # Solo número de ventas, NUNCA montos: esta página la ve cualquier
+    # empleado y el dinero es de los dueños.
+    tz     = timezone.get_current_timezone()
+    fin    = datetime.combine(timezone.localdate(), time.min, tzinfo=tz)
+    inicio = fin - timedelta(days=28)
+    ventas_ventana = Venta.objects.filter(fecha__gte=inicio, fecha__lt=fin)
 
-    # Agregar conteo de críticos POR ubicación para el chart.
-    # En lugar de 224 barras ilegibles → un bar por ubicación con el total.
-    from django.db.models import Count
-    criticos_por_ubicacion = list(
-        Inventario.objects
-        .filter(cantidad_actual__lte=5, cantidad_actual__gt=0)
-        .values("ubicacion__id", "ubicacion__nombre", "ubicacion__tipo", "ubicacion__sucursal__nombre")
-        .annotate(total=Count("id"))
-        .order_by("-total")
-    )
+    por_hora = {
+        r["h"]: r
+        for r in ventas_ventana
+        .annotate(h=ExtractHour("fecha"))
+        .values("h")
+        .annotate(tickets=Count("id"))
+        .order_by("h")
+    }
+    por_dia = {
+        r["d"]: r
+        for r in ventas_ventana
+        .annotate(d=ExtractIsoWeekDay("fecha"))   # 1 = lunes … 7 = domingo
+        .values("d")
+        .annotate(tickets=Count("id"))
+        .order_by("d")
+    }
+
+    # Horas: de la primera a la última con ventas, rellenando con 0 las de en
+    # medio para que el eje no se salte horas.
+    picos_horas = [
+        {
+            "label":   _hora_12(h),
+            "titulo":  f"{_hora_12(h)} a {_hora_12((h + 1) % 24)}",
+            "tickets": por_hora.get(h, {}).get("tickets", 0),
+        }
+        for h in (range(min(por_hora), max(por_hora) + 1) if por_hora else [])
+    ]
+    picos_dias = [
+        {
+            "label":   nombre,
+            "titulo":  nombre,
+            "tickets": por_dia.get(i, {}).get("tickets", 0),
+        }
+        for i, nombre in enumerate(DIAS_SEMANA, start=1)
+    ]
+
+    picos_tickets = sum(d["tickets"] for d in picos_dias)
+    hora_fuerte = dia_fuerte = None
+    if picos_tickets:
+        h = max(picos_horas, key=lambda x: x["tickets"])
+        hora_fuerte = {"rango": h["titulo"], "tickets": h["tickets"]}
+        d = max(picos_dias, key=lambda x: x["tickets"])
+        dia_fuerte = {"nombre": d["label"], "tickets": d["tickets"], "promedio": round(d["tickets"] / 4)}
 
     # Más vendidos
     mas_vendidos = (
@@ -82,9 +120,13 @@ def dashboard_inventario(request):
     context = {
         "productos_total":       Producto.objects.filter(activo=True).count(),
         "kpis_ubicaciones":      kpis_ubicaciones,
-        "bajos":                 bajos,
-        "bajos_total":           bajos_total,
-        "criticos_por_ubicacion": criticos_por_ubicacion,
+        "picos_horas":           picos_horas,
+        "picos_dias":            picos_dias,
+        "picos_tickets":         picos_tickets,
+        "picos_desde":           inicio.date(),
+        "picos_hasta":           (fin - timedelta(days=1)).date(),
+        "hora_fuerte":           hora_fuerte,
+        "dia_fuerte":            dia_fuerte,
         "mas_vendidos":          mas_vendidos,
         "ahora":                 now(),
     }

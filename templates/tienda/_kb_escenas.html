@@ -1,0 +1,256 @@
+{% comment %}
+  Escenas de las demos "en cámara lenta" de la base de conocimientos.
+  Son maquetas: copian cómo se ve el sistema de verdad, pero no tocan nada.
+  static/js/base_conocimientos.js clona la escena y mueve el cursor sobre
+  los elementos marcados con data-d="nombre". Si cambias un data-d aquí,
+  cámbialo también en los pasos de DEMOS en ese JS.
+  Los .kbd-input van sin espacios adentro: el placeholder sale con :empty.
+{% endcomment %}
+
+{% if puede_caja %}
+<!-- ESCENA: ENTRAR A LA CAJA (menú lateral + contraseña) -->
+<template id="kbd-escena-caja">
+  <div class="kbd-split">
+    <div class="kbd-side">
+      <p class="kbd-side-item">Categorías</p>
+      <p class="kbd-side-item">Centro de Inventario</p>
+      <p class="kbd-side-item" data-d="sucursales">Sucursales ▾</p>
+      <div data-d="sub" hidden>
+        <p class="kbd-side-item kbd-side-item--sub" data-d="centro">Centro ▾</p>
+        <div data-d="sub2" hidden>
+          <p class="kbd-side-item kbd-side-item--sub2">Dashboard</p>
+          <p class="kbd-side-item kbd-side-item--sub2">Piso</p>
+          <p class="kbd-side-item kbd-side-item--sub2">Bodega interna</p>
+          <p class="kbd-side-label">Cajas</p>
+          <p class="kbd-side-item kbd-side-item--sub2" data-d="caja1">Caja 1</p>
+        </div>
+      </div>
+      <p class="kbd-side-item">Reportes</p>
+    </div>
+    <div class="kbd-main">
+      <p class="kbd-main-titulo">Tu dashboard</p>
+      <div class="kbd-fantasma"></div>
+      <div class="kbd-fantasma kbd-fantasma--corto"></div>
+    </div>
+
+    <div class="kbd-modal" data-d="pass" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">Entrar a caja</p>
+        <p class="kbd-sub">Caja 1</p>
+        <p class="kbd-label">Tu contraseña</p>
+        <div class="kbd-input" data-d="password" data-placeholder="••••••••"></div>
+        <div class="kbd-row">
+          <span class="kbd-btn kbd-btn--gris">Cancelar</span>
+          <span class="kbd-btn kbd-btn--verde kbd-grow" data-d="entrar">Entrar</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-modal" data-d="dentro" hidden>
+      <div class="kbd-modal-box kbd-modal-box--naranja">
+        <p class="kbd-modal-titulo">Punto de Venta</p>
+        <p class="kbd-sub">Sucursal Centro · Caja 1</p>
+        <p class="kbd-label">Ya estás dentro. Ya puedes vender.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ESCENA: PUNTO DE VENTA (carrito, cobro, venta realizada, corte) -->
+<template id="kbd-escena-pos">
+  <div class="kbd-pos">
+    <div class="kbd-pos-top">
+      <span class="kbd-chip">Punto de Venta</span>
+      <div class="kbd-row kbd-row--fin">
+        <span class="kbd-btn kbd-btn--blanco" data-d="descuento">¿Descuento?</span>
+        <span class="kbd-btn kbd-btn--blanco" data-d="estresao">¿Estresao?</span>
+      </div>
+      <div class="kbd-menu" data-d="menu" hidden>
+        <span class="kbd-menu-item">Config impresora</span>
+        <span class="kbd-menu-item kbd-menu-item--corte" data-d="corte">Corte de caja</span>
+        <span class="kbd-menu-item kbd-menu-item--salir" data-d="salir">Salir de caja</span>
+      </div>
+    </div>
+
+    <div class="kbd-tabs" data-d="tabs" hidden>
+      <span class="kbd-tab" data-d="tab1">Cuenta pendiente 1</span>
+    </div>
+
+    <div class="kbd-input" data-d="scan" data-placeholder="Escanea código o escribe nombre..."></div>
+
+    <div class="kbd-row kbd-row--wrap">
+      <span class="kbd-mini">Consultar precio</span>
+      <span class="kbd-mini">Cobrar servicio</span>
+      <span class="kbd-mini">Cobro rápido</span>
+      <span class="kbd-mini" data-d="pendiente">Pendiente</span>
+    </div>
+
+    <div class="kbd-carrito" data-d="carrito">
+      <p class="kbd-vacio" data-d="vacio">El carrito está vacío</p>
+      <div class="kbd-item" data-d="item1" hidden>
+        <span class="kbd-item-nombre">Labial mate rojo</span>
+        <span class="kbd-item-cant">
+          <span class="kbd-cbtn">−</span><b data-d="cant1">1</b><span class="kbd-cbtn" data-d="mas1">+</span>
+        </span>
+        <span class="kbd-item-precio" data-d="precio1">$45.00</span>
+        <span class="kbd-modos">
+          <i>MEN</i><i>MAY</i><i data-d="doc1">DOC</i><i class="kbd-modo-on">AUTO</i>
+        </span>
+      </div>
+      <div class="kbd-item" data-d="item2" hidden>
+        <span class="kbd-item-nombre">Rímel negro</span>
+        <span class="kbd-item-cant">
+          <span class="kbd-cbtn">−</span><b>1</b><span class="kbd-cbtn">+</span>
+        </span>
+        <span class="kbd-item-precio">$50.00</span>
+        <span class="kbd-cbtn kbd-cbtn--x" data-d="x2">✕</span>
+      </div>
+    </div>
+
+    <div class="kbd-total">
+      <span>Total: <b data-d="total">$0.00</b></span>
+      <span class="kbd-btn kbd-btn--naranja" data-d="cobrar">Cobrar</span>
+    </div>
+
+    <div class="kbd-badge" data-d="badge" hidden>×12<small>escanea ahora (Esc cancela)</small></div>
+
+    <div class="kbd-modal" data-d="pago" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">Pago</p>
+        <p class="kbd-sub">Total a cobrar: <b>$95.00</b></p>
+        <p class="kbd-label">Efectivo:</p>
+        <div class="kbd-input" data-d="efectivo"></div>
+        <p class="kbd-label">Tarjeta:</p>
+        <div class="kbd-input" data-d="tarjeta"></div>
+        <p class="kbd-info" data-d="pago-info" hidden>Cambio: $105.00</p>
+        <p class="kbd-check"><span class="kbd-caja kbd-caja--on" data-d="check"></span> Imprimir ticket</p>
+        <div class="kbd-row">
+          <span class="kbd-btn kbd-btn--verde kbd-grow" data-d="confirmar">Confirmar</span>
+          <span class="kbd-btn kbd-btn--gris">Cancelar</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd-modal" data-d="hecho" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">Venta realizada</p>
+        <p class="kbd-sub">Total de la cuenta <b>$95.00</b></p>
+        <div class="kbd-reparto" data-d="reparto">
+          <p class="kbd-reparto-titulo">¿Cómo acomodo el dinero?</p>
+          <p>Recibí en efectivo <b>$200.00</b></p>
+          <p>La feria es de <b>$105.00</b>. Tómala de la caja de <b>Lupita</b>.</p>
+          <p>Todo el efectivo va a la caja de <b>Lupita</b>.</p>
+        </div>
+        <span class="kbd-btn kbd-btn--azul kbd-btn--bloque" data-d="aceptar">Aceptar</span>
+      </div>
+    </div>
+
+    <div class="kbd-modal" data-d="ticket" hidden>
+      <div class="kbd-ticket" data-d="ticket-papel">
+        <p class="kbd-ticket-titulo">Corte de caja</p>
+        <p>Sucursal Centro · Caja 1</p>
+        <p class="kbd-ticket-linea">Ventas desde el último corte</p>
+        <p>Total ........ <b>$3,450.00</b></p>
+        <p>Lupita ....... $2,100.00</p>
+        <p>Rosy ......... $1,350.00</p>
+        <p class="kbd-ticket-linea">Saliste de la caja</p>
+      </div>
+    </div>
+  </div>
+</template>
+{% endif %}
+
+<!-- ESCENA: UN ALMACÉN (piso o bodega) con su tarjeta de producto -->
+<template id="kbd-escena-almacen">
+  <div class="kbd-alm">
+    <p class="kbd-alm-head" data-d="head">Piso de venta · Centro</p>
+    <div class="kbd-row">
+      <div class="kbd-input kbd-grow" data-d="buscar" data-placeholder="Busca por nombre, código, atributo o ID..."></div>
+      <span class="kbd-btn kbd-btn--amarillo">Cámara</span>
+    </div>
+    <div class="kbd-row kbd-row--wrap">
+      <span class="kbd-btn kbd-btn--morado">⇄ Transferencia múltiple</span>
+      <span class="kbd-btn kbd-btn--verde">Reabastecer piso</span>
+    </div>
+    <div class="kbd-cards">
+      <div class="kbd-pcard" data-d="card">
+        <div class="kbd-foto"></div>
+        <p class="kbd-pnombre">Labial mate rojo</p>
+        <p class="kbd-pcant"><b data-d="cant">10</b> piezas aquí</p>
+        <span class="kbd-btn kbd-btn--verde kbd-btn--bloque" data-d="agregar">+ Agregar</span>
+        <span class="kbd-btn kbd-btn--amarillo kbd-btn--bloque" data-d="ajustar">Ajustar</span>
+        <span class="kbd-btn kbd-btn--morado kbd-btn--bloque" data-d="transferir">⇄ Transferir</span>
+      </div>
+      <div class="kbd-pcard kbd-pcard--atras">
+        <div class="kbd-foto"></div>
+        <p class="kbd-pnombre">Rímel negro</p>
+        <p class="kbd-pcant"><b>6</b> piezas aquí</p>
+        <span class="kbd-btn kbd-btn--verde kbd-btn--bloque">+ Agregar</span>
+        <span class="kbd-btn kbd-btn--amarillo kbd-btn--bloque">Ajustar</span>
+        <span class="kbd-btn kbd-btn--morado kbd-btn--bloque">⇄ Transferir</span>
+      </div>
+    </div>
+
+    <div class="kbd-toast" data-d="toast" hidden></div>
+
+    <div class="kbd-modal" data-d="m-agregar" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">+ Agregar inventario</p>
+        <p class="kbd-sub">Labial mate rojo · <b>10</b> piezas aquí ahorita</p>
+        <p class="kbd-label">¿Cuántas piezas vas a agregar?</p>
+        <div class="kbd-input" data-d="agregar-cant"></div>
+        <span class="kbd-btn kbd-btn--verde kbd-btn--bloque" data-d="agregar-ok">Guardar</span>
+      </div>
+    </div>
+
+    <div class="kbd-modal" data-d="m-ajustar" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">Ajustar inventario</p>
+        <p class="kbd-sub">Labial mate rojo · <b>10</b> piezas aquí ahorita</p>
+        <p class="kbd-label">¿A cuánto quieres dejarlo en esta ubicación?</p>
+        <div class="kbd-input" data-d="ajustar-cant"></div>
+        <p class="kbd-label">¿Por qué?</p>
+        <div class="kbd-input" data-d="ajustar-motivo"></div>
+        <span class="kbd-btn kbd-btn--amarillo kbd-btn--bloque" data-d="ajustar-ok">Guardar</span>
+      </div>
+    </div>
+
+    <div class="kbd-modal" data-d="m-transferir" hidden>
+      <div class="kbd-modal-box">
+        <p class="kbd-modal-titulo">⇄ Transferir</p>
+        <p class="kbd-sub">Labial mate rojo · <b>10</b> piezas aquí</p>
+        <p class="kbd-label">¿A dónde va?</p>
+        <div class="kbd-input kbd-input--select" data-d="destino" data-placeholder="— Escoge —"></div>
+        <p class="kbd-label">¿Cuántas piezas?</p>
+        <div class="kbd-input" data-d="trans-cant"></div>
+        <span class="kbd-btn kbd-btn--morado kbd-btn--bloque" data-d="trans-ok">Transferir</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- ESCENA: ORDEN DE REABASTECIMIENTO (bodega → piso) -->
+<template id="kbd-escena-reab">
+  <div class="kbd-alm">
+    <p class="kbd-alm-head kbd-alm-head--morado">Orden de reabastecimiento · Bodega → Piso</p>
+    <div class="kbd-row">
+      <span class="kbd-btn kbd-btn--amarillo" data-d="camara">Escanear</span>
+      <div class="kbd-input kbd-grow" data-d="codigo" data-placeholder="…o teclea código o nombre"></div>
+    </div>
+    <div class="kbd-carrito">
+      <p class="kbd-vacio" data-d="vacio">Lista vacía</p>
+      <div class="kbd-rrow" data-d="r1" hidden>
+        <span class="kbd-caja" data-d="c1"></span>
+        <span class="kbd-grow">Labial mate rojo</span>
+        <b data-d="n1">1</b>
+      </div>
+      <div class="kbd-rrow" data-d="r2" hidden>
+        <span class="kbd-caja" data-d="c2"></span>
+        <span class="kbd-grow">Rímel negro</span>
+        <b>1</b>
+      </div>
+    </div>
+    <span class="kbd-btn kbd-btn--verde kbd-btn--bloque kbd-apagado" data-d="confirmar">Confirmar orden</span>
+    <div class="kbd-toast" data-d="toast" hidden></div>
+  </div>
+</template>

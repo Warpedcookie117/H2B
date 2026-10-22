@@ -85,12 +85,6 @@
   .btn-accion:hover::after {
     animation: shimmer 0.6s ease;
   }
-
-  /* Tabla críticos responsive */
-  .tabla-criticos td,
-  .tabla-criticos th {
-    white-space: nowrap;
-  }
 </style>
 
 <div class="max-w-7xl mx-auto px-4 py-10 space-y-10">
@@ -107,7 +101,7 @@
         📊 Centro de Inventario
       </h1>
       <p class="text-white font-bold text-base mt-2">
-        Consulta el stock por ubicación, detecta productos críticos y accede rápido al inventario de cada almacén.
+        Consulta el stock por ubicación, descubre a qué horas y qué días se vende más y accede rápido al inventario de cada almacén.
       </p>
       <p class="text-white/60 font-semibold text-xs mt-1 uppercase tracking-widest">
         Última actualización: {{ ahora|date:"d/m/Y H:i" }}
@@ -167,110 +161,75 @@
     </div>
   </div>
 
-  <!-- ALERTA CRÍTICOS -->
-  {% if bajos_total %}
-  <div class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFBE0B] px-6 py-4 flex items-center gap-4">
-    <span class="text-2xl">⚠️</span>
-    <p class="font-black text-black uppercase tracking-widest text-sm">
-      {{ bajos_total }} producto{{ bajos_total|pluralize:"s" }} con inventario crítico — revísalos abajo.
-    </p>
-  </div>
-  {% endif %}
-
-  <!-- GRÁFICAS -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-6">
-      <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
-        📉 Críticos por ubicación
-      </h2>
-      <p class="text-xs font-bold text-gray-600 mb-3 uppercase tracking-widest">
-        Cantidad de productos con stock ≤ 5 en cada ubicación
-      </p>
-      <div class="relative w-full h-72">
-        <canvas id="chartBajoStock"></canvas>
-      </div>
-    </div>
-
-    <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-6">
-      <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
-        🏆 Más vendidos
-      </h2>
-      <div class="relative w-full h-72">
-        <canvas id="chartMasVendidos"></canvas>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- TABLA CRÍTICOS — única responsive (scroll horizontal en mobile) -->
+  <!-- HORAS Y DÍAS PICO — sale solo de los tickets del POS, no de los
+       conteos de inventario (esos no son confiables). -->
   <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white">
 
-    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
-      <h3 class="font-black text-white uppercase tracking-widest text-sm">
-        📋 Productos críticos — ≤ 5 piezas
-      </h3>
-      {% if bajos_total > bajos|length %}
-      <span class="font-black text-white/80 text-xs uppercase tracking-widest">
-        Top {{ bajos|length }} de {{ bajos_total }}
-      </span>
-      {% endif %}
+    <div class="bg-[#FF006E] border-b-4 border-black px-6 py-4">
+      <h2 class="font-black text-white uppercase tracking-widest text-sm">
+        ¿Cuándo se vende más?
+      </h2>
+      <p class="font-bold text-white/80 text-xs mt-1">
+        Ventas de las últimas 4 semanas en todas las sucursales ·
+        del {{ picos_desde|date:"d/m/Y" }} al {{ picos_hasta|date:"d/m/Y" }}
+      </p>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="tabla-criticos w-full divide-y-4 divide-black">
-        <thead class="bg-black">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Producto</th>
-            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Piezas</th>
-            <th class="px-4 py-3 text-left text-xs font-black text-white uppercase tracking-widest">Dónde</th>
-            <th class="px-4 py-3 text-center text-xs font-black text-white uppercase tracking-widest">Ir</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y-4 divide-black">
-          {% for inv in bajos %}
-          <tr class="hover:bg-yellow-50 transition-colors">
-            <td class="px-4 py-3 font-black text-black text-sm uppercase">{{ inv.producto.nombre }}</td>
-            <td class="px-4 py-3">
-              <span class="border-4 border-black bg-[#FF006E] text-white font-black text-sm px-3 py-1 inline-block">
-                🔴 {{ inv.cantidad_actual }}
-              </span>
-            </td>
-            <td class="px-4 py-3 font-bold text-gray-800 text-sm">
-              {% if inv.ubicacion.tipo == 'piso' %}🏪 Piso de Venta
-              {% elif inv.ubicacion.tipo == 'bodega' %}📦 Bodega Interna
-              {% else %}🏭 Almacén Central{% endif %}
-              {% if inv.ubicacion.sucursal %}
-              <span class="block text-xs text-gray-500 font-semibold">{{ inv.ubicacion.sucursal.nombre }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-center">
-              <a href="{% url 'inventario:productos_por_ubicacion' inv.ubicacion.id %}?highlight={{ inv.producto.id }}"
-                 class="btn-ir bg-[#3A86FF] border-4 border-black shadow-[3px_3px_0_0_black]
-                        text-white font-black text-xs uppercase tracking-widest px-4 py-2 whitespace-nowrap">
-                Ver →
-              </a>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="4" class="px-4 py-10 text-center font-black text-gray-300 uppercase tracking-widest text-xl">
-              Todo en orden. Sin críticos. 🎉
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    {% if picos_tickets %}
+    <!-- RESUMEN -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 border-b-4 border-black">
+      <div class="p-5 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-[#FFBE0B]">
+        <p class="text-xs font-black uppercase tracking-widest text-black/70">La hora con más ventas</p>
+        <p class="text-3xl font-black text-black mt-1">{{ hora_fuerte.rango }}</p>
+        <p class="text-xs font-bold text-black/70 mt-1">{{ hora_fuerte.tickets|floatformat:"0g" }} venta{{ hora_fuerte.tickets|pluralize }} en estas 4 semanas</p>
+      </div>
+      <div class="p-5 border-b-4 sm:border-b-0 sm:border-r-4 border-black bg-[#06D6A0]">
+        <p class="text-xs font-black uppercase tracking-widest text-black/70">El día con más ventas</p>
+        <p class="text-3xl font-black text-black mt-1">{{ dia_fuerte.nombre }}</p>
+        <p class="text-xs font-bold text-black/70 mt-1">
+          {% if dia_fuerte.promedio %}Unas {{ dia_fuerte.promedio|floatformat:"0g" }} venta{{ dia_fuerte.promedio|pluralize }} cada {{ dia_fuerte.nombre|lower }}
+          {% else %}{{ dia_fuerte.tickets }} venta{{ dia_fuerte.tickets|pluralize }} en estas 4 semanas{% endif %}
+        </p>
+      </div>
+      <div class="p-5 bg-[#00BBF9]">
+        <p class="text-xs font-black uppercase tracking-widest text-black/70">Total de ventas</p>
+        <p class="text-3xl font-black text-black mt-1">{{ picos_tickets|floatformat:"0g" }}</p>
+        <p class="text-xs font-bold text-black/70 mt-1">en estas 4 semanas</p>
+      </div>
     </div>
 
-    {% if bajos_total > bajos|length %}
-    <div class="border-t-4 border-black bg-gray-50 px-6 py-3 text-center">
-      <a href="{% url 'inventario:lista_productos' %}"
-         class="font-black text-[#FF006E] text-xs uppercase tracking-widest hover:underline">
-        → Ver los {{ bajos_total }} críticos en inventario global
-      </a>
+    <!-- GRÁFICAS -->
+    <div class="grid grid-cols-1 md:grid-cols-2">
+      <div class="p-6 border-b-4 md:border-b-0 md:border-r-4 border-black">
+        <h3 class="font-black text-black uppercase tracking-widest text-sm mb-1">¿A qué hora se vende más?</h3>
+        <p class="text-xs font-bold text-gray-600 mb-3 uppercase tracking-widest">Cuántas ventas hubo en cada hora</p>
+        <div class="relative w-full h-72">
+          <canvas id="chartPicoHora"></canvas>
+        </div>
+      </div>
+      <div class="p-6">
+        <h3 class="font-black text-black uppercase tracking-widest text-sm mb-1">¿Qué día se vende más?</h3>
+        <p class="text-xs font-bold text-gray-600 mb-3 uppercase tracking-widest">Cuántas ventas hubo cada día de la semana</p>
+        <div class="relative w-full h-72">
+          <canvas id="chartPicoDia"></canvas>
+        </div>
+      </div>
     </div>
+    {% else %}
+    <p class="px-6 py-16 text-center font-black text-gray-300 uppercase tracking-widest text-sm">
+      Sin ventas en las últimas 4 semanas
+    </p>
     {% endif %}
+  </div>
+
+  <!-- MÁS VENDIDOS -->
+  <div class="border-4 border-black shadow-[6px_6px_0_0_black] bg-white p-6">
+    <h2 class="font-black text-black uppercase tracking-widest text-sm mb-4 border-b-4 border-black pb-2">
+      🏆 Más vendidos
+    </h2>
+    <div class="relative w-full h-72">
+      <canvas id="chartMasVendidos"></canvas>
+    </div>
   </div>
 
   <!-- BOTONES ACCESO RÁPIDO -->
@@ -298,67 +257,57 @@
 
 </div>
 
+{{ picos_horas|json_script:"picos-horas-json" }}
+{{ picos_dias|json_script:"picos-dias-json" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Datos agregados por ubicación — UN bar por ubicación con el conteo
-  // de productos críticos. Legible aunque haya 224 productos en total.
-  const criticosPorUbicacion = [
-    {% for u in criticos_por_ubicacion %}
-    {
-      label: "{{ u.ubicacion__nombre|escapejs }}{% if u.ubicacion__sucursal__nombre %} · {{ u.ubicacion__sucursal__nombre|escapejs }}{% endif %}",
-      tipo:  "{{ u.ubicacion__tipo }}",
-      value: {{ u.total }}
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-  ];
+  // Horas y días pico — un solo color; la barra más alta va en rosa para que
+  // cuadre con las tarjetas de "más fuerte" de arriba.
+  const picosHoras = JSON.parse(document.getElementById("picos-horas-json").textContent);
+  const picosDias  = JSON.parse(document.getElementById("picos-dias-json").textContent);
 
-  const COLOR_TIPO = {
-    piso:    "#00BBF9",
-    bodega:  "#8338EC",
-    central: "#06D6A0"
-  };
-
-  if (criticosPorUbicacion.length > 0) {
-    new Chart(document.getElementById("chartBajoStock"), {
+  function chartPicos(canvasId, datos, etiquetaEje) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !datos.length) return;
+    const max = Math.max(...datos.map(d => d.tickets));
+    new Chart(canvas, {
       type: "bar",
       data: {
-        labels: criticosPorUbicacion.map(d => d.label),
+        labels: datos.map(etiquetaEje),
         datasets: [{
-          label: "Productos críticos",
-          data: criticosPorUbicacion.map(d => d.value),
-          backgroundColor: criticosPorUbicacion.map(d => COLOR_TIPO[d.tipo] || "#06D6A0"),
+          label: "Ventas",
+          data: datos.map(d => d.tickets),
+          backgroundColor: datos.map(d => d.tickets === max ? "#FF006E" : "#00BBF9"),
           borderColor: "#000",
           borderWidth: 3,
           borderRadius: 0,
         }]
       },
       options: {
-        indexAxis: "y",   // barras horizontales — labels largos legibles
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.parsed.x} producto${ctx.parsed.x === 1 ? "" : "s"} crítico${ctx.parsed.x === 1 ? "" : "s"}`
+              title: items => datos[items[0].dataIndex].titulo,
+              label: ctx => {
+                const n = datos[ctx.dataIndex].tickets;
+                return `${n} venta${n === 1 ? "" : "s"}`;
+              }
             }
           }
         },
         scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { font: { weight: "900" }, color: "#111", precision: 0 }
-          },
-          y: {
-            ticks: { font: { weight: "900", size: 11 }, color: "#111" }
-          }
+          x: { ticks: { font: { weight: "900", size: 11 }, color: "#111" } },
+          y: { beginAtZero: true, ticks: { font: { weight: "900" }, color: "#111", precision: 0 } }
         }
       }
     });
-  } else {
-    document.getElementById("chartBajoStock").parentElement.innerHTML =
-      '<p class="text-center font-black text-gray-300 uppercase tracking-widest text-sm py-20">Sin críticos 🎉</p>';
   }
+
+  chartPicos("chartPicoHora", picosHoras, d => d.label);
+  chartPicos("chartPicoDia",  picosDias,  d => d.label.slice(0, 3));   // Lun, Mar, Mié…
 
   const masVendidosLabels = [{% for p in mas_vendidos %}"{{ p.producto__nombre|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
   const masVendidosData   = [{% for p in mas_vendidos %}{{ p.total|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
