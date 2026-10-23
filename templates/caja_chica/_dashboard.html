@@ -1,0 +1,68 @@
+{# Vales y gastos (app caja_chica) en el dashboard de las dueñas. Esta semana
+   y la pasada, de lunes a domingo: el domingo se revisan los vales. Cambiar
+   el monto o borrar: formularios normales que regresan aquí (#caja-chica).
+   Contexto: caja_chica_semanas = [ResumenSemana esta, ResumenSemana pasada]. #}
+{% with esta=caja_chica_semanas.0 %}
+<div id="caja-chica" class="relative">
+  <details class="group border-4 border-black shadow-[8px_8px_0_0_black] bg-white">
+    <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none bg-[#E8C6FF] p-6
+                    flex items-start justify-between gap-4
+                    focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-black">
+      <span class="block min-w-0 space-y-1">
+        <span class="block text-2xl font-extrabold text-black uppercase tracking-wide">Vales y gastos</span>
+        <span class="block text-base font-black text-black">
+          Esta semana: vales ${{ esta.total_vales|floatformat:"2g" }} · gastos ${{ esta.total_gastos|floatformat:"2g" }}
+        </span>
+        <span class="block text-xs font-bold text-black/70">Salen de la cajita de la responsable de servicios.</span>
+      </span>
+      <span aria-hidden="true"
+            class="text-2xl font-black leading-none transition-transform duration-300 group-open:rotate-180 flex-shrink-0">▼</span>
+    </summary>
+
+    <div class="border-t-4 border-black p-6 space-y-8">
+      {% for semana in caja_chica_semanas %}
+      <section class="space-y-4{% if not forloop.first %} border-t-4 border-black border-dashed pt-6{% endif %}">
+        <h3 class="text-sm font-black uppercase tracking-widest text-black">
+          {% if forloop.first %}Esta semana{% else %}Semana pasada{% endif %}
+          <span class="font-bold normal-case tracking-normal text-black/60">
+            (lunes {{ semana.desde|date:"d/m" }} a domingo {{ semana.hasta|date:"d/m" }})
+          </span>
+        </h3>
+
+        <div class="space-y-3">
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">
+            Vales · ${{ semana.total_vales|floatformat:"2g" }}
+          </p>
+          {% for p in semana.personas %}
+          <div class="border-2 border-black">
+            <p class="flex justify-between gap-3 bg-[#FFFAC0] border-b-2 border-black px-3 py-2 font-black text-black">
+              <span class="break-words min-w-0">{{ p.persona }}</span>
+              <span class="tabular-nums whitespace-nowrap">${{ p.total|floatformat:"2g" }}</span>
+            </p>
+            <ul class="divide-y-2 divide-black/10">
+              {% for m in p.vales %}{% include "caja_chica/_movimiento_fila.html" %}{% endfor %}
+            </ul>
+          </div>
+          {% empty %}
+          <p class="text-sm font-bold text-black/50">No hubo vales.</p>
+          {% endfor %}
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">
+            Gastos · ${{ semana.total_gastos|floatformat:"2g" }}
+          </p>
+          {% if semana.gastos %}
+          <ul class="border-2 border-black divide-y-2 divide-black/10">
+            {% for m in semana.gastos %}{% include "caja_chica/_movimiento_fila.html" with mostrar_concepto=True %}{% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-sm font-bold text-black/50">No hubo gastos.</p>
+          {% endif %}
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+  </details>
+</div>
+{% endwith %}

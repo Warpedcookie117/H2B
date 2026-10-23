@@ -74,7 +74,8 @@ class POSService:
 
     @staticmethod
     @transaction.atomic
-    def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_pct=0):
+    def crear_venta(empleado, sucursal, caja_id, carrito, pagado_efectivo, pagado_tarjeta, descuento_pct=0,
+                    clip_empleado_id=None):
 
         POSService._cap_regalos(carrito)
 
@@ -163,10 +164,19 @@ class POSService:
 
         # 5) Snapshot del nombre de la caja
         try:
-            caja = Caja.objects.get(pk=caja_id)
+            caja = Caja.objects.select_related("sucursal__dueño_servicios__user").get(pk=caja_id)
             caja_nombre = caja.nombre
         except Caja.DoesNotExist:
+            caja = None
             caja_nombre = None
+
+        # 5b) En qué Clip se cobró la tarjeta (clip_service): el que el POS le
+        # mostró a la cajera, si sigue siendo válido. Se calcula ANTES de
+        # crear la venta para que su cajita no cuente esta misma venta.
+        clip_de_id = None
+        if pagado_tarjeta > 0:
+            from ventas.services.clip_service import clip_de_la_venta
+            clip_de_id = clip_de_la_venta(carrito, caja, max(0, total - pagado_tarjeta), clip_empleado_id)
 
         # 6) Crear Venta
         venta = Venta.objects.create(
@@ -181,6 +191,8 @@ class POSService:
             pagado_efectivo=pagado_efectivo,
             pagado_tarjeta=pagado_tarjeta,
             cambio=cambio,
+            pago_en_seco=True,   # regla vigente: nada queda como deuda (reparto.py)
+            clip_de_id=clip_de_id,
         )
 
         # 7) Crear detalles + descontar inventario

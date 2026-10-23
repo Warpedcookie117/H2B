@@ -6,6 +6,7 @@
 
 <!-- 🔥 Incluir CSS del POS -->
 <link rel="stylesheet" href="{% static 'css/pos.css' %}">
+<link rel="stylesheet" href="{% static 'css/caja_chica.css' %}">
 
 <script>
     window.sucursal_id = {{ ubicacion_pos.id }};
@@ -40,6 +41,9 @@
             <span class="pos-header-badge pos-header-badge--caja">
                 💳 {{ caja_nombre }}
             </span>
+            {# Vales y gastos de la caja chica: abre #modal-compraste #}
+            <button type="button" id="btn-compraste" class="cc-boton-header"
+                    aria-haspopup="dialog" aria-controls="modal-compraste">¿Compraste algo?</button>
         </div>
     </div>
 </div>
@@ -283,6 +287,9 @@
 </div>
 
 
+{% include "caja_chica/_modal_compraste.html" %}
+
+
 <!-- ========================================================= -->
 <!-- MODAL DE RESULTADO -->
 <!-- ========================================================= -->
@@ -494,6 +501,7 @@
 
 
 <script type="module" src="{% static 'js/pos/pos.js' %}"></script>
+<script type="module" src="{% static 'js/caja_chica/compraste.js' %}"></script>
 
 <!-- MODAL REGALO PROMOCIÓN -->
 <div id="modal-regalo" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;">

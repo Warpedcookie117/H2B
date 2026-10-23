@@ -98,6 +98,21 @@ class Venta(models.Model):
 
     cambio = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    # Regla de reparto con la que se cobró (ver reparto._repartir_fisico).
+    # True: a las demás dueñas se les pasa lo suyo en efectivo en el momento,
+    # aunque se haya pagado con tarjeta (sale del fondo de la caja de la
+    # receptora). False: ventas de antes; lo que no alcanzó quedó como deuda.
+    # Va por venta y no por fecha para que los cortes viejos no cambien al
+    # reimprimirlos: la regla nueva empieza con la primera venta tras el deploy.
+    pago_en_seco = models.BooleanField(default=False)
+
+    # En el Clip de quién se cobró la tarjeta (ventas/services/clip_service.py):
+    # la que más vendió o, si su cajita no alcanzaba para pagarles a las
+    # demás, la responsable de servicios. Ella hace de receptora en el reparto.
+    # Vacío: ventas sin tarjeta o de antes de esta regla (la que más vendió).
+    clip_de = models.ForeignKey(Empleado, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="+")
+
     def __str__(self):
         return f"Venta #{self.id} - ${self.total}"
 
@@ -140,17 +155,14 @@ class CorteCaja(models.Model):
 
 class DeudaEntreDuenas(models.Model):
     """
-    Lo que una dueña le quedó debiendo a otra en un corte (regla de la
-    receptora, ver ventas/services/reparto.py), ya neteado por pareja.
-    Es información sensible: NO sale en el corte (lo ve la cajera), solo en
-    el dashboard de las dos dueñas involucradas. Se registra al cerrar el
-    corte (deudas_service.registrar_deudas_de_corte); las no pagadas nunca
-    se borran y de las pagadas se conservan las 5 más recientes por dueña.
+    YA NO SE USA (oct-2026): las dueñas quitaron las deudas entre ellas;
+    desde Venta.pago_en_seco todo se paga en efectivo en el momento. Nada
+    escribe ni lee esta tabla. Se conserva solo para no borrar el historial
+    de deudas viejas (todas pagadas); quitarla es una migración que borra
+    esos datos.
 
-    Pago "en corto": si una deuda de HOY (todavía sin corte) se marca como
-    pagada, se guarda aquí con antes_del_corte=True y corte vacío; al hacer
-    el corte de esa caja se le asigna el corte y el corte solo registra lo
-    que quedó pendiente.
+    Era lo que una dueña le quedaba debiendo a otra en un corte, neteado
+    por pareja, con "Ya se pagó" desde el dashboard.
     """
     corte = models.ForeignKey(
         CorteCaja, on_delete=models.CASCADE, null=True, blank=True, related_name="deudas_duenas",

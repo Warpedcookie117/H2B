@@ -143,8 +143,9 @@ function carritoParaServidor() {
 }
 
 // En qué Clip se cobra la tarjeta de este carrito (el de la dueña que más
-// vende en la cuenta). Solo es un aviso: si falla devuelve null y el cobro
-// sigue igual.
+// vende en la cuenta o, si su cajita no alcanza, el de la responsable de
+// servicios). Si falla devuelve null y el cobro sigue igual: el servidor
+// decide el Clip por su cuenta.
 export async function pedirClipDeLaVenta() {
     try {
         const resp = await fetch("/ventas/pos/clip-de-la-venta/", {
@@ -165,7 +166,9 @@ export async function pedirClipDeLaVenta() {
     }
 }
 
-export async function procesarPago(efectivo, tarjeta) {
+// clipEmpleadoId: el Clip que se le mostró a la cajera (ahí pasaron la
+// tarjeta); null si no se supo y el servidor lo calcula.
+export async function procesarPago(efectivo, tarjeta, clipEmpleadoId = null) {
     console.log(`[POS:pago] procesarPago → efectivo=${efectivo} tarjeta=${tarjeta} descuento=${descuentoPct}%`);
 
     onPagoIniciado();
@@ -175,6 +178,7 @@ export async function procesarPago(efectivo, tarjeta) {
         pagado_efectivo: Number(efectivo) || 0,
         pagado_tarjeta: Number(tarjeta) || 0,
         descuento_pct: descuentoPct,
+        clip_empleado_id: clipEmpleadoId,
         idempotency_key: obtenerIdempotencyKey(),
     };
 

@@ -579,8 +579,19 @@ function initModalPago() {
 
     // A quién le toca el Clip de esta cuenta (lo calcula el backend al abrir
     // el modal). `peticionClip` descarta respuestas de una apertura anterior.
-    let clipNombre   = null;
+    // opcionesClip: {empleado_id, nombre, respaldo, le_falta} — si lo que entra
+    // en efectivo no alcanza para pagarles a las demás, se cobra en el Clip
+    // de respaldo (la responsable de servicios).
+    let opcionesClip = null;
     let peticionClip = 0;
+
+    // {empleado_id, nombre} del Clip donde se cobra con lo que va tecleado.
+    function clipElegido() {
+        if (!opcionesClip) return null;
+        const efectivoQueEntra = totalConDescuento() - parsearMonto(inputTarjeta.value);
+        const r = opcionesClip.respaldo;
+        return (r && efectivoQueEntra < Number(opcionesClip.le_falta)) ? r : opcionesClip;
+    }
 
     // Muestra un error de captura (tarjeta/efectivo inválidos) dentro del modal
     function mostrarErrorPago(msg) {
@@ -593,6 +604,7 @@ function initModalPago() {
     function actualizarAvisoClip() {
         if (!avisoClip) return;
         const tarjeta = parsearMonto(inputTarjeta.value);
+        const clipNombre = clipElegido()?.nombre || null;
         const visible = Boolean(clipNombre) && tarjeta > 0 && tarjeta <= totalConDescuento();
         avisoClip.hidden = !visible;
         if (!visible) return;
@@ -696,12 +708,12 @@ function initModalPago() {
         inputEfectivo.focus();
         actualizarInfoPago();
 
-        clipNombre = null;
+        opcionesClip = null;
         actualizarAvisoClip();
         const peticion = ++peticionClip;
         pedirClipDeLaVenta().then(clip => {
             if (peticion !== peticionClip) return;   // ya se abrió otra cuenta
-            clipNombre = clip?.nombre || null;
+            opcionesClip = clip || null;
             actualizarAvisoClip();
         });
     };
@@ -726,7 +738,9 @@ function initModalPago() {
 
         const imprimir = chkImprimir.checked;
 
-        const data = await procesarPago(efectivo, tarjeta);
+        const clip = clipElegido();
+        const data = await procesarPago(efectivo, tarjeta,
+            Number.isInteger(clip?.empleado_id) ? clip.empleado_id : null);
 
         if (String(data?.status).toLowerCase() === "ok") {
             // Cards al día con lo que quedó, aunque no llegue el websocket.

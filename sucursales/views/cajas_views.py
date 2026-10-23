@@ -84,14 +84,12 @@ def entrar_caja_ajax(request):
 
     ultimo_corte = CorteCaja.objects.filter(caja=caja).order_by("-fecha").first()
 
-    if not ultimo_corte or ultimo_corte.fecha.date() < hoy:
-        # ⭐ Solo genera corte de ayer si hubo ventas
-        from ventas.models import Venta
-        hubo_ventas_ayer = Venta.objects.filter(caja=caja, fecha__date=ayer).exists()
+    if not ultimo_corte or timezone.localtime(ultimo_corte.fecha).date() < hoy:
+        # Solo genera corte de ayer si quedaron ventas de ayer sin cortar
+        # (generar_corte_para_fecha devuelve None si ya están todas en uno).
+        corte_auto = generar_corte_para_fecha(caja, ayer)
 
-        if hubo_ventas_ayer:
-            corte_auto = generar_corte_para_fecha(caja, ayer)
-
+        if corte_auto is not None:
             request.session["caja_actual"] = caja.id
             request.session["sucursal_actual"] = caja.sucursal_id
 

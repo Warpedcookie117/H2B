@@ -1,19 +1,11 @@
-import json
-from decimal import Decimal, InvalidOperation
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from django.utils import timezone
-from ventas.models import CorteCaja, DeudaEntreDuenas, Venta
+from ventas.models import CorteCaja, Venta
 from django.shortcuts import redirect, render
 from django.utils.timezone import now
 from ventas.services.reparto import totales_caja
-from sucursales.models import Caja
-from ventas.services.deudas_service import (
-    DeudaCambio, deudas_hoy, historial, item_historial, marcar_pagada, marcar_pagada_hoy,
-)
 
 
 @login_required
@@ -54,11 +46,12 @@ def api_ventas_hoy(request):
 
     sucursales = Sucursal.objects.prefetch_related("cajas").all().order_by("nombre")
 
-    # Desglose por caja de SOLO los productos de este dueño — se cruza
-    # abajo con cada caja (en $0 si no vendió nada ahí hoy).
+    # Desglose por caja de lo de este dueño (su fila del corte, con servicios
+    # si es la responsable) — se cruza abajo con cada caja (en $0 si no
+    # vendió nada ahí hoy).
+    from ventas.services.corte_service import resumen_ventas_dueno_por_caja, sumar_resumen_dueno
     dueno_por_caja_id = {}
     if empleado:
-        from ventas.services.corte_service import resumen_ventas_dueno_por_caja
         dueno_por_caja_id = {d["caja_id"]: d for d in resumen_ventas_dueno_por_caja(empleado, hoy)}
 
     resultado_chart = []
@@ -99,7 +92,7 @@ def api_ventas_hoy(request):
                 "ultima_hora": ultima_hora,
             })
 
-            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0, "saldo": 0})
+            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0, "saldo": 0, "en_caja": 0})
             resultado_mis_cajas.append({
                 "sucursal": sucursal.nombre,
                 "caja": caja.nombre,
@@ -107,6 +100,7 @@ def api_ventas_hoy(request):
                 "tarjeta": mis["tarjeta"],     # en SU Clip
                 "total": mis["total"],         # lo que vendió
                 "saldo": mis["saldo"],         # > 0 le deben, < 0 debe
+                "en_caja": mis["en_caja"],     # efectivo ya sin vales y gastos (caja chica)
             })
 
         resultado_chart.append({
@@ -116,99 +110,17 @@ def api_ventas_hoy(request):
             "total": round(total_sucursal, 2),
         })
 
-    # $ vendido AHORITA (hoy) de los productos de este dueño — efectivo/tarjeta.
-    # Se deriva de dueno_por_caja_id (ya consultado arriba) en vez de volver
-    # a pegarle a la BD. Superusuario sin perfil de Empleado: se omite.
+    # $ vendido AHORITA (hoy) de este dueño — efectivo/tarjeta/total y, para
+    # la responsable de servicios, productos/servicios/sin_registro. Se
+    # deriva de dueno_por_caja_id (ya consultado arriba) en vez de volver a
+    # pegarle a la BD. Superusuario sin perfil de Empleado: se omite.
     mis_ventas = None
     if empleado:
-        valores = dueno_por_caja_id.values()
-        mis_ventas = {
-            "efectivo": round(sum(d["efectivo"] for d in valores), 2),
-            "tarjeta": round(sum(d["tarjeta"] for d in valores), 2),
-            "total": round(sum(d["total"] for d in valores), 2),
-            "saldo": round(sum(d["saldo"] for d in valores), 2),
-        }
-
-    # Deudas con las otras dueñas: solo las suyas (es información sensible,
-    # ya no sale en el corte). "hoy" en vivo desde el último corte de cada
-    # caja; "historial" lo registrado en cortes anteriores.
-    mis_deudas = None
-    if empleado:
-        mis_deudas = {"hoy": deudas_hoy(empleado), "historial": historial(empleado)}
+        mis_ventas = sumar_resumen_dueno(dueno_por_caja_id.values())
 
     return JsonResponse({
         "chart": resultado_chart,
         "cajas": resultado_cajas,
         "mis_ventas": mis_ventas,
         "mis_cajas": resultado_mis_cajas,
-        "mis_deudas": mis_deudas,
     }, safe=False)
-
-
-@login_required
-@require_POST
-def api_deuda_pagada(request, deuda_id):
-    """
-    Marca / desmarca como pagada una deuda entre dueñas. Body JSON
-    {"pagada": true|false}. Cualquiera de las dos (deudora o acreedora)
-    puede hacerlo; una deuda ajena responde 404 (no 403) para no revelar
-    que existe. Devuelve el item de historial ya actualizado.
-    """
-    empleado = getattr(request.user, "empleado", None)
-    if not empleado or empleado.rol != "dueño":
-        return JsonResponse({"status": "error", "error": "Solo dueñas."}, status=403)
-
-    try:
-        body = json.loads(request.body or b"{}")
-    except (ValueError, UnicodeDecodeError):
-        return JsonResponse({"status": "error", "error": "JSON inválido."}, status=400)
-    pagada = body.get("pagada") if isinstance(body, dict) else None
-    if not isinstance(pagada, bool):
-        return JsonResponse({"status": "error", "error": "Falta 'pagada' (true/false)."}, status=400)
-
-    try:
-        deuda = marcar_pagada(deuda_id, empleado, pagada)
-    except DeudaEntreDuenas.DoesNotExist:
-        return JsonResponse({"status": "error", "error": "Deuda no encontrada."}, status=404)
-
-    # None: era un pago en corto de hoy y se desmarcó (la deuda vuelve a "hoy").
-    return JsonResponse({"status": "ok", "deuda": item_historial(deuda, empleado) if deuda else None})
-
-
-@login_required
-@require_POST
-def api_deuda_hoy_pagada(request):
-    """
-    "Ya se pagó" en una deuda de HOY (sin corte todavía). Body JSON
-    {"caja_id": int, "con_id": int, "monto": número}: monto es lo que vio
-    la dueña en pantalla; si la deuda ya cambió responde 409 sin guardar.
-    """
-    empleado = getattr(request.user, "empleado", None)
-    if not empleado or empleado.rol != "dueño":
-        return JsonResponse({"status": "error", "error": "Solo dueñas."}, status=403)
-
-    try:
-        body = json.loads(request.body or b"{}")
-    except (ValueError, UnicodeDecodeError):
-        return JsonResponse({"status": "error", "error": "JSON inválido."}, status=400)
-    if not isinstance(body, dict):
-        body = {}
-    caja_id, con_id, monto = body.get("caja_id"), body.get("con_id"), body.get("monto")
-    if (not all(isinstance(x, int) and not isinstance(x, bool) for x in (caja_id, con_id))
-            or not isinstance(monto, (int, float)) or isinstance(monto, bool)):
-        return JsonResponse({"status": "error", "error": "Faltan caja_id, con_id o monto."}, status=400)
-    try:
-        monto = Decimal(str(monto))
-    except InvalidOperation:
-        return JsonResponse({"status": "error", "error": "Monto inválido."}, status=400)
-    if not monto.is_finite():
-        return JsonResponse({"status": "error", "error": "Monto inválido."}, status=400)
-
-    try:
-        marcar_pagada_hoy(empleado, caja_id, con_id, monto)
-    except (Caja.DoesNotExist, DeudaEntreDuenas.DoesNotExist):
-        return JsonResponse({"status": "error", "error": "Esa cuenta ya no está."}, status=404)
-    except DeudaCambio:
-        return JsonResponse({"status": "error", "error": "La cuenta cambió."}, status=409)
-
-    return JsonResponse({"status": "ok"})

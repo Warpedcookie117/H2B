@@ -1,0 +1,71 @@
+{# "¿Compraste algo?" — vales y gastos de la caja chica (app caja_chica).
+   Lo maneja static/js/caja_chica/compraste.js; se abre con #btn-compraste
+   del encabezado del POS. Todo lo dinámico (nombres, montos) lo pone el JS
+   con textContent. #}
+<div id="modal-compraste" class="pos-modal pos-modal--hidden" role="dialog" aria-modal="true"
+     aria-labelledby="cc-titulo">
+    <div class="pos-modal-content pos-modal-content--wide pos-animate-scale cc-modal">
+
+        <h2 id="cc-titulo" class="pos-modal-titulo">¿Compraste algo?</h2>
+        <p id="cc-cajita" class="cc-nota" hidden></p>
+
+        <div class="cc-tabs" role="tablist">
+            <button type="button" role="tab" id="cc-tab-vale" class="cc-tab cc-tab--activa"
+                    data-cc-tab="vale" aria-selected="true" aria-controls="cc-form-vale">Di un vale</button>
+            <button type="button" role="tab" id="cc-tab-gasto" class="cc-tab"
+                    data-cc-tab="gasto" aria-selected="false" aria-controls="cc-form-gasto">Compré algo</button>
+        </div>
+
+        {# VALE: a quién y cuánto. El nombre se elige de los registrados o se escribe. #}
+        <form id="cc-form-vale" class="cc-form" role="tabpanel" aria-labelledby="cc-tab-vale"
+              novalidate autocomplete="off">
+            <label class="cc-label" for="cc-nombre">¿A quién?</label>
+            <div class="cc-combo">
+                <input id="cc-nombre" class="cc-input" type="text" maxlength="60"
+                       placeholder="Escribe o elige el nombre"
+                       role="combobox" aria-autocomplete="list" aria-expanded="false"
+                       aria-controls="cc-sugerencias">
+                <ul id="cc-sugerencias" class="cc-sugerencias" role="listbox" hidden></ul>
+            </div>
+
+            <label class="cc-label" for="cc-monto-vale">¿Cuánto le prestaste?</label>
+            <input id="cc-monto-vale" class="cc-input cc-input--monto" type="text" inputmode="decimal"
+                   placeholder="$0.00">
+
+            {# Nombre nuevo parecido a uno registrado: elegir o confirmar que es otra persona. #}
+            <div id="cc-parecido" class="cc-parecido" hidden>
+                <p class="cc-parecido__texto">Ya hay alguien con un nombre parecido. ¿Es alguna de estas personas?</p>
+                <div id="cc-parecido-opciones" class="cc-parecido__opciones"></div>
+                <button type="button" id="cc-otra-persona" class="cc-parecido__otra">No, es otra persona</button>
+            </div>
+
+            <button type="submit" class="pos-modal-btn pos-modal-btn--confirmar pos-btn-block">Guardar vale</button>
+        </form>
+
+        {# GASTO: qué se compró y cuánto costó. #}
+        <form id="cc-form-gasto" class="cc-form" role="tabpanel" aria-labelledby="cc-tab-gasto"
+              novalidate autocomplete="off" hidden>
+            <label class="cc-label" for="cc-descripcion">¿Qué compraste?</label>
+            <input id="cc-descripcion" class="cc-input" type="text" maxlength="150"
+                   placeholder="Por ejemplo: garrafón de agua">
+
+            <label class="cc-label" for="cc-monto-gasto">¿Cuánto costó?</label>
+            <input id="cc-monto-gasto" class="cc-input cc-input--monto" type="text" inputmode="decimal"
+                   placeholder="$0.00">
+
+            <button type="submit" class="pos-modal-btn pos-modal-btn--confirmar pos-btn-block">Guardar gasto</button>
+        </form>
+
+        <p id="cc-aviso" class="cc-aviso" role="status" aria-live="polite" hidden></p>
+
+        {# Lo registrado hoy en esta caja que todavía no entra en un corte. #}
+        <section class="cc-hoy" aria-labelledby="cc-hoy-titulo">
+            <h3 id="cc-hoy-titulo" class="cc-hoy__titulo">Hoy en esta caja</h3>
+            <ul id="cc-hoy-lista" class="cc-hoy__lista"></ul>
+        </section>
+
+        <div class="pos-modal-botones">
+            <button type="button" id="cc-cerrar" class="pos-modal-btn pos-modal-btn--cancelar">Cerrar</button>
+        </div>
+    </div>
+</div>

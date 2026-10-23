@@ -131,36 +131,65 @@
         </div>
       </div>
 
-      <!-- DEBE HABER: efectivo por cajón de cada dueña. Σ líneas == total_efectivo
-           exacto (reparto.py); solo se omiten filas con efectivo 0. -->
+      <!-- VALES Y GASTOS: lo que salió de la cajita de la responsable de
+           servicios sin ser venta (caja chica). Los gastos van uno por uno;
+           los vales solo en total (el detalle lo ven las dueñas). -->
+      {% if efectivo.gastos or efectivo.vales %}
+      <div class="border-4 border-black bg-white p-3 space-y-1">
+        <p class="text-xs font-black uppercase tracking-widest text-center">🧾 VALES Y GASTOS</p>
+        {% for g in efectivo.gastos %}
+        <div class="flex justify-between gap-2 text-sm">
+          <span class="font-semibold break-words min-w-0">{{ g.descripcion }}</span>
+          <span class="font-black whitespace-nowrap">-${{ g.monto|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+        {% if efectivo.gastos %}
+        <div class="flex justify-between text-sm border-t border-dotted border-gray-400 pt-0.5">
+          <span class="font-black">Gastos ({{ efectivo.gastos|length }})</span>
+          <span class="font-black">-${{ efectivo.total_gastos|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if efectivo.vales %}
+        <div class="flex justify-between text-sm">
+          <span class="font-black">Vales ({{ efectivo.vales|length }})</span>
+          <span class="font-black">-${{ efectivo.total_vales|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- DEBE HABER: efectivo por cajón de cada dueña (corte_service.efectivo_del_corte),
+           ya sin vales y gastos. Nunca negativo: lo que faltó salió del fondo. -->
       <div class="border-4 border-black bg-black text-white p-4 space-y-2">
         <p class="text-xs font-black uppercase tracking-widest opacity-70 text-center">
           DEBE HABER EN EFECTIVO POR CAJÓN
         </p>
         <div class="space-y-1">
-          {% for fila in filas_duenos %}{% if not fila.especial and fila.efectivo != 0 %}
-          <div class="flex justify-between items-baseline gap-2">
-            <span class="text-sm font-black uppercase">Cajón {{ fila.nombre }}{% if fila.servicios %}
-              <span class="block text-[10px] font-bold normal-case tracking-wide opacity-70">(incluye servicios)</span>{% endif %}
-            </span>
-            <span class="text-lg font-black whitespace-nowrap">${{ fila.efectivo|floatformat:2 }}</span>
-          </div>
-          {% endif %}{% endfor %}
-          {% for fila in filas_duenos %}{% if fila.especial and fila.efectivo != 0 %}
+          {% for c in efectivo.cajones %}
+          {% if c.especial %}
           <div class="flex justify-between items-baseline gap-2 border border-dashed border-white/50 px-2 py-1">
-            <span class="text-sm font-bold">⚠ {{ fila.nombre }}
+            <span class="text-sm font-bold">⚠ {{ c.nombre }}
               <span class="block text-[10px] font-bold tracking-wide opacity-70">Sin dueña · avisar a la encargada</span>
             </span>
-            <span class="text-lg font-black whitespace-nowrap">${{ fila.efectivo|floatformat:2 }}</span>
+            <span class="text-lg font-black whitespace-nowrap">${{ c.debe_haber|floatformat:2 }}</span>
           </div>
-          {% endif %}{% endfor %}
-          {% if not total_efectivo %}
-          <p class="text-xs font-bold opacity-70 text-center">Sin efectivo en este corte.</p>
+          {% else %}
+          <div class="flex justify-between items-baseline gap-2">
+            <span class="text-sm font-black uppercase">Cajón {{ c.nombre }}{% if c.servicios %}
+              <span class="block text-[10px] font-bold normal-case tracking-wide opacity-70">(incluye servicios)</span>{% endif %}{% if c.vales or c.gastos %}
+              <span class="block text-[10px] font-bold normal-case tracking-wide opacity-70">(ya sin vales y gastos)</span>{% endif %}{% if c.del_fondo %}
+              <span class="block text-[11px] font-black normal-case tracking-wide text-[#FFBE0B]">Se usaron ${{ c.del_fondo|floatformat:2 }} del fondo</span>{% endif %}
+            </span>
+            <span class="text-lg font-black whitespace-nowrap">${{ c.debe_haber|floatformat:2 }}</span>
+          </div>
           {% endif %}
+          {% empty %}
+          <p class="text-xs font-bold opacity-70 text-center">Sin efectivo en este corte.</p>
+          {% endfor %}
         </div>
         <div class="flex justify-between items-baseline gap-2 border-t-2 border-dashed border-white pt-2">
           <span class="text-sm font-black uppercase tracking-widest">TOTAL</span>
-          <span class="text-3xl font-black whitespace-nowrap">${{ total_efectivo|floatformat:2 }}</span>
+          <span class="text-3xl font-black whitespace-nowrap">${{ efectivo.total_debe_haber|floatformat:2 }}</span>
         </div>
         <p class="text-xs font-black uppercase tracking-widest opacity-70 text-center">CUENTA BIEN.</p>
       </div>

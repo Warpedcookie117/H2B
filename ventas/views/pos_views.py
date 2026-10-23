@@ -236,6 +236,10 @@ def procesar_venta(request):
         pagado_efectivo = data.get("pagado_efectivo")
         pagado_tarjeta = data.get("pagado_tarjeta")
         descuento_pct = data.get("descuento_pct")
+        # El Clip que el modal le mostró a la cajera (ahí pasaron la tarjeta).
+        clip_empleado_id = data.get("clip_empleado_id")
+        if not isinstance(clip_empleado_id, int) or isinstance(clip_empleado_id, bool):
+            clip_empleado_id = None
 
         # 4) Validación básica
         if not carrito:
@@ -267,7 +271,8 @@ def procesar_venta(request):
                 carrito=carrito_real,
                 pagado_efectivo=float(pagado_efectivo),
                 pagado_tarjeta=float(pagado_tarjeta),
-                descuento_pct=int(descuento_pct or 0)
+                descuento_pct=int(descuento_pct or 0),
+                clip_empleado_id=clip_empleado_id,
             )
 
             venta = resultado["venta"]
@@ -339,7 +344,8 @@ def procesar_venta(request):
 def clip_de_la_venta(request):
     """
     Aviso del modal de cobro: en qué Clip se cobra la tarjeta de este
-    carrito (el de la dueña que más vende en la cuenta). Solo lee.
+    carrito (clip_service: el de la que más vende o, si su cajita no alcanza,
+    el de la responsable de servicios). Solo lee.
     """
     empleado = request.user.empleado
     if empleado.rol not in ["cajero", "dueno", "dueño"]:
@@ -351,8 +357,8 @@ def clip_de_la_venta(request):
         caja_id = request.session.get("caja_actual")
         caja = (Caja.objects.select_related("sucursal__dueño_servicios__user")
                 .filter(id=caja_id).first()) if caja_id else None
-        from ventas.services.reparto import clip_de_carrito
-        clip = clip_de_carrito(carrito, caja)
+        from ventas.services.clip_service import opciones_de_clip
+        clip = opciones_de_clip(carrito, caja)
     except Exception:
         logger.exception("clip_de_la_venta falló")
         return JsonResponse({"status": "error", "message": "No se pudo calcular el Clip."}, status=400)

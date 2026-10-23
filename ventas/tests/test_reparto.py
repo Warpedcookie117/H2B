@@ -18,7 +18,6 @@ from ventas.services.reparto import (
     Grupo,
     desglose_como_dict,
     desglose_por_dueno,
-    desglose_y_deudas,
     efectivo_neto,
     grupo_de_renglon,
     reparto_efectivo_venta,
@@ -51,12 +50,10 @@ class RepartoTestCase(VentasBaseTestCase):
     def desglose(self, *ventas):
         return desglose_por_dueno(ventas_para_desglose(Venta.objects.filter(pk__in=[v.pk for v in ventas])))
 
-    def desglose_deudas(self, *ventas):
-        """(filas, deudas) con las deudas reducidas a debe/a/monto: los ids
-        (debe_id/a_id) se validan aparte en test_b_todo_con_tarjeta_160."""
-        filas, deudas = desglose_y_deudas(
-            ventas_para_desglose(Venta.objects.filter(pk__in=[v.pk for v in ventas])))
-        return filas, [{k: d[k] for k in ("debe", "a", "monto")} for d in deudas]
+    def saldos(self, *ventas):
+        """{nombre: saldo} del desglose: lo que no le llegó ni a su caja ni a
+        su Clip (solo ventas de antes del pago en seco)."""
+        return {f["nombre"]: f["saldo"] for f in self.desglose(*ventas)}
 
     def assert_invariantes(self, venta):
         """
@@ -105,7 +102,7 @@ class RepartoTestCase(VentasBaseTestCase):
                 self.assertEqual(r["caso"], "sin_duena")
             self.assertIsNone(r["receptora"])
             self.assertIsNone(r["clip"])
-            self.assertEqual((r["pasar"], r["deudas"], r["queda_receptora"]), ([], [], 0.0))
+            self.assertEqual((r["pasar"], r["queda_receptora"]), ([], 0.0))
             return filas, r
 
         rid = r["receptora"]["empleado_id"]
@@ -123,14 +120,13 @@ class RepartoTestCase(VentasBaseTestCase):
             self.assertLessEqual(rec["saldo"], CERO)
         if any(c["saldo"] > 0 for cid, c in cajon.items() if cid != rid) or \
                 any(e["saldo"] > 0 for e in especiales.values()):
-            self.assertEqual(rec["efectivo"], CERO)  # con deuda, todo el efectivo se pasó
+            self.assertEqual(rec["efectivo"], CERO)  # con saldo, todo el efectivo se pasó
 
         # Modal congruente con las filas.
         self.assertEqual(Df(r["queda_receptora"]), rec["efectivo"])
         self.assertEqual({p["empleado_id"]: Df(p["efectivo"]) for p in r["pasar"]},
                          {cid: c["efectivo"] for cid, c in cajon.items() if cid != rid and c["efectivo"] > 0})
-        self.assertEqual({d["empleado_id"]: Df(d["monto"]) for d in r["deudas"]},
-                         {cid: c["saldo"] for cid, c in cajon.items() if cid != rid and c["saldo"] > 0})
+        self.assertNotIn("deudas", r)
         if tarjeta > 0:
             self.assertEqual(r["clip"], {"empleado_id": rid, "nombre": r["receptora"]["nombre"],
                                          "monto": float(tarjeta)})
@@ -183,7 +179,6 @@ class RepartoEfectivoCasosTest(RepartoTestCase):
         self.assertEqual(r["sin_cajon"], 0.0)
         # Sin tarjeta no hay Clip, y el efectivo alcanzó para todas: nadie debe.
         self.assertIsNone(r["clip"])
-        self.assertEqual(r["deudas"], [])
         self.assertEqual(r["por_duena"], [
             {"empleado_id": self.rosa.id, "nombre": "Rosa", "total": 140.0},
             {"empleado_id": self.anais.id, "nombre": "Anais", "total": 60.0},
@@ -213,7 +208,6 @@ class RepartoEfectivoCasosTest(RepartoTestCase):
         self.assertEqual(r["caso"], "sin_efectivo")
         self.assertEqual(r["receptora"], {"empleado_id": self.rosa.id, "nombre": "Rosa"})
         self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 200.0})
-        self.assertEqual(r["deudas"], [{"empleado_id": self.anais.id, "nombre": "Anais", "monto": 60.0}])
         self.assertEqual(r["queda_receptora"], 0.0)
         self.assertEqual(r["pasar"], [])
         self.assertEqual(r["sin_cajon"], 0.0)
@@ -232,9 +226,8 @@ class RepartoEfectivoCasosTest(RepartoTestCase):
         self.assertEqual((r["neto"], r["tarjeta"], r["sin_cajon"]), (0.0, 0.0, 0.0))
         self.assertIsNone(r["receptora"])
         self.assertIsNone(r["clip"])
-        self.assertEqual((r["pasar"], r["deudas"], r["por_duena"]), ([], [], []))
+        self.assertEqual((r["pasar"], r["por_duena"]), ([], []))
         self.assertEqual(self.desglose(v), [])
-        self.assertEqual(self.desglose_deudas(v), ([], []))
         # El "caso" de una venta sin dueñas con neto 0 NO se fija aquí: hoy sale
         # "sin_duena" (antes "sin_efectivo"); reportado como posible bug.
 
@@ -267,7 +260,6 @@ class RepartoEfectivoCasosTest(RepartoTestCase):
         self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 100.0})
         self.assertEqual(r["queda_receptora"], 40.0)
         self.assertEqual([p["efectivo"] for p in r["pasar"]], [60.0, 10.0])
-        self.assertEqual(r["deudas"], [])
 
     def test_inexistente_devuelve_none(self):
         self.assertIsNone(reparto_efectivo_venta(999999))
@@ -291,8 +283,6 @@ class RepartoEfectivoCasosTest(RepartoTestCase):
         self.assertIs(type(r["clip"]["empleado_id"]), int)
         for p in r["por_duena"]:
             self.assertIs(type(p["total"]), float)
-        for d in r["deudas"]:
-            self.assertIs(type(d["monto"]), float)
         self.assert_invariantes(v)
         # Los casos sin receptora también son JSON puro.
         v2 = self.crear_venta([self.renglon(self.prod_sin_dueno, 10)], efectivo=10)
@@ -387,10 +377,6 @@ class RepartoAritmeticaTest(RepartoTestCase):
         self.assertEqual(r["receptora"]["empleado_id"], self.rosa.id)
         self.assertEqual(r["queda_receptora"], 0.0)
         self.assertEqual([p["efectivo"] for p in r["pasar"]], [5.01, 5.0])
-        self.assertEqual(r["deudas"], [
-            {"empleado_id": self.yareli.id, "nombre": "Yareli", "monto": 5.0},
-            {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 4.99},
-        ])
 
     def test_venta_que_no_cuadra_por_floats(self):
         # neto + tarjeta = total + 0.01 (cambio mal redondeado por floats del
@@ -442,7 +428,8 @@ class RepartoReceptoraTest(RepartoTestCase):
     def test_receptora_por_base_no_por_efectivo(self):
         # Rosa vende más (60 + 60 de servicios vs 100 de Anais) aunque Anais
         # tenga la fila más grande: Rosa es la receptora, cobra los 219.99 en
-        # su Clip, le pasa a Anais el único centavo de efectivo y le debe 99.99.
+        # su Clip y le pasa a Anais el único centavo de efectivo (venta de
+        # antes del pago en seco: a Anais le quedan 99.99 de saldo).
         v = self.crear_venta(
             [self.renglon(self.prod_rosa, 60), self.servicio("Copias", 60),
              self.renglon(self.prod_anais, 100)],
@@ -454,7 +441,7 @@ class RepartoReceptoraTest(RepartoTestCase):
         self.assertEqual(r["pasar"], [{"empleado_id": self.anais.id, "nombre": "Anais", "efectivo": 0.01}])
         self.assertEqual(r["caso"], "varias")
         self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 219.99})
-        self.assertEqual(r["deudas"], [{"empleado_id": self.anais.id, "nombre": "Anais", "monto": 99.99}])
+        self.assertEqual(self.por_nombre(filas)["Anais"]["saldo"], D(99.99))
         # Las 2 filas de Rosa se reparten la tarjeta 50/50 (21999 c / 2): el
         # centavo extra a la de producto (va antes que "servicio" en el orden).
         rosa = sorted((f for f in filas if f["grupo"].cajon_id == self.rosa.id), key=lambda f: f["grupo"].tipo)
@@ -725,7 +712,8 @@ class RepartoClipEjemplosTest(RepartoTestCase):
     """
     La que más vendió en la cuenta (receptora) recibe el billete, da el
     cambio y cobra TODA la tarjeta en SU Clip; con el efectivo se completa lo
-    de las demás y si no alcanza, la receptora queda debiendo.
+    de las demás. Estas son ventas de antes del pago en seco: si el efectivo
+    no alcanzaba, a las demás les quedaba saldo (ver PagoEnSecoTest).
     """
 
     def gelish_tinte_producto(self, **pago):
@@ -747,7 +735,6 @@ class RepartoClipEjemplosTest(RepartoTestCase):
         self.assertEqual({n: fx[n]["efectivo"] for n in fx}, {"Anais": D(30), "Yareli": D(50), "Rosa": D(10)})
         self.assertEqual({n: fx[n]["tarjeta"] for n in fx}, {"Anais": D(70), "Yareli": CERO, "Rosa": CERO})
         self.assertEqual({n: fx[n]["saldo"] for n in fx}, {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
-        self.assertEqual(r["deudas"], [])
         self.assertEqual(r["caso"], "varias")
         self.assertEqual(r["queda_receptora"], 30.0)
         self.assertEqual(r["pasar"], [
@@ -759,35 +746,20 @@ class RepartoClipEjemplosTest(RepartoTestCase):
             {"empleado_id": self.yareli.id, "nombre": "Yareli", "total": 50.0},
             {"empleado_id": self.rosa.id, "nombre": "Rosa", "total": 10.0},
         ])
-        self.assertEqual(self.desglose_deudas(v)[1], [])
 
     def test_b_todo_con_tarjeta_160(self):
         v = self.gelish_tinte_producto(tarjeta=160)
         filas, r = self.assert_invariantes(v)
         fx = self.por_nombre(filas)
         # Los 160 entran al Clip de Anais y no hay efectivo que repartir:
-        # Anais le debe a Yareli sus 50 y a Rosa sus 10 (saldo Anais 100-160).
+        # a Yareli (50) y a Rosa (10) les queda saldo (Anais 100-160).
         self.assertEqual(r["caso"], "sin_efectivo")
         self.assertEqual(r["receptora"], {"empleado_id": self.anais.id, "nombre": "Anais"})
         self.assertEqual(r["clip"], {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 160.0})
         self.assertEqual({n: fx[n]["efectivo"] for n in fx}, {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
         self.assertEqual({n: fx[n]["saldo"] for n in fx}, {"Anais": D(-60), "Yareli": D(50), "Rosa": D(10)})
         self.assertEqual((r["queda_receptora"], r["pasar"]), (0.0, []))
-        self.assertEqual(r["deudas"], [
-            {"empleado_id": self.yareli.id, "nombre": "Yareli", "monto": 50.0},
-            {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 10.0},
-        ])
-        filas_d, deudas = self.desglose_deudas(v)
-        self.assertEqual(deudas, [
-            {"debe": "Anais", "a": "Yareli", "monto": D(50)},
-            {"debe": "Anais", "a": "Rosa", "monto": D(10)},
-        ])
-        # Las deudas también traen los ids de quién debe y a quién.
-        _, con_ids = desglose_y_deudas(ventas_para_desglose(Venta.objects.filter(pk=v.pk)))
-        self.assertEqual([(d["debe_id"], d["a_id"]) for d in con_ids],
-                         [(self.anais.id, self.yareli.id), (self.anais.id, self.rosa.id)])
-        self.assertEqual({f["nombre"]: f["saldo"] for f in filas_d},
-                         {"Anais": D(-60), "Yareli": D(50), "Rosa": D(10)})
+        self.assertEqual(self.saldos(v), {"Anais": D(-60), "Yareli": D(50), "Rosa": D(10)})
 
     def test_c_empate_150_efectivo_170_tarjeta(self):
         # $320 a partes iguales ($160 c/u). Empate de base: gana la prioridad.
@@ -801,8 +773,8 @@ class RepartoClipEjemplosTest(RepartoTestCase):
                 filas, r = self.assert_invariantes(v)
                 fx = {f["grupo"].cajon_id: f for f in filas}
                 # La receptora cobra 170 en su Clip; a la otra le tocan 160
-                # pero solo hay 150 en efectivo, le deben 10. Receptora:
-                # 160 - 0 - 170 = -10.
+                # pero solo hay 150 en efectivo, le quedan 10 de saldo.
+                # Receptora: 160 - 0 - 170 = -10.
                 self.assertEqual(r["receptora"]["empleado_id"], gana.id)
                 self.assertEqual(r["clip"]["monto"], 170.0)
                 self.assertEqual(r["clip"]["empleado_id"], gana.id)
@@ -811,8 +783,6 @@ class RepartoClipEjemplosTest(RepartoTestCase):
                 self.assertEqual(r["queda_receptora"], 0.0)
                 self.assertEqual(r["pasar"], [{"empleado_id": otra.id, "nombre": otra.user.first_name,
                                                "efectivo": 150.0}])
-                self.assertEqual(r["deudas"], [{"empleado_id": otra.id, "nombre": otra.user.first_name,
-                                                "monto": 10.0}])
                 self.assertEqual(r["caso"], "varias")
 
     def test_d_con_cambio_210_pagado_con_500(self):
@@ -827,52 +797,35 @@ class RepartoClipEjemplosTest(RepartoTestCase):
         self.assertEqual(r["queda_receptora"], 140.0)
         self.assertEqual([(p["nombre"], p["efectivo"]) for p in r["pasar"]], [("Anais", 60.0), ("Yareli", 10.0)])
         self.assertIsNone(r["clip"])
-        self.assertEqual(r["deudas"], [])
 
-    def test_e_deudas_se_netean_por_pareja(self):
-        # Venta 1: Anais 100 + Yareli 60 con tarjeta: Anais debe 60 a Yareli.
+    def test_e_saldos_se_suman_entre_ventas(self):
+        # Venta 1: Anais 100 + Yareli 60 con tarjeta: a Yareli le quedan 60.
         v1 = self.crear_venta([self.renglon(self.prod_anais, 100), self.renglon(self.prod_yareli, 60)],
                               tarjeta=160)
-        # Venta 2: Yareli 100 + Anais 20 con tarjeta: Yareli debe 20 a Anais.
+        # Venta 2: Yareli 100 + Anais 20 con tarjeta: a Anais le quedan 20.
         v2 = self.crear_venta([self.renglon(self.prod_yareli, 100), self.renglon(self.prod_anais, 20)],
                               tarjeta=120)
         self.assert_invariantes(v1)
         self.assert_invariantes(v2)
-        filas, deudas = self.desglose_deudas(v1, v2)
-        # 60 - 20 = 40: una sola deuda.
-        self.assertEqual(deudas, [{"debe": "Anais", "a": "Yareli", "monto": D(40)}])
-        dd = desglose_como_dict(filas)
-        self.assertEqual((dd["Anais"]["saldo"], dd["Yareli"]["saldo"]), (D(-40), D(40)))
-        # Al revés (la deuda de Yareli es la grande) el neteo cambia de lado: 90 - 60.
-        v3 = self.crear_venta([self.renglon(self.prod_yareli, 100), self.renglon(self.prod_anais, 90)],
-                              tarjeta=190)
-        self.assertEqual(self.desglose_deudas(v1, v3)[1],
-                         [{"debe": "Yareli", "a": "Anais", "monto": D(30)}])
-        # Exactamente iguales: no queda deuda.
-        v4 = self.crear_venta([self.renglon(self.prod_yareli, 100), self.renglon(self.prod_anais, 60)],
-                              tarjeta=160)
-        self.assertEqual(self.desglose_deudas(v1, v4)[1], [])
-        # Todo en efectivo: nadie debe nada.
+        # 60 - 20 = 40.
+        self.assertEqual(self.saldos(v1, v2), {"Anais": D(-40), "Yareli": D(40)})
+        # Todo en efectivo: a nadie le queda saldo.
         e1 = self.crear_venta([self.renglon(self.prod_anais, 100), self.renglon(self.prod_yareli, 60)],
                               efectivo=200)
         e2 = self.crear_venta([self.renglon(self.prod_rosa, 30), self.servicio("Copias", 10),
                                self.renglon(self.prod_yareli, 50)], efectivo=90)
-        filas, deudas = self.desglose_deudas(e1, e2)
-        self.assertEqual(deudas, [])
-        self.assertTrue(all(f["saldo"] == CERO for f in filas))
+        self.assertTrue(all(s == CERO for s in self.saldos(e1, e2).values()))
 
     def test_f_servicio_de_la_responsable_pagado_con_tarjeta(self):
         # Anais 100 + servicio Copias 30 (de Rosa, responsable) todo con
-        # tarjeta: Anais es receptora, cobra 130 en su Clip y le debe 30 a Rosa.
+        # tarjeta: Anais es receptora y cobra 130 en su Clip; a Rosa le quedan
+        # 30 de saldo (venta de antes del pago en seco).
         v = self.crear_venta([self.renglon(self.prod_anais, 100), self.servicio("Copias", 30)],
                              tarjeta=130)
         filas, r = self.assert_invariantes(v)
         self.assertEqual(r["receptora"]["empleado_id"], self.anais.id)
         self.assertEqual(r["clip"], {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 130.0})
-        self.assertEqual(r["deudas"], [{"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 30.0}])
-        filas_d, deudas = self.desglose_deudas(v)
-        self.assertEqual(deudas, [{"debe": "Anais", "a": "Rosa", "monto": D(30)}])
-        rosa = desglose_como_dict(filas_d)["Rosa"]
+        rosa = desglose_como_dict(self.desglose(v))["Rosa"]
         self.assertEqual((rosa["total"], rosa["efectivo"], rosa["tarjeta"], rosa["saldo"]),
                          (D(30), CERO, CERO, D(30)))
         self.assertEqual(rosa["servicios"]["total"], D(30))
@@ -881,6 +834,85 @@ class RepartoClipEjemplosTest(RepartoTestCase):
 # ---------------------------------------------------------------------------
 # Propiedad: 200 ventas pseudoaleatorias
 # ---------------------------------------------------------------------------
+
+class PagoEnSecoTest(RepartoTestCase):
+    """
+    Ventas con pago_en_seco (todas las del POS desde el deploy): a las demás
+    dueñas se les pasa lo suyo en efectivo aunque se pague con tarjeta, del
+    fondo de la caja de la receptora. Nunca queda deuda entre dueñas.
+    """
+
+    def gelish(self, **pago):
+        # Gelish $100 (Anais) + tinte $50 (Yareli) + producto $10 (Rosa) = $160.
+        return self.crear_venta(
+            [self.renglon(self.prod_anais, 100), self.renglon(self.prod_yareli, 50),
+             self.renglon(self.prod_rosa, 10)],
+            pago_en_seco=True, **pago,
+        )
+
+    def test_todo_con_tarjeta_se_paga_del_fondo(self):
+        v = self.gelish(tarjeta=160)
+        fx = self.por_nombre(reparto_venta(self.de_bd(v)))
+        self.assertEqual({n: fx[n]["efectivo"] for n in fx}, {"Anais": D(-60), "Yareli": D(50), "Rosa": D(10)})
+        self.assertEqual({n: fx[n]["tarjeta"] for n in fx}, {"Anais": D(160), "Yareli": CERO, "Rosa": CERO})
+        self.assertEqual({n: fx[n]["saldo"] for n in fx}, {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
+
+        r = reparto_efectivo_venta(v.id)
+        self.assertEqual(r["caso"], "varias")
+        self.assertEqual((r["queda_receptora"], r["del_fondo"]), (-60.0, 60.0))
+
+    def test_mixto_que_no_alcanza(self):
+        # 30 en efectivo + 130 tarjeta: a Yareli y Rosa se les pasan 60; 30
+        # vienen del billete y 30 del fondo de Anais.
+        v = self.gelish(efectivo=30, tarjeta=130)
+        fx = self.por_nombre(reparto_venta(self.de_bd(v)))
+        self.assertEqual({n: fx[n]["efectivo"] for n in fx}, {"Anais": D(-30), "Yareli": D(50), "Rosa": D(10)})
+        self.assertEqual({n: fx[n]["saldo"] for n in fx}, {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
+        self.assertEqual(reparto_efectivo_venta(v.id)["del_fondo"], 30.0)
+
+    def test_si_alcanza_es_igual_que_antes(self):
+        for en_seco in (False, True):
+            with self.subTest(en_seco=en_seco):
+                v = self.crear_venta(
+                    [self.renglon(self.prod_anais, 100), self.renglon(self.prod_yareli, 50),
+                     self.renglon(self.prod_rosa, 10)],
+                    efectivo=90, tarjeta=70, pago_en_seco=en_seco,
+                )
+                fx = self.por_nombre(reparto_venta(self.de_bd(v)))
+                self.assertEqual({n: fx[n]["efectivo"] for n in fx},
+                                 {"Anais": D(30), "Yareli": D(50), "Rosa": D(10)})
+                self.assertEqual(reparto_efectivo_venta(v.id)["del_fondo"], 0.0)
+
+    def test_sin_duena_no_saca_del_fondo(self):
+        # Lo sin dueña no tiene caja: no se le "pasa" efectivo que no entró.
+        v = self.crear_venta([self.renglon(self.prod_anais, 60), self.renglon(self.prod_sin_dueno, 40)],
+                             tarjeta=100, pago_en_seco=True)
+        filas = reparto_venta(self.de_bd(v))
+        self.assertEqual(suma(filas, "efectivo"), CERO)
+        sin = next(f for f in filas if f["grupo"].cajon_id is None)
+        self.assertEqual((sin["efectivo"], sin["saldo"]), (CERO, D(40)))
+        r = reparto_efectivo_venta(v.id)
+        self.assertEqual((r["sin_cajon"], r["del_fondo"]), (0.0, 0.0))
+
+    def test_ventas_de_antes_no_cambian(self):
+        # Reimprimir un corte viejo da lo mismo que cuando se cobró.
+        v = self.gelish(tarjeta=160)
+        Venta.objects.filter(pk=v.pk).update(pago_en_seco=False)
+        self.assertEqual(self.saldos(v), {"Anais": D(-60), "Yareli": D(50), "Rosa": D(10)})
+        self.assertEqual({f["nombre"]: f["efectivo"] for f in self.desglose(v)},
+                         {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
+
+    def test_desglose_del_corte_cuadra_con_negativos(self):
+        ventas = [self.gelish(tarjeta=160), self.gelish(efectivo=200), self.gelish(efectivo=30, tarjeta=130)]
+        filas = self.desglose(*ventas)
+        tot = totales_caja(Venta.objects.filter(pk__in=[v.pk for v in ventas]))
+        self.assertEqual(suma(filas, "efectivo"), tot["efectivo"])
+        self.assertEqual(suma(filas, "tarjeta"), tot["tarjeta"])
+        self.assertEqual({f["nombre"]: f["saldo"] for f in filas}, {"Anais": CERO, "Yareli": CERO, "Rosa": CERO})
+        # Anais: +100 de la venta en efectivo (160 neto - 60 que pasó), -60 y -30 del fondo.
+        self.assertEqual({f["nombre"]: f["efectivo"] for f in filas},
+                         {"Anais": D(10), "Yareli": D(150), "Rosa": D(30)})
+
 
 class RepartoPropiedadTest(RepartoTestCase):
 
@@ -935,15 +967,14 @@ class RepartoPropiedadTest(RepartoTestCase):
 
         efectivo_por_duena = {}
         tarjeta_por_duena = {}
-        debe = {}  # (receptora_id, acreedora_id) -> Decimal, según el modal
         sin_cajon = CERO
         casos = set()
-        con_deuda = 0
+        con_saldo = 0
         # assert_invariantes revisa por venta: columnas exactas, e+t+saldo ==
         # total por fila, tarjeta solo en la receptora, saldo >= 0 fuera de
         # ella y <= 0 en ella, Σsaldo == 0 si cuadra, y el invariante del modal.
         for v in ventas_para_desglose(qs):
-            _, r = self.assert_invariantes(v)
+            filas_v, r = self.assert_invariantes(v)
             casos.add(r["caso"])
             sin_cajon += Df(r["sin_cajon"])
             if r["receptora"]:
@@ -951,19 +982,17 @@ class RepartoPropiedadTest(RepartoTestCase):
                 efectivo_por_duena[rid] = efectivo_por_duena.get(rid, CERO) + Df(r["queda_receptora"])
                 if r["clip"]:
                     tarjeta_por_duena[rid] = tarjeta_por_duena.get(rid, CERO) + Df(r["clip"]["monto"])
-                for d in r["deudas"]:
-                    debe[(rid, d["empleado_id"])] = debe.get((rid, d["empleado_id"]), CERO) + Df(d["monto"])
-                con_deuda += bool(r["deudas"])
+            con_saldo += any(f["saldo"] > 0 for f in filas_v)
             for p in r["pasar"]:
                 efectivo_por_duena[p["empleado_id"]] = (
                     efectivo_por_duena.get(p["empleado_id"], CERO) + Df(p["efectivo"])
                 )
-        # El generador sí ejercita todos los casos del modal, y también deudas.
+        # El generador sí ejercita todos los casos del modal, y también ventas
+        # (de antes del pago en seco) donde a alguien le quedó saldo.
         self.assertEqual(casos, {"varias", "una", "sin_efectivo", "sin_duena"})
-        self.assertGreater(con_deuda, 0)
+        self.assertGreater(con_saldo, 0)
 
-        filas, deudas = desglose_y_deudas(ventas_para_desglose(qs))
-        self.assertEqual(filas, desglose_por_dueno(ventas_para_desglose(qs)))
+        filas = desglose_por_dueno(ventas_para_desglose(qs))
         totales = totales_caja(qs)
         self.assertEqual(totales["num_ventas"], 200)
         for campo in ("total", "efectivo", "tarjeta"):
@@ -981,19 +1010,3 @@ class RepartoPropiedadTest(RepartoTestCase):
             self.assertEqual(tarjeta_por_duena.get(f["empleado_id"], CERO), f["tarjeta"], f["nombre"])
         self.assertEqual(sum((f["efectivo"] for f in filas if f["especial"]), CERO), sin_cajon)
         self.assertIn("Servicios (sin responsable)", desglose_como_dict(filas))
-
-        # Deudas del desglose entre DUEÑAS == deudas del modal neteadas por pareja.
-        nombre = {f["empleado_id"]: f["nombre"] for f in filas if not f["especial"]}
-        esperadas = {}
-        for (a, b), monto in debe.items():
-            if (a, b) in esperadas or (b, a) in esperadas:
-                continue
-            neto = monto - debe.get((b, a), CERO)
-            if neto:
-                esperadas[(a, b) if neto > 0 else (b, a)] = abs(neto)
-        duenas = set(nombre.values())
-        entre_duenas = {(d["debe"], d["a"]): d["monto"] for d in deudas
-                        if d["debe"] in duenas and d["a"] in duenas}
-        self.assertEqual(entre_duenas, {(nombre[a], nombre[b]): m for (a, b), m in esperadas.items()})
-        for d in deudas:
-            self.assertGreater(d["monto"], CERO)

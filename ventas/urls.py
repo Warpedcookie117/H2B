@@ -40,8 +40,6 @@ from ventas.views.ventas_views import (
     
     ventas_por_cajero,
     api_ventas_hoy,
-    api_deuda_pagada,
-    api_deuda_hoy_pagada,
 )
 
 # Tickets de corte
@@ -96,8 +94,6 @@ urlpatterns = [
     # ============================
     path("ventas-por-cajero/", ventas_por_cajero, name="ventas_por_cajero"),
     path("api/ventas/hoy/", api_ventas_hoy, name="api_ventas_hoy"),
-    path("api/deudas/<int:deuda_id>/pagada/", api_deuda_pagada, name="api_deuda_pagada"),
-    path("api/deudas/hoy/pagada/", api_deuda_hoy_pagada, name="api_deuda_hoy_pagada"),
 
     # ============================
     # Promociones

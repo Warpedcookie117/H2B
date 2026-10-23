@@ -1357,31 +1357,6 @@
   text-align: left;
 }
 
-/* ⚠ Anais le debe $50.00 a Yare — lo que no alcanzó en efectivo */
-.pos-resultado-reparto__deudas {
-  padding: 0.4rem 0.5rem;
-  border: 3px solid var(--pos-negro);
-  border-left-width: 8px;
-  background: var(--pos-card-2);
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  text-align: left;
-}
-.pos-resultado-reparto__deudas > * { margin: 0; }
-.pos-resultado-reparto__deuda {
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.6;
-}
-.pos-resultado-reparto__deuda .pos-resultado-reparto__monto { color: #B00020; }
-.pos-resultado-reparto__deudas-nota {
-  font-size: 0.75rem;
-  font-style: italic;
-  font-weight: 700;
-  color: #333;
-}
-
 /* Con el reparto visible el modal crece: en pantallas bajas se deja hacer
    scroll dentro del modal en vez de cortarse arriba y abajo. Solo aplica
    cuando el reparto se muestra, así el modal queda igual que antes sin él. */
@@ -1403,7 +1378,6 @@
   .pos-resultado-reparto__caja::before { height: 10px; margin: 0 -0.4rem 0.3rem; }
   .pos-resultado-reparto__cifra       { font-size: 1.3rem; }
   .pos-resultado-reparto__feria       { padding: 0.3rem 0.5rem; font-size: 0.95rem; }
-  .pos-resultado-reparto__deuda       { font-size: 0.95rem; line-height: 1.45; }
   .pos-resultado-resumen .pos-resultado-valor { font-size: 1.4rem; }
 }
 
@@ -1413,6 +1387,5 @@
   .pos-resultado-reparto__caja  { flex-basis: 9rem; }
   .pos-resultado-reparto__titulo,
   .pos-resultado-reparto__leyenda { font-size: 1rem; }
-  .pos-resultado-reparto__feria,
-  .pos-resultado-reparto__deuda { font-size: 0.9rem; }
+  .pos-resultado-reparto__feria { font-size: 0.9rem; }
 }

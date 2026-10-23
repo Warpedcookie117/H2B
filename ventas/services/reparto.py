@@ -9,8 +9,10 @@ total (ya con descuento), en proporción a su BASE (Σ subtotal de sus
 renglones) con el método de mayor residuo a centavos. Dónde queda
 físicamente el dinero sigue la regla de las dueñas: la que más vendió en la
 cuenta recibe el billete, da el cambio y cobra la tarjeta en SU Clip; a las
-demás se les pasa lo suyo en efectivo, y si no alcanza queda como deuda
-(ver _repartir_fisico). Cada columna suma EXACTAMENTE el monto de la venta,
+demás se les pasa lo suyo en efectivo. En las ventas con pago_en_seco se les
+pasa siempre, aunque se haya pagado con tarjeta (sale del fondo de la caja
+de la receptora); en las de antes, si no alcanzaba quedaba como deuda (ver
+_repartir_fisico). Cada columna suma EXACTAMENTE el monto de la venta,
 así que el desglose de un corte suma exacto lo de totales_caja().
 
 Todo en Decimal. Este módulo solo importa modelos (ventas, inventario) para
@@ -99,7 +101,7 @@ def ventas_para_desglose(ventas_qs):
     sin importar cuántas ventas haya. El Prefetch NO se filtra por dueña: la
     proporción de cada una depende de TODOS los renglones de la venta.
     """
-    return ventas_qs.select_related("caja__sucursal__dueño_servicios__user").prefetch_related(
+    return ventas_qs.select_related("caja__sucursal__dueño_servicios__user", "clip_de__user").prefetch_related(
         Prefetch("detalles", queryset=VentaDetalle.objects.select_related("producto__dueño__user"))
     )
 
@@ -248,7 +250,11 @@ def _repartir(monto, bases_cent):
 
 
 def _reparto(venta):
-    """reparto_venta + el mapa cajon_id → Empleado (para prioridad y username)."""
+    """
+    (reparto_venta, mapa cajon_id → Empleado, cajon_id de la receptora | None).
+    La receptora es la del Clip donde se cobró (venta.clip_de, ver
+    clip_service) o, si la venta no lo guardó, la que más vendió en la cuenta.
+    """
     subgrupos = {}
     empleados = {}
     for item in venta.detalles.all():
@@ -277,8 +283,18 @@ def _reparto(venta):
         if total > 0 or neto > 0 or tarjeta > 0:
             # Dinero sin renglones que lo expliquen: no se pierde, se reporta.
             return [{"grupo": GRUPO_SIN_ASIGNAR, "concepto": None, "cantidad": 0, "base": CERO,
-                     "total": total, "efectivo": neto, "tarjeta": tarjeta, "saldo": CERO}], empleados
-        return [], empleados
+                     "total": total, "efectivo": neto, "tarjeta": tarjeta, "saldo": CERO}], empleados, None
+        return [], empleados, None
+
+    clip_id = getattr(venta, "clip_de_id", None)
+    if clip_id is not None and clip_id not in empleados:
+        # Se cobró en el Clip de alguien que no vendió nada en esta cuenta (la
+        # cajita de la que más vendió no alcanzaba): entra con un renglón en
+        # $0 que recibe la tarjeta y paga lo de las demás en efectivo.
+        emp = venta.clip_de
+        empleados[emp.id] = emp
+        filas.append({"grupo": Grupo(("empleado", emp.id), nombre_de(emp), emp.id, "producto"),
+                      "concepto": None, "cantidad": 0, "base": CERO})
 
     bases_cajon = _bases_por_cajon(filas)
     filas.sort(key=lambda f: _clave_fila(f, bases_cajon, empleados))
@@ -286,18 +302,21 @@ def _reparto(venta):
     for fila, t in zip(filas, _repartir(total, bases_cent)):
         fila["total"] = t
 
+    receptora = None
     if not bases_cajon:
         # Nadie con caja ni Clip propio (todo especial): proporcional.
         for fila, e, c in zip(filas, _repartir(neto, bases_cent), _repartir(tarjeta, bases_cent)):
             fila["efectivo"], fila["tarjeta"] = e, c
     else:
-        _repartir_fisico(filas, _orden_receptora(filas, empleados)[0], neto, tarjeta)
+        receptora = clip_id if clip_id is not None else _orden_receptora(filas, empleados)[0]
+        _repartir_fisico(filas, receptora, neto, tarjeta,
+                         en_seco=getattr(venta, "pago_en_seco", False))
 
     for fila in filas:
         # > 0: a esta fila le deben (cobró menos de lo que vendió);
         # < 0: debe (su Clip recibió más de lo suyo). Σ saldos == 0 si la venta cuadra.
         fila["saldo"] = fila["total"] - fila["efectivo"] - fila["tarjeta"]
-    return filas, empleados
+    return filas, empleados, receptora
 
 
 def _como_pago(monto, pago_cent):
@@ -315,30 +334,43 @@ def _como_pago(monto, pago_cent):
 
 
 def _pesos(filas, idx):
-    """Pesos en centavos de esas filas: su total; si todo es 0, su base."""
+    """
+    Pesos en centavos de esas filas: su total; si todo es 0, su base; si
+    también es 0 (el renglón en $0 de quien solo prestó su Clip), partes
+    iguales.
+    """
     pesos = [_centavos(filas[i]["total"]) for i in idx]
     if sum(pesos) == 0:
         pesos = [_centavos(filas[i]["base"]) for i in idx]
+    if sum(pesos) == 0:
+        pesos = [1] * len(idx)
     return pesos
 
 
-def _repartir_fisico(filas, receptora, neto, tarjeta):
+def _repartir_fisico(filas, receptora, neto, tarjeta, en_seco=False):
     """
     Dónde queda físicamente el dinero de UNA venta. Regla de las dueñas: la
     que más vendió en la cuenta (la receptora) recibe el billete Y cobra la
     tarjeta en SU Clip. Con el efectivo se completa lo de las demás:
 
       - Toda la tarjeta va a la receptora (a su Clip).
-      - Cada otra fila recibe su total en efectivo, si alcanza; si no
-        alcanza (p. ej. todo se pagó con tarjeta), el efectivo que hay se
-        reparte entre ellas en proporción y lo que falta queda como saldo:
-        la receptora se lo debe (lo tiene en su Clip).
+      - en_seco (ventas con pago_en_seco): cada otra DUEÑA recibe su total
+        en efectivo SIEMPRE, aunque se haya pagado con tarjeta: sale del
+        fondo que hay en la caja de la receptora, así que en esa venta su
+        efectivo puede quedar negativo. Nadie queda debiendo.
+      - Las demás filas (sin en_seco: también las dueñas; con en_seco: solo
+        las especiales, que no tienen caja) reciben su total en efectivo si
+        alcanza; si no, el efectivo que queda se reparte entre ellas en
+        proporción y lo que falta queda como saldo (la receptora lo tiene
+        en su Clip).
       - Lo que sobra del efectivo se queda en la caja de la receptora.
 
     Σ efectivo == neto y Σ tarjeta == tarjeta, exactos.
     """
     de_r = [i for i, f in enumerate(filas) if f["grupo"].cajon_id == receptora]
     otras = [i for i, f in enumerate(filas) if f["grupo"].cajon_id != receptora]
+    en_seco_idx = [i for i in otras if en_seco and filas[i]["grupo"].cajon_id is not None]
+    resto = [i for i in otras if i not in en_seco_idx]
     pesos_r = _pesos(filas, de_r)
 
     for i, c in zip(de_r, _repartir(tarjeta, pesos_r)):
@@ -346,12 +378,17 @@ def _repartir_fisico(filas, receptora, neto, tarjeta):
     for i in otras:
         filas[i]["tarjeta"] = CERO
 
+    for i in en_seco_idx:
+        filas[i]["efectivo"] = filas[i]["total"]
+    # Lo que queda del efectivo tras pagar en seco (negativo si salió del fondo).
+    disponible = neto - sum((filas[i]["total"] for i in en_seco_idx), CERO)
+
     total = sum((f["total"] for f in filas), CERO)
-    necesitan = sum((filas[i]["total"] for i in otras), CERO)
-    if neto >= necesitan:
-        for i in otras:
+    necesitan = sum((filas[i]["total"] for i in resto), CERO)
+    if disponible >= necesitan:
+        for i in resto:
             filas[i]["efectivo"] = filas[i]["total"]
-        for i, e in zip(de_r, _repartir(neto - necesitan, pesos_r)):
+        for i, e in zip(de_r, _repartir(disponible - necesitan, pesos_r)):
             filas[i]["efectivo"] = e
         if neto + tarjeta == total:
             # Venta que cuadra: cada fila de la receptora se completa con
@@ -360,10 +397,14 @@ def _repartir_fisico(filas, receptora, neto, tarjeta):
             for i in de_r:
                 filas[i]["tarjeta"] = filas[i]["total"] - filas[i]["efectivo"]
     else:
-        for i, e in zip(otras, _repartir(neto, _pesos(filas, otras))):
+        # Sin en_seco disponible == neto >= 0 y la receptora queda en 0.
+        alcanza = max(disponible, CERO)
+        pesos = _pesos(filas, resto)
+        partes = _repartir(alcanza, pesos) if sum(pesos) else [CERO] * len(resto)
+        for i, e in zip(resto, partes):
             filas[i]["efectivo"] = e
-        for i in de_r:
-            filas[i]["efectivo"] = CERO
+        for i, e in zip(de_r, _repartir(disponible - alcanza, pesos_r)):
+            filas[i]["efectivo"] = e
 
 
 def reparto_venta(venta):
@@ -413,30 +454,15 @@ def desglose_por_dueno(ventas):
     Pasar ventas de ventas_para_desglose() para que sean 2 queries en total.
     "productos" = total de todo lo que no es servicio, así que siempre
     total == productos + servicios.total. "efectivo" es lo que quedó en su
-    caja, "tarjeta" lo que entró a su Clip y "saldo" lo que le deben (> 0)
-    o debe (< 0) por cobros hechos en el Clip de otra.
-    """
-    return desglose_y_deudas(ventas)[0]
-
-
-def desglose_y_deudas(ventas):
-    """
-    (filas de desglose_por_dueno, deudas entre dueñas). Las deudas salen de
-    las ventas donde el Clip de la receptora recibió más de lo suyo: ella le
-    debe a cada otra lo que no le alcanzó en efectivo. Se netean por pareja:
-    [{"debe": nombre, "a": nombre, "debe_id": id, "a_id": id, "monto": Decimal}]
-    con monto > 0; debe_id / a_id son ids de Empleado (solo hay deudas entre
-    dueñas, nunca con filas especiales).
+    caja, "tarjeta" lo que entró a su Clip y "saldo" lo que no le llegó ni a
+    su caja ni a su Clip: solo pasa en ventas de antes del pago en seco
+    (pago_en_seco=False); con él, siempre 0 entre dueñas.
     """
     acc = {}
     empleados = {}
-    debe = {}   # (clave deudora, clave acreedora) → Decimal
     for venta in ventas:
-        filas_venta, emps = _reparto(venta)
+        filas_venta, emps, _ = _reparto(venta)
         empleados.update(emps)
-        receptora = None
-        if any(f["grupo"].cajon_id is not None for f in filas_venta):
-            receptora = ("empleado", _orden_receptora(filas_venta, emps)[0])
         # Cómo pagó el cliente esta venta: para el efectivo/tarjeta por servicio.
         pago_cent = [_centavos(efectivo_neto(venta)), _centavos(venta.pagado_tarjeta)]
         for f in filas_venta:
@@ -453,11 +479,6 @@ def desglose_y_deudas(ventas):
             fila["efectivo"] += f["efectivo"]
             fila["tarjeta"] += f["tarjeta"]
             fila["saldo"] += f["saldo"]
-            # Solo deudas entre dueñas: lo de grupos sin dueña no es de nadie
-            # (el modal lo reporta como "sin dueña", no como deuda).
-            if (receptora is not None and g.cajon_id is not None
-                    and g.clave != receptora and f["saldo"] > 0):
-                debe[(receptora, g.clave)] = debe.get((receptora, g.clave), CERO) + f["saldo"]
             if f["concepto"] is None:
                 fila["productos"] += f["total"]
                 continue
@@ -503,23 +524,7 @@ def desglose_y_deudas(ventas):
         if f["especial"] else
         (0, 0, f["nombre"].casefold(), str(f["empleado_id"]))
     ))
-
-    # Neteo por pareja: si Anais le debe 60 a Yare y Yare le debe 20 a
-    # Anais, queda "Anais le debe 40 a Yare".
-    nombre = {f["clave"]: f["nombre"] for f in filas}
-    deudas = []
-    for (a, b), monto in debe.items():
-        if (b, a) in debe and (b, a) < (a, b):
-            continue  # la pareja ya se procesó desde el otro lado
-        neto = monto - debe.get((b, a), CERO)
-        if neto > 0:
-            deudas.append({"debe": nombre[a], "a": nombre[b],
-                           "debe_id": a[1], "a_id": b[1], "monto": neto})
-        elif neto < 0:
-            deudas.append({"debe": nombre[b], "a": nombre[a],
-                           "debe_id": b[1], "a_id": a[1], "monto": -neto})
-    deudas.sort(key=lambda d: (-d["monto"], d["debe"].casefold(), d["a"].casefold()))
-    return filas, deudas
+    return filas
 
 
 def desglose_como_dict(filas):
@@ -542,17 +547,18 @@ def _nombres_por_cajon(cids, empleados):
     return nombres
 
 
-def clip_de_carrito(carrito, caja):
+def receptora_de_carrito(carrito, caja):
     """
-    Aviso del modal de cobro, ANTES de cobrar: en qué Clip se cobra la
-    tarjeta. Es el de la receptora (la que más vende en la cuenta), con la
-    misma regla que el reparto de la venta ya guardada: base = precio ×
-    cantidad de sus renglones (regalos no cuentan, servicios van a la
-    responsable de servicios de la sucursal). Solo lee, no guarda nada.
+    La que más vende en el carrito, ANTES de cobrar, con la misma regla que
+    el reparto de la venta ya guardada: base = precio × cantidad de sus
+    renglones (regalos no cuentan, servicios van a la responsable de
+    servicios de la sucursal). Solo lee, no guarda nada.
 
     carrito: lo mismo que el POS manda a procesar_venta.
-    Devuelve {"empleado_id", "nombre"}, o None si nadie en la cuenta tiene
-    caja (todo sin dueña).
+    Devuelve {"empleado", "nombre", "para_las_demas"}: "para_las_demas" es
+    lo que les tocaría a las otras dueñas de la cuenta antes del descuento
+    (si todo se pagara con tarjeta, eso tendría que salir de su cajita). None
+    si nadie en la cuenta tiene caja (todo sin dueña).
     """
     ids = {item.get("producto_id") for item in carrito
            if not item.get("es_servicio") and not item.get("es_regalo")}
@@ -580,7 +586,11 @@ def clip_de_carrito(carrito, caja):
     if not filas:
         return None
     receptora = _orden_receptora(filas, empleados)[0]
-    return {"empleado_id": receptora, "nombre": _nombres_por_cajon(empleados, empleados)[receptora]}
+    return {
+        "empleado": empleados[receptora],
+        "nombre": _nombres_por_cajon(empleados, empleados)[receptora],
+        "para_las_demas": sum((f["base"] for f in filas if f["grupo"].cajon_id != receptora), CERO),
+    }
 
 
 def reparto_efectivo_venta(venta_id):
@@ -588,23 +598,22 @@ def reparto_efectivo_venta(venta_id):
     Qué hacer físicamente con el dinero de UNA venta (modal del POS). La
     receptora (la que más vendió en la cuenta) recibe el billete, da el
     cambio y cobra la tarjeta en SU Clip; de su caja se le pasa a cada otra
-    dueña lo suyo en efectivo. Si el efectivo no alcanza (p. ej. todo con
-    tarjeta), la receptora queda debiendo lo que falta. Lo de grupos
-    especiales (sin dueña) se queda en la caja de la receptora.
+    dueña lo suyo en efectivo, aunque se haya pagado con tarjeta (sale del
+    fondo de su caja, ver "del_fondo"). Lo de grupos especiales (sin dueña)
+    se queda en la caja de la receptora.
 
     Lee la venta de la BD (2 queries) porque el objeto en memoria tras
     POSService.crear_venta trae floats. Devuelve solo tipos JSON:
       por_duena: lo que le toca a cada quien de esta venta (ya con descuento)
       pasar:     efectivo que sale de la caja de la receptora a cada otra
       clip:      {"empleado_id","nombre","monto"} | None
-      deudas:    [{"empleado_id","nombre","monto"}] lo que la receptora debe
     INVARIANTE: neto == queda_receptora + Σpasar + sin_cajon.
     """
     venta = ventas_para_desglose(Venta.objects.filter(pk=venta_id)).first()
     if venta is None:
         return None
 
-    filas, empleados = _reparto(venta)
+    filas, empleados, receptora = _reparto(venta)
     neto = efectivo_neto(venta)
     tarjeta = _dec(venta.pagado_tarjeta)
     resultado = {
@@ -619,8 +628,8 @@ def reparto_efectivo_venta(venta_id):
         "queda_receptora": 0.0,
         "pasar": [],
         "clip": None,
-        "deudas": [],
         "sin_cajon": 0.0,
+        "del_fondo": 0.0,
     }
 
     # Acumulado por caja (dueña) y por fila especial.
@@ -630,7 +639,7 @@ def reparto_efectivo_venta(venta_id):
         cid = f["grupo"].cajon_id
         destino = cajon.setdefault(cid, {}) if cid is not None \
             else especiales.setdefault(f["grupo"].nombre, {})
-        for k in ("total", "efectivo", "tarjeta", "saldo"):
+        for k in ("total", "efectivo", "tarjeta"):
             destino[k] = destino.get(k, CERO) + f[k]
 
     sin_cajon = sum((e["efectivo"] for e in especiales.values()), CERO)
@@ -644,21 +653,22 @@ def reparto_efectivo_venta(venta_id):
         return resultado
 
     nombres = _nombres_por_cajon(cajon, empleados)
-    orden = _orden_receptora(filas, empleados)
-    receptora, demas = orden[0], orden[1:]
+    # La receptora primero (puede ser quien solo prestó su Clip), luego las
+    # demás de la que más vendió a la que menos.
+    orden = [receptora] + [c for c in _orden_receptora(filas, empleados) if c != receptora]
+    demas = orden[1:]
     pasar = sorted(
         (cid for cid in demas if cajon[cid]["efectivo"] > 0),
         key=lambda cid: (-cajon[cid]["efectivo"], nombres[cid].casefold(), cid),
     )
-    deudas = sorted(
-        (cid for cid in demas if cajon[cid]["saldo"] > 0),
-        key=lambda cid: (-cajon[cid]["saldo"], nombres[cid].casefold(), cid),
-    )
 
-    if neto == 0:
-        caso = "sin_efectivo"
-    elif pasar or sin_cajon:
+    # Con pago en seco hay que pasar efectivo aunque se haya pagado todo con
+    # tarjeta, así que "varias" va antes que "sin_efectivo". En las ventas
+    # de antes, sin efectivo nunca había nada que pasar.
+    if pasar or sin_cajon:
         caso = "varias"
+    elif neto == 0:
+        caso = "sin_efectivo"
     else:
         caso = "una"   # no hay que pasarle efectivo a nadie
 
@@ -672,8 +682,9 @@ def reparto_efectivo_venta(venta_id):
                for cid in pasar],
         clip=({"empleado_id": receptora, "nombre": nombres[receptora], "monto": float(tarjeta)}
               if tarjeta > 0 else None),
-        deudas=[{"empleado_id": cid, "nombre": nombres[cid], "monto": float(cajon[cid]["saldo"])}
-                for cid in deudas],
         sin_cajon=float(sin_cajon),
+        # Lo que se pasa a las demás y no venía en el billete de esta venta
+        # (pagaron con tarjeta): sale del fondo de la caja de la receptora.
+        del_fondo=float(max(CERO, -cajon[receptora]["efectivo"])),
     )
     return resultado

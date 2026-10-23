@@ -3,9 +3,9 @@
 // Hay varias dueñas en la tienda; cada una tiene su caja de efectivo y su
 // Clip. La que más vendió en la cuenta (la "receptora") recibe el billete, de
 // su caja sale la feria y cobra TODA la tarjeta en su Clip. Aquí se le dice a
-// la cajera cómo acomodar el dinero: lo recibido, de qué caja tomar la feria,
-// cuánto efectivo le pone de esa caja a cada otra dueña y, si no alcanzó,
-// quién le debe a quién.
+// la cajera cómo acomodar el dinero: lo recibido, de qué caja tomar la feria
+// y cuánto efectivo le pone de esa caja a cada otra dueña (también si pagaron
+// con tarjeta: se paga en el momento, nadie queda debiendo).
 // El backend ya calcula todo (llave `reparto_efectivo` de la respuesta del
 // cobro, contrato versión 2) y este módulo SOLO lo pinta: aquí no se hacen
 // cuentas.
@@ -98,7 +98,6 @@ function _filtrar(lista, campo, etiqueta) {
 }
 
 const _listaPasar   = (pasar)    => _filtrar(pasar, "efectivo", "pasar");
-const _listaDeudas  = (deudas)   => _filtrar(deudas, "monto", "deudas");
 
 
 // ============================================================
@@ -166,7 +165,10 @@ function _pintarFeria(cont, r, receptora) {
 
 // De la caja de Anais
 //   [ Le pones en efectivo $60.00 a Ivan ] [ Le pones en efectivo $10.00 a Yareli ] …
-// Una card por dueña, las que sean. Si no hay que pasarle a nadie:
+// Una card por dueña, las que sean. Si pagaron con tarjeta (r.del_fondo) se
+// pasa igual, del dinero que ya hay en esa caja:
+//   De la caja de Anais (aunque pagaron con tarjeta)
+// Si no hay que pasarle a nadie:
 //   Todo el efectivo va a la caja de Anais
 function _pintarCajas(cont, r, receptora) {
     const pasar = _listaPasar(r.pasar);
@@ -176,7 +178,10 @@ function _pintarCajas(cont, r, receptora) {
         }
         return;
     }
-    cont.append(_parrafo("leyenda", ["De la caja de ", _duena(receptora)]));
+    cont.append(_parrafo("leyenda", [
+        "De la caja de ", _duena(receptora),
+        _hayMonto(r.del_fondo) ? " (aunque pagaron con tarjeta)" : "",
+    ]));
     const fila = _el("div", "cajas");
     pasar.forEach(item => {
         const card = _card("caja", null, [
@@ -189,22 +194,6 @@ function _pintarCajas(cont, r, receptora) {
         fila.append(card);
     });
     cont.append(fila);
-}
-
-// ⚠ Anais le debe $50.00 a Yare   (lo que no alcanzó en efectivo)
-function _pintarDeudas(cont, deudas, deudora) {
-    if (!deudas.length) return;
-    const caja = _el("div", "deudas");
-    deudas.forEach(d => {
-        caja.append(_parrafo("deuda", [
-            "⚠ ", _duena(deudora), " le debe ", _monto(d.monto),
-            " a ", _duena(_nombre(d.nombre) || SIN_NOMBRE),
-        ]));
-    });
-    caja.append(_parrafo("deudas-nota", [
-        `(la tarjeta se cobró en el Clip de ${deudora}; se arreglan entre ellas)`,
-    ]));
-    cont.append(caja);
 }
 
 function _pintarSinCajon(cont, r, receptora) {
@@ -269,10 +258,9 @@ export function pintarReparto(contenedor, r) {
     }
 
     const receptora = _nombre(r.receptora?.nombre);
-    const deudas    = _listaDeudas(r.deudas);
     const clip      = (r.clip && typeof r.clip === "object" && _hayMonto(r.clip.monto)) ? r.clip : null;
     const nombreClip = clip ? (_nombre(clip.nombre) || receptora) : "";
-    console.log(`[POS:reparto] pintarReparto → caso=${caso} receptora="${receptora}" recibido=${r.recibido} cambio=${r.cambio} neto=${r.neto} tarjeta=${r.tarjeta} clip=${clip ? `${nombreClip}:${clip.monto}` : "-"} deudas=${deudas.length} sin_cajon=${r.sin_cajon}`);
+    console.log(`[POS:reparto] pintarReparto → caso=${caso} receptora="${receptora}" recibido=${r.recibido} cambio=${r.cambio} neto=${r.neto} tarjeta=${r.tarjeta} clip=${clip ? `${nombreClip}:${clip.monto}` : "-"} del_fondo=${r.del_fondo} sin_cajon=${r.sin_cajon}`);
 
     contenedor.classList.add(`${PREFIJO}--${caso.replace(/_/g, "-")}`);
 
@@ -288,7 +276,7 @@ export function pintarReparto(contenedor, r) {
     // Sin receptora no se sabe a qué caja / Clip va el dinero: mejor no decir
     // nada que mandarlo al lugar equivocado.
     const conEfectivo = caso === "varias" || caso === "una";
-    if ((conEfectivo || deudas.length || _hayMonto(r.sin_cajon) || _hayMonto(r.cambio)) && !receptora) {
+    if ((conEfectivo || _hayMonto(r.sin_cajon) || _hayMonto(r.cambio)) && !receptora) {
         _ocultar(contenedor, "falta la receptora", r);
         return false;
     }
@@ -301,8 +289,6 @@ export function pintarReparto(contenedor, r) {
     _pintarPagos(contenedor, r, clip, nombreClip);
     _pintarFeria(contenedor, r, receptora);
     if (conEfectivo) _pintarCajas(contenedor, r, receptora);
-    // Debe la dueña en cuyo Clip cayó la tarjeta (la receptora)
-    _pintarDeudas(contenedor, deudas, nombreClip || receptora);
     _pintarSinCajon(contenedor, r, receptora);
 
     // Venta en $0 (p. ej. solo regalos): solo el título

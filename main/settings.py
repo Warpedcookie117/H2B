@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "inventario.apps.InventarioConfig",
     "ventas",
     "sucursales",
+    "caja_chica",
 ]
 
 AUTH_USER_MODEL = 'tienda_temp.Usuario'

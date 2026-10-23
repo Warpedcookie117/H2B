@@ -158,7 +158,8 @@ def generar_texto_ticket(obj):
     # ============================================================
     if isinstance(obj, CorteCaja):
         # Import local: pos_service importa este módulo; así no hay ciclos.
-        from ventas.services.reparto import desglose_y_deudas, totales_caja, ventas_para_desglose
+        from ventas.services.reparto import desglose_por_dueno, totales_caja, ventas_para_desglose
+        from ventas.services.corte_service import efectivo_del_corte
 
         corte = obj
 
@@ -168,9 +169,7 @@ def generar_texto_ticket(obj):
         # con descuento, regalos fuera y servicios dentro de la fila de la
         # responsable de servicios. Σ filas == totales de la caja, exacto.
         # Una sola pasada: el queryset de ventas_para_desglose se consume al iterar.
-        # Las deudas entre duenas NO van en el corte (son sensibles: solo en
-        # el dashboard de cada duena); se descarta el segundo valor.
-        filas_duenos, _ = desglose_y_deudas(ventas_para_desglose(corte.ventas.all()))
+        filas_duenos = desglose_por_dueno(ventas_para_desglose(corte.ventas.all()))
         tot = totales_caja(corte.ventas.all())
         total_efectivo_caja = tot["efectivo"]
         total_tarjeta_caja = tot["tarjeta"]
@@ -192,8 +191,8 @@ def generar_texto_ticket(obj):
         lineas.append(_sep())
 
         def renglon(etiqueta, monto):
-            """'etiqueta ..... $monto' a ANCHO; si no cabe, el monto baja a la derecha."""
-            precio = f"${monto:.2f}"
+            """'etiqueta ..... $monto' a ANCHO; si no cabe, el monto baja a la derecha. Lo que sale: '-$50.00'."""
+            precio = f"-${-monto:.2f}" if monto < 0 else f"${monto:.2f}"
             if len(etiqueta) + 1 + len(precio) <= ANCHO:
                 return [etiqueta + precio.rjust(ANCHO - len(etiqueta))]
             return [etiqueta[:ANCHO], precio.rjust(ANCHO)]
@@ -223,8 +222,7 @@ def generar_texto_ticket(obj):
                 lineas.append(aviso_sin_duena)
             # Vendio = lo que le toca (ya con descuento); caja/Clip = donde
             # quedo el dinero. La que mas vendio en cada cuenta cobra TODA la
-            # tarjeta en SU Clip (reparto.py). Lo que se deben entre ellas no
-            # se imprime aqui: solo sale en el dashboard de cada duena.
+            # tarjeta en SU Clip y les paga a las demas en efectivo (reparto.py).
             lineas += renglon("  Vendio:", fila["total"])
             if fila["especial"]:
                 lineas += renglon("  Efectivo:", fila["efectivo"])
@@ -262,25 +260,40 @@ def generar_texto_ticket(obj):
         lineas.append(f"${total_tarjeta_caja:.2f}".rjust(ANCHO))
         lineas.append(_sep())
 
-        # Efectivo por cajón físico de cada dueña (ya no "EN CAJA X DEBE
-        # HABER": tras repartir cada venta, el efectivo no está todo en el
-        # cajón de esta computadora). Σ líneas == total_efectivo exacto
-        # (reparto.py); solo se omiten las filas con efectivo 0.
+        # Vales y gastos (caja chica): salen de la cajita de la responsable
+        # de servicios. Gastos uno por uno; vales solo en total.
+        ef = efectivo_del_corte(corte, filas_duenos)
+        if ef["gastos"] or ef["vales"]:
+            lineas.append(_c("VALES Y GASTOS"))
+            for g in ef["gastos"]:
+                lineas += renglon(f"{g.descripcion[:ANCHO - 12]}", -g.monto)
+            if ef["gastos"]:
+                lineas += renglon(f"Gastos ({len(ef['gastos'])}):", -ef["total_gastos"])
+            if ef["vales"]:
+                lineas += renglon(f"Vales ({len(ef['vales'])}):", -ef["total_vales"])
+            lineas.append(_sep())
+
+        # Efectivo por cajón físico de cada dueña, ya sin vales y gastos
+        # (corte_service.efectivo_del_corte, lo mismo que la vista web).
+        # Nunca negativo: lo que faltó salió del fondo.
         lineas.append(_c("DEBE HABER EN EFECTIVO"))
         lineas.append(_c("POR CAJON:"))
-        cajones = [f for f in filas_duenos if not f["especial"] and f["efectivo"] != 0]
-        sin_cajon = [f for f in filas_duenos if f["especial"] and f["efectivo"] != 0]
-        for fila in cajones:
-            lineas += renglon(f"Cajon {fila['nombre']}", fila["efectivo"])
-            if fila["servicios"]:
+        for c in ef["cajones"]:
+            if c["especial"]:
+                lineas += renglon(c["nombre"], c["debe_haber"])
+                lineas.append(aviso_sin_duena)
+                continue
+            lineas += renglon(f"Cajon {c['nombre']}", c["debe_haber"])
+            if c["servicios"]:
                 lineas.append("  (incluye servicios)")
-        for fila in sin_cajon:
-            lineas += renglon(fila["nombre"], fila["efectivo"])
-            lineas.append(aviso_sin_duena)
-        if not cajones and not sin_cajon:
+            if c["vales"] or c["gastos"]:
+                lineas.append("  (ya sin vales y gastos)")
+            if c["del_fondo"]:
+                lineas += renglon("  Del fondo se usaron:", c["del_fondo"])
+        if not ef["cajones"]:
             lineas.append(_c("(sin efectivo)"))
         lineas.append(_sep_punteado().rstrip())
-        lineas += renglon("TOTAL", total_efectivo_caja)
+        lineas += renglon("TOTAL", ef["total_debe_haber"])
         lineas.append(_c("CUENTA BIEN."))
         lineas.append(_sep())
 

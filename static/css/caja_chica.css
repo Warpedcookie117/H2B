@@ -1,0 +1,157 @@
+/* ============================================================
+   Caja chica — botón "¿Compraste algo?" del encabezado del POS y su modal
+   (templates/caja_chica/_modal_compraste.html). Usa las variables de
+   pos.css; se carga después de él.
+   ============================================================ */
+
+/* Botón en el encabezado negro, junto a sucursal y caja */
+.cc-boton-header {
+  padding: 0.15rem 0.6rem;
+  background: var(--pos-card-1);
+  color: var(--pos-negro);
+  border: 2px solid var(--pos-negro);
+  box-shadow: 2px 2px 0 0 rgba(255,255,255,0.35);
+  font-size: 0.65rem;
+  font-weight: var(--pos-font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.cc-boton-header:hover  { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 0 rgba(255,255,255,0.5); }
+.cc-boton-header:active { transform: translate(1px,1px);   box-shadow: 1px 1px 0 0 rgba(255,255,255,0.35); }
+.cc-boton-header:focus-visible { outline: 3px solid var(--pos-cyan); outline-offset: 2px; }
+
+/* Modal */
+.cc-modal { max-height: calc(100vh - 2rem); overflow-y: auto; }
+
+.cc-nota {
+  margin: -0.5rem 0 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.cc-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+.cc-tab {
+  padding: 0.6rem 0.5rem;
+  background: var(--pos-blanco);
+  color: var(--pos-negro);
+  border: 3px solid var(--pos-negro);
+  font-weight: var(--pos-font-bold);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cc-tab--activa { background: var(--pos-amarillo); box-shadow: var(--pos-sombra-sm); }
+.cc-tab:focus-visible { outline: 3px solid var(--pos-cyan); outline-offset: 2px; }
+
+.cc-form { display: flex; flex-direction: column; gap: 0.35rem; }
+.cc-form[hidden] { display: none; }
+.cc-label { font-weight: 700; font-size: 0.9rem; color: var(--pos-negro); margin-top: 0.4rem; }
+.cc-input {
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 3px solid var(--pos-negro);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pos-negro);
+  background: var(--pos-blanco);
+  outline: none;
+}
+.cc-input:focus { background: var(--pos-cyan); box-shadow: var(--pos-sombra-sm); }
+.cc-input--monto { font-family: 'Courier New', monospace; text-align: right; }
+
+/* Nombres registrados mientras escribe */
+.cc-combo { position: relative; }
+.cc-sugerencias {
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  z-index: 5;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--pos-blanco);
+  border: 3px solid var(--pos-negro);
+  border-top: none;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+.cc-sugerencia {
+  padding: 0.45rem 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--pos-negro);
+}
+.cc-sugerencia:hover,
+.cc-sugerencia--activa { background: var(--pos-amarillo); }
+
+/* "¿Es alguna de estas personas?" */
+.cc-parecido {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: var(--pos-card-4);
+  border: 3px solid var(--pos-negro);
+}
+.cc-parecido__texto { margin: 0 0 0.5rem; font-weight: 700; font-size: 0.9rem; }
+.cc-parecido__opciones { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+.cc-parecido__opcion,
+.cc-parecido__otra {
+  padding: 0.4rem 0.6rem;
+  border: 2px solid var(--pos-negro);
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.cc-parecido__opcion { background: var(--pos-verde); color: var(--pos-blanco); }
+.cc-parecido__otra   { background: var(--pos-blanco); color: var(--pos-negro); }
+
+.cc-aviso {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--pos-negro);
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.cc-aviso--ok    { background: var(--pos-card-1); color: var(--pos-negro); }
+.cc-aviso--error { background: var(--pos-rosa);   color: var(--pos-blanco); }
+
+/* Lo de hoy en esta caja */
+.cc-hoy { margin: 1rem 0; border-top: 3px dashed var(--pos-negro); padding-top: 0.75rem; }
+.cc-hoy__titulo {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: var(--pos-font-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #444;
+}
+.cc-hoy__lista { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+.cc-hoy__vacio { font-size: 0.85rem; font-weight: 700; color: #666; }
+.cc-hoy__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border: 2px solid var(--pos-negro);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.cc-hoy__tipo {
+  padding: 0.05rem 0.35rem;
+  border: 2px solid var(--pos-negro);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+.cc-hoy__tipo--vale  { background: var(--pos-card-3); }
+.cc-hoy__tipo--gasto { background: var(--pos-card-2); }
+.cc-hoy__concepto { overflow-wrap: anywhere; }
+.cc-hoy__monto { font-family: 'Courier New', monospace; font-weight: 900; }
+.cc-hoy__hora { color: #555; font-size: 0.75rem; }
+
+@media (max-width: 480px) {
+  .cc-hoy__item { grid-template-columns: auto 1fr auto; }
+  .cc-hoy__hora { display: none; }
+}

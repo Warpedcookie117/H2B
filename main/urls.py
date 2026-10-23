@@ -30,6 +30,7 @@ urlpatterns = [
     path('inventario/', include('inventario.urls')),
     path('ventas/', include('ventas.urls')),
     path('sucursales/',include('sucursales.urls')),
+    path('caja-chica/', include('caja_chica.urls')),
 
     # Reset de contraseña con correo HTML en español y con marca.
     # Se define ANTES del include de auth para que tome esta versión (con

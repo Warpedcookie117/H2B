@@ -156,7 +156,6 @@ class RespuestaConRepartoTest(PosRepartoTestCase):
         self.assertEqual(r["sin_cajon"], 0.0)
         # Sin tarjeta no hay Clip y el efectivo alcanzó para todas.
         self.assertIsNone(r["clip"])
-        self.assertEqual(r["deudas"], [])
         self.assertEqual(r["por_duena"], [
             {"empleado_id": self.rosa.id, "nombre": "Rosa", "total": 140.0},
             {"empleado_id": self.anais.id, "nombre": "Anais", "total": 60.0},
@@ -184,7 +183,6 @@ class RespuestaConRepartoTest(PosRepartoTestCase):
         self.assertEqual(r["queda_receptora"], 50.0)
         self.assertEqual(r["pasar"][0]["efectivo"], 50.0)
         self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 50.0})
-        self.assertEqual(r["deudas"], [])
         self.assertCuadra(r)
 
     def test_pago_mixto_una(self):
@@ -197,24 +195,23 @@ class RespuestaConRepartoTest(PosRepartoTestCase):
         self.assertEqual(r["queda_receptora"], 100.0)
         self.assertEqual(r["pasar"], [])
         self.assertEqual(r["clip"], {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 100.0})
-        self.assertEqual(r["deudas"], [])
         self.assertCuadra(r)
 
-    def test_solo_tarjeta_es_sin_efectivo(self):
+    def test_solo_tarjeta_igual_se_pasa_en_efectivo(self):
         data = self.cobrar_ok(
             [self.item(self.prod_rosa, 80), self.item(self.prod_anais, 20)], tarjeta=100,
         )
         r = data["reparto_efectivo"]
-        self.assertEqual(r["caso"], "sin_efectivo")
+        # Pago en seco: Rosa (80) cobra los 100 en su Clip y de su caja (del
+        # fondo) le pasa sus 20 a Anais en el momento. Nadie queda debiendo.
+        self.assertEqual(r["caso"], "varias")
         self.assertEqual(r["neto"], 0.0)
         self.assertEqual(r["tarjeta"], 100.0)
-        # v2: Rosa (80) es receptora aunque no haya efectivo: cobra los 100 en
-        # su Clip y le debe sus 20 a Anais.
         self.assertEqual(r["receptora"], {"empleado_id": self.rosa.id, "nombre": "Rosa"})
         self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 100.0})
-        self.assertEqual(r["deudas"], [{"empleado_id": self.anais.id, "nombre": "Anais", "monto": 20.0}])
-        self.assertEqual(r["queda_receptora"], 0.0)
-        self.assertEqual(r["pasar"], [])
+        self.assertEqual(r["pasar"], [{"empleado_id": self.anais.id, "nombre": "Anais", "efectivo": 20.0}])
+        self.assertEqual(r["queda_receptora"], -20.0)
+        self.assertEqual(r["del_fondo"], 20.0)
         self.assertCuadra(r)
 
     def test_servicio_va_al_cajon_de_la_responsable(self):
@@ -286,7 +283,6 @@ class RespuestaConRepartoTest(PosRepartoTestCase):
             {"empleado_id": self.yareli.id, "nombre": "Yareli", "efectivo": 50.0},
             {"empleado_id": self.rosa.id, "nombre": "Rosa", "efectivo": 10.0},
         ])
-        self.assertEqual(r["deudas"], [])
         self.assertEqual(r["por_duena"], [
             {"empleado_id": self.anais.id, "nombre": "Anais", "total": 100.0},
             {"empleado_id": self.yareli.id, "nombre": "Yareli", "total": 50.0},
@@ -295,23 +291,69 @@ class RespuestaConRepartoTest(PosRepartoTestCase):
         self.assertEqual(r["sin_cajon"], 0.0)
         self.assertCuadra(r)
 
-    def test_ejemplo_gelish_todo_con_tarjeta(self):
+    def test_ejemplo_gelish_todo_con_tarjeta_cajita_vacia(self):
         data = self.cobrar_ok(self.carrito_gelish(), tarjeta=160)
         r = data["reparto_efectivo"]
-        # Los 160 entran al Clip de Anais; no hay efectivo que pasar, así
-        # que Anais le debe 50 a Yareli y 10 a Rosa.
+        # La cajita de Anais está vacía y no entra efectivo: no alcanza para
+        # pagarles a Yareli y Rosa. Se cobra en el Clip de Rosa (responsable
+        # de servicios) y de su cajita salen 100 para Anais y 50 para Yareli.
         self.assertEqual(r["version"], 2)
-        self.assertEqual(r["caso"], "sin_efectivo")
+        self.assertEqual(r["caso"], "varias")
         self.assertEqual((r["neto"], r["tarjeta"]), (0.0, 160.0))
-        self.assertEqual(r["receptora"], {"empleado_id": self.anais.id, "nombre": "Anais"})
-        self.assertEqual(r["clip"], {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 160.0})
-        self.assertEqual((r["queda_receptora"], r["pasar"]), (0.0, []))
-        self.assertEqual(r["deudas"], [
-            {"empleado_id": self.yareli.id, "nombre": "Yareli", "monto": 50.0},
-            {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 10.0},
+        self.assertEqual(r["receptora"], {"empleado_id": self.rosa.id, "nombre": "Rosa"})
+        self.assertEqual(r["clip"], {"empleado_id": self.rosa.id, "nombre": "Rosa", "monto": 160.0})
+        self.assertEqual(r["queda_receptora"], -150.0)
+        self.assertEqual(r["pasar"], [
+            {"empleado_id": self.anais.id, "nombre": "Anais", "efectivo": 100.0},
+            {"empleado_id": self.yareli.id, "nombre": "Yareli", "efectivo": 50.0},
         ])
-        self.assertEqual([p["total"] for p in r["por_duena"]], [100.0, 50.0, 10.0])
+        self.assertEqual(r["del_fondo"], 150.0)
+        self.assertEqual([p["total"] for p in r["por_duena"]], [10.0, 100.0, 50.0])
+        self.assertEqual(Venta.objects.get().clip_de_id, self.rosa.id)
         self.assertCuadra(r)
+
+    def test_ejemplo_gelish_todo_con_tarjeta_cajita_con_efectivo(self):
+        # Antes, Anais vendió 200 en efectivo en esta caja: su cajita sí
+        # alcanza. Cobra los 160 en su Clip y le pasa 50 a Yareli y 10 a Rosa.
+        self.cobrar_ok([self.item(self.prod_anais, 200)], efectivo=200, key="antes")
+        data = self.cobrar_ok(self.carrito_gelish(), tarjeta=160, key="gelish")
+        r = data["reparto_efectivo"]
+        self.assertEqual(r["clip"], {"empleado_id": self.anais.id, "nombre": "Anais", "monto": 160.0})
+        self.assertEqual(r["pasar"], [
+            {"empleado_id": self.yareli.id, "nombre": "Yareli", "efectivo": 50.0},
+            {"empleado_id": self.rosa.id, "nombre": "Rosa", "efectivo": 10.0},
+        ])
+        self.assertEqual((r["queda_receptora"], r["del_fondo"]), (-60.0, 60.0))
+        self.assertCuadra(r)
+
+    def test_mixto_con_efectivo_suficiente_cobra_la_que_mas_vende(self):
+        # Cajita de Anais vacía, pero entran 90 en efectivo: alcanzan para los
+        # 60 de Yareli y Rosa. No hace falta el Clip de Rosa.
+        r = self.cobrar_ok(self.carrito_gelish(), efectivo=90, tarjeta=70)["reparto_efectivo"]
+        self.assertEqual(r["clip"]["empleado_id"], self.anais.id)
+        self.assertEqual(r["del_fondo"], 0.0)
+
+    def test_se_respeta_el_clip_que_se_le_mostro(self):
+        # El modal dijo "Clip de Rosa" (ahí pasaron la tarjeta): se guarda Rosa.
+        resp = self.client.post(self.url, content_type="application/json", data=json.dumps({
+            "carrito": self.carrito_gelish(), "pagado_efectivo": 90, "pagado_tarjeta": 70,
+            "descuento_pct": 0, "clip_empleado_id": self.rosa.id, "idempotency_key": "mostrado",
+        }))
+        self.assertEqual(resp.json()["reparto_efectivo"]["clip"]["empleado_id"], self.rosa.id)
+        # Uno que no es posible para este carrito (Yareli) se ignora y se calcula.
+        resp = self.client.post(self.url, content_type="application/json", data=json.dumps({
+            "carrito": self.carrito_gelish(), "pagado_efectivo": 90, "pagado_tarjeta": 70,
+            "descuento_pct": 0, "clip_empleado_id": self.yareli.id, "idempotency_key": "invalido",
+        }))
+        self.assertEqual(resp.json()["reparto_efectivo"]["clip"]["empleado_id"], self.anais.id)
+
+    def test_cajita_de_las_demas_nunca_queda_negativa_en_el_corte(self):
+        for i, (efectivo, tarjeta) in enumerate(((0, 160), (90, 70), (0, 160), (160, 0))):
+            self.cobrar_ok(self.carrito_gelish(), efectivo=efectivo, tarjeta=tarjeta, key=f"v{i}")
+        filas = reparto_mod.desglose_por_dueno(reparto_mod.ventas_para_desglose(Venta.objects.all()))
+        for f in filas:
+            if f["empleado_id"] != self.rosa.id:
+                self.assertGreaterEqual(f["efectivo"], 0, f["nombre"])
 
     def test_error_de_validacion_no_trae_reparto(self):
         # Pago insuficiente: la venta no se crea y la respuesta es la de siempre.
@@ -459,13 +501,18 @@ class RepartoPorEndpointPropiedadTest(PosRepartoTestCase):
                 for p in r["pasar"]:
                     self.assertGreater(p["efectivo"], 0)
                     self.assertNotEqual(p["empleado_id"], rid)
-                for d in r["deudas"]:
-                    self.assertGreater(d["monto"], 0)
-                    self.assertNotEqual(d["empleado_id"], rid)
+                # Pago en seco: a cada otra dueña se le pasa TODO lo suyo en
+                # efectivo en el momento; nadie queda debiendo.
+                self.assertTrue(venta.pago_en_seco)
+                pasar = {p["empleado_id"]: p["efectivo"] for p in r["pasar"]}
+                for p in r["por_duena"]:
+                    if p["empleado_id"] not in (None, rid) and p["total"] > 0:
+                        self.assertEqual(pasar.get(p["empleado_id"]), p["total"], p)
+                self.assertEqual(r["del_fondo"],
+                                 max(0.0, -r["queda_receptora"]) if rid is not None else 0.0)
                 if rid is None:
                     # Sin dueñas en la cuenta: nadie cobra en su Clip ni debe.
                     self.assertIsNone(r["clip"])
-                    self.assertEqual(r["deudas"], [])
                     if r["neto"] > 0:
                         self.assertEqual(r["caso"], "sin_duena")
                 else:
@@ -476,10 +523,10 @@ class RepartoPorEndpointPropiedadTest(PosRepartoTestCase):
                     else:
                         self.assertIsNone(r["clip"])
                     self.assertEqual(r["por_duena"][0]["empleado_id"], rid)
-                    if r["neto"] == 0:
-                        self.assertEqual(r["caso"], "sin_efectivo")
-                    elif r["pasar"] or r["sin_cajon"]:
+                    if r["pasar"] or r["sin_cajon"]:
                         self.assertEqual(r["caso"], "varias")
+                    elif r["neto"] == 0:
+                        self.assertEqual(r["caso"], "sin_efectivo")
                     else:
                         self.assertEqual(r["caso"], "una")
                 # Lo que le toca a cada quien suma el total de la venta.
@@ -511,7 +558,9 @@ class ClipDeLaVentaTest(PosRepartoTestCase):
         return resp.json()["clip"]
 
     def test_es_la_que_mas_vende(self):
-        self.assertEqual(self.clip(self.carrito_210()), {"empleado_id": self.rosa.id, "nombre": "Rosa"})
+        # Rosa es además la responsable de servicios: nunca hace falta respaldo.
+        self.assertEqual(self.clip(self.carrito_210()),
+                         {"empleado_id": self.rosa.id, "nombre": "Rosa", "respaldo": None, "le_falta": 0.0})
 
     def test_coincide_con_el_clip_de_la_venta_ya_cobrada(self):
         carritos = [
@@ -523,9 +572,11 @@ class ClipDeLaVentaTest(PosRepartoTestCase):
         for i, carrito in enumerate(carritos):
             with self.subTest(i=i):
                 antes = self.clip(carrito)
+                # Todo con tarjeta no entra efectivo: si hay respaldo, se usa.
+                esperado = antes["respaldo"] or {k: antes[k] for k in ("empleado_id", "nombre")}
                 total = sum(it["precio_aplicado"] * it["cantidad"] for it in carrito)
                 r = self.cobrar_ok(carrito, tarjeta=total, key=f"clip-{i}")["reparto_efectivo"]
-                self.assertEqual(antes, {k: r["clip"][k] for k in ("empleado_id", "nombre")})
+                self.assertEqual(esperado, {k: r["clip"][k] for k in ("empleado_id", "nombre")})
 
     def test_empate_por_prioridad(self):
         carrito = [self.item(self.prod_yareli, 50), self.item(self.prod_anais, 50)]

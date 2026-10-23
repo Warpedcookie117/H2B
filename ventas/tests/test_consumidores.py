@@ -4,7 +4,6 @@ térmico), corte del día, "¿Cuánto llevo yo?" (resumen_ventas_dueno_*),
 "Ventas del mes" y las cards/API de ventas de hoy. Lo que importa es que
 todas las pantallas cuadren entre sí y con lo que hay en la caja.
 """
-import re
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -187,10 +186,8 @@ class TicketCorteTextoTest(ConsumidoresTestCase):
         self.assertEqual(efectivo, tot["efectivo"])
         self.assertEqual(tarjeta, tot["tarjeta"])
         self.assertEqual(self._montos(texto, "Vendio"), tot["total"])
-        # Ya no vale caja + Clip == vendido por dueña (la receptora cobra
-        # toda la tarjeta en su Clip), pero en total sí: las deudas entre
-        # dueñas se cancelan. Y esas deudas YA NO se imprimen en el corte
-        # (son sensibles: solo van en el dashboard de cada dueña).
+        # Caja + Clip == vendido en total. El corte nunca habla de deudas
+        # entre dueñas.
         self.assertEqual(efectivo + tarjeta, self._montos(texto, "Vendio"))
         for s in ("CUENTAS ENTRE", "Le deben", "Debe:", "le debe"):
             self.assertNotIn(s, texto, s)
@@ -364,6 +361,48 @@ class GenerarCorteParaFechaTest(ConsumidoresTestCase):
         self.assertEqual(corte.total_por_dueno["Anais"], 860.0)
         self.assertEqual(corte.ventas.count(), len(ventas))
 
+    def corte_manual(self, ventas):
+        corte = CorteCaja.objects.create(caja=self.caja_anais, caja_nombre="Caja Anais", empleado=self.cajero,
+                                         total_general=0, total_por_dueno={})
+        corte.ventas.set(ventas)
+        return corte
+
+    def test_no_repite_ventas_de_un_corte_manual(self):
+        # En oct-2026 el automático repetía las ventas del corte manual: 119
+        # ventas en dos cortes y $44k de más al sumar tickets.
+        ayer = hoy_local() - timedelta(days=1)
+        v1 = self.crear_venta([self.renglon(self.prod_anais, 100)], efectivo=100, fecha=a_las(ayer, 11))
+        self.corte_manual([v1])
+        v2 = self.crear_venta([self.renglon(self.prod_yareli, 50)], efectivo=50, fecha=a_las(ayer, 15))
+
+        auto = generar_corte_para_fecha(self.caja_anais, ayer)
+        self.assertEqual(set(auto.ventas.values_list("id", flat=True)), {v2.id})
+        self.assertEqual(auto.total_general, v2.total)
+
+    def test_no_se_crea_si_todo_ya_se_corto(self):
+        ayer = hoy_local() - timedelta(days=1)
+        v1 = self.crear_venta([self.renglon(self.prod_anais, 100)], efectivo=100, fecha=a_las(ayer, 11))
+        self.corte_manual([v1])
+        cortes = CorteCaja.objects.count()
+
+        self.assertIsNone(generar_corte_para_fecha(self.caja_anais, ayer))
+        self.assertEqual(CorteCaja.objects.count(), cortes)
+
+    def test_entrar_a_la_caja_no_crea_corte_repetido(self):
+        # Corte manual ayer a las 3pm hora local con todo lo del día: al
+        # entrar hoy a la caja no se genera otro corte de ayer.
+        ayer = hoy_local() - timedelta(days=1)
+        v1 = self.crear_venta([self.renglon(self.prod_anais, 100)], efectivo=100, fecha=a_las(ayer, 11))
+        manual = self.corte_manual([v1])
+        CorteCaja.objects.filter(pk=manual.pk).update(fecha=a_las(ayer, 15))
+        cortes = CorteCaja.objects.count()
+
+        self.login(self.cajero)
+        resp = self.client.post(reverse("sucursales:entrar_caja_ajax"),
+                                {"caja_id": self.caja_anais.id, "password": "x"})
+        self.assertEqual(resp.json(), {"ok": True})
+        self.assertEqual(CorteCaja.objects.count(), cortes)
+
 
 # ---------------------------------------------------------------------------
 # "¿Cuánto llevo yo?" (resumen_ventas_dueno_por_caja / _por_fecha)
@@ -389,9 +428,13 @@ class ResumenDuenoPorCajaTest(ConsumidoresTestCase):
         # Otro día: no cuenta.
         self.crear_venta([self.renglon(self.prod_anais, 33)], efectivo=33,
                          fecha=self.mediodia - timedelta(days=1))
-        # Rosa 80 + servicio 20: a Rosa aquí solo le cuentan sus productos.
-        self.crear_venta([self.renglon(self.prod_rosa, 80), self.servicio("Copias", 20)],
-                         tarjeta=100, caja=self.caja_fabiola, fecha=self.mediodia)
+        # Rosa 80 + servicio 20 + sin registro 15: a la responsable de
+        # servicios se le suman, como en el corte, y se desglosan.
+        self.crear_venta([self.renglon(self.prod_rosa, 80), self.servicio("Copias", 20),
+                          self.servicio("Prod. sin registro", 15)],
+                         tarjeta=115, caja=self.caja_fabiola, fecha=self.mediodia)
+        # Venta de puro servicio (ningún producto de Rosa): también es suya.
+        self.crear_venta([self.servicio("Copias", 5)], efectivo=5, caja=self.caja_anais, fecha=self.mediodia)
 
         anais = resumen_ventas_dueno_por_caja(self.anais, self.hoy)
 
@@ -410,12 +453,21 @@ class ResumenDuenoPorCajaTest(ConsumidoresTestCase):
         for d in anais:
             self.assertEqual(d["saldo"], 0.0)
         self.assertEqual(resumen_ventas_dueno_por_fecha(self.anais, self.hoy),
-                         {"efectivo": 590.0, "tarjeta": 50.0, "total": 640.0, "saldo": 0.0})
+                         {"efectivo": 590.0, "tarjeta": 50.0, "total": 640.0, "saldo": 0.0,
+                          "productos": 640.0, "servicios": 0.0, "sin_registro": 0.0,
+                          "salidas": 0.0, "en_caja": 590.0, "del_fondo": 0.0})
 
-        rosa = resumen_ventas_dueno_por_caja(self.rosa, self.hoy)
-        self.assertEqual(len(rosa), 1)
-        self.assertEqual((rosa[0]["caja"], rosa[0]["total"], rosa[0]["tarjeta"]),
-                         ("Caja Fabiola", 80.0, 80.0))
+        rosa = {d["caja"]: d for d in resumen_ventas_dueno_por_caja(self.rosa, self.hoy)}
+        self.assertEqual(set(rosa), {"Caja Anais", "Caja Fabiola"})
+        f = rosa["Caja Fabiola"]
+        self.assertEqual((f["total"], f["tarjeta"], f["productos"], f["servicios"], f["sin_registro"]),
+                         (115.0, 115.0, 80.0, 20.0, 15.0))
+        a = rosa["Caja Anais"]
+        self.assertEqual((a["total"], a["efectivo"], a["productos"], a["servicios"]), (5.0, 5.0, 0.0, 5.0))
+        self.assertEqual(resumen_ventas_dueno_por_fecha(self.rosa, self.hoy),
+                         {"efectivo": 5.0, "tarjeta": 115.0, "total": 120.0, "saldo": 0.0,
+                          "productos": 80.0, "servicios": 25.0, "sin_registro": 15.0,
+                          "salidas": 0.0, "en_caja": 5.0, "del_fondo": 0.0})
 
     def test_coincide_con_el_corte(self):
         # El desglose de "¿Cuánto llevo yo?" y el del corte salen del mismo reparto.
@@ -428,10 +480,15 @@ class ResumenDuenoPorCajaTest(ConsumidoresTestCase):
             self.assertEqual(r["efectivo"], float(filas[nombre]["efectivo"]))
             self.assertEqual(r["tarjeta"], float(filas[nombre]["tarjeta"]))
             self.assertEqual(r["saldo"], float(filas[nombre]["saldo"]))
-        # Rosa: el corte le suma los servicios, "¿Cuánto llevo yo?" no.
+        # Rosa (responsable de servicios): igual que su fila del corte, con
+        # sus servicios dentro y desglosados.
         r = resumen_ventas_dueno_por_fecha(self.rosa, self.hoy)
-        self.assertEqual(r["total"], float(filas["Rosa"]["productos"]))
-        self.assertLess(r["total"], float(filas["Rosa"]["total"]))
+        for campo in ("total", "efectivo", "tarjeta", "saldo", "productos"):
+            self.assertEqual(r[campo], float(filas["Rosa"][campo]), campo)
+        serv = filas["Rosa"]["servicios"]
+        self.assertGreater(r["servicios"] + r["sin_registro"], 0)
+        self.assertEqual(r["servicios"] + r["sin_registro"], float(serv["total"]))
+        self.assertEqual(r["total"], round(r["productos"] + r["servicios"] + r["sin_registro"], 2))
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +533,43 @@ class DashboardDuenoTest(ConsumidoresTestCase):
     def test_ventas_del_mes_sin_ventas(self):
         self.assertEqual(self.dashboard().context["ventas_mes_dueno"], CERO)
 
+    def test_responsable_de_servicios_ve_su_corte_desglosado(self):
+        hoy = a_las(self.hoy, 12)
+        # Rosa 200 + copias 50 + sin registro 30 + Anais 100, con 10% → 342 total
+        # (Rosa 180 + copias 45 + sin registro 27, Anais 90); más copias 10.
+        self.crear_venta([self.renglon(self.prod_rosa, 200), self.servicio("Copias", 50),
+                          self.servicio("Prod. sin registro", 30), self.renglon(self.prod_anais, 100)],
+                         efectivo=400, descuento_pct=10, caja=self.caja_fabiola, fecha=hoy)
+        self.crear_venta([self.servicio("Copias", 10)], tarjeta=10, fecha=hoy)
+
+        self.login(self.rosa)
+        response = self.dashboard()
+        ctx = response.context
+        self.assertTrue(ctx["es_responsable_servicios"])
+        self.assertEqual((ctx["ventas_mes_dueno"], ctx["ventas_mes_servicios"], ctx["ventas_mes_sin_registro"]),
+                         (D(180), D(55), D(27)))
+        self.assertEqual(ctx["ventas_mes_total"], D(262))
+        # El mes cuadra con lo que suman sus filas del corte.
+        filas = {f["nombre"]: f for f in desglose_por_dueno(ventas_para_desglose(Venta.objects.all()))}
+        self.assertEqual(ctx["ventas_mes_total"], filas["Rosa"]["total"])
+
+        hoy_rosa = ctx["ventas_hoy_dueno"]
+        self.assertEqual((hoy_rosa["total"], hoy_rosa["productos"], hoy_rosa["servicios"], hoy_rosa["sin_registro"]),
+                         (262.0, 180.0, 55.0, 27.0))
+        self.assertEqual(self.client.get(reverse("ventas:api_ventas_hoy")).json()["mis_ventas"], hoy_rosa)
+        html = response.content.decode()
+        for s in ("Esto has vendido durante este mes", 'id="dueno-ahorita-servicios"', "Prod. sin registro: $"):
+            self.assertIn(s, html)
+
+        # A las demás no se les desglosa nada.
+        self.login(self.anais)
+        response = self.dashboard()
+        self.assertFalse(response.context["es_responsable_servicios"])
+        self.assertEqual(response.context["ventas_mes_total"], D(90))
+        html = response.content.decode()
+        self.assertIn("Esto has vendido de tus productos durante este mes", html)
+        self.assertNotIn('id="dueno-ahorita-servicios"', html)
+
     def test_dashboard_api_y_corte_coinciden(self):
         mediodia = a_las(self.hoy, 12)
         ventas_a = self.ventas_variadas(caja=self.caja_anais, fecha=mediodia)
@@ -504,9 +598,6 @@ class DashboardDuenoTest(ConsumidoresTestCase):
         api_mis = {c["caja"]: c for c in api["mis_cajas"]}
         for d in response.context["ventas_hoy_dueno_por_caja"]:
             for campo in ("efectivo", "tarjeta", "total", "saldo"):
-                # "saldo" puede dejar de venir (las deudas viven en mis_deudas).
-                if campo == "saldo" and "saldo" not in d and "saldo" not in api_mis[d["caja"]]:
-                    continue
                 self.assertEqual(d[campo], api_mis[d["caja"]][campo])
         self.assertEqual(api["mis_ventas"], response.context["ventas_hoy_dueno"])
         # Anais: 860 (variadas) + 90 + 45.
@@ -517,12 +608,12 @@ class DashboardDuenoTest(ConsumidoresTestCase):
         self.assertNotIn("Decimal(", response.content.decode())
 
 
-class CuantoLlevoYoSaldoTest(ConsumidoresTestCase):
+class CuantoLlevoYoPagoEnSecoTest(ConsumidoresTestCase):
     """
     "¿Cuánto llevo yo?" con la venta del dueño: gelish $100 (Anais) + tinte
     $50 (Yareli) + $10 (Rosa). Anais es la que más vendió → cobra toda la
-    tarjeta en SU Clip. Lo que se deben ya NO va en "¿Cuánto llevo yo?":
-    va en la card acordeón "💸 Cuentas con otras dueñas".
+    tarjeta en SU Clip y les paga a las demás en efectivo en el momento.
+    Ya no hay deudas entre dueñas en ninguna parte del dashboard.
     """
 
     CAMPOS = ("efectivo", "tarjeta", "total")
@@ -533,7 +624,7 @@ class CuantoLlevoYoSaldoTest(ConsumidoresTestCase):
     def venta_del_dueno(self, efectivo, tarjeta):
         return self.crear_venta([self.renglon(self.prod_anais, 100), self.renglon(self.prod_yareli, 50),
                                  self.renglon(self.prod_rosa, 10)], efectivo=efectivo, tarjeta=tarjeta,
-                                caja=self.caja_anais, fecha=a_las(self.hoy, 12))
+                                caja=self.caja_anais, fecha=a_las(self.hoy, 12), pago_en_seco=True)
 
     def ver(self, empleado):
         self.login(empleado)
@@ -545,77 +636,36 @@ class CuantoLlevoYoSaldoTest(ConsumidoresTestCase):
     def montos(self, d):
         return {c: d[c] for c in self.CAMPOS}
 
-    def cuanto_llevo(self, html):
-        """HTML de "¿Cuánto llevo yo?" (hasta la card de cuentas)."""
-        return html[html.index("¿Cuanto llevo yo?"):html.index('id="card-cuentas-duenas"')]
-
-    def card_cuentas(self, html):
-        """Encabezado (<summary>) de la card de cuentas, como texto visible."""
-        ini = html.index('id="card-cuentas-duenas"')
-        summary = html[ini:html.index("</summary>", ini)]
-        return " ".join(re.sub(r"<[^>]+>", " ", summary).split())
-
-    def assert_sin_saldo_en_cuanto_llevo(self, html):
-        seccion = self.cuanto_llevo(html)
-        for s in ("En tu caja (efectivo)", "En tu Clip (tarjeta)", "Vendiste hoy"):
-            self.assertIn(s, seccion)
-        for s in ("Debes $", "Te deben $", "le debes", "te debe", "dueno-ahorita-saldo", "dueno-caja-saldo"):
-            self.assertNotIn(s, seccion, s)
-        # Ni la línea vieja ni su nota quedan en ninguna parte de la página.
-        for s in ('id="dueno-ahorita-saldo"', "dueno-caja-saldo", "saldo-texto",
-                  "Se cobró con tarjeta en el Clip de otra dueña", "Cobraste en tu Clip lo de otras dueñas"):
+    def assert_sin_deudas(self, api, html):
+        self.assertNotIn("mis_deudas", api)
+        for s in ("Cuentas con otras dueñas", "card-cuentas-duenas", "init-mis-deudas", "Ya se pagó",
+                  "Debes $", "Te deben $", "le debes", "te debe"):
             self.assertNotIn(s, html, s)
 
-    def assert_card(self, response, html, esperado):
-        """La card tolera mis_deudas = None (va oculta); si hay datos, el encabezado los resume."""
-        self.assertIn('id="init-mis-deudas"', html)   # json_script para el JS
-        abre = html[html.index('id="card-cuentas-duenas"'):]
-        abre = abre[:abre.index(">")]
-        mis_deudas = response.context.get("mis_deudas")
-        if not mis_deudas:
-            self.assertRegex(abre, r"\bhidden\b")
-            return
-        self.assertNotRegex(abre, r"\bhidden\b")
-        encabezado = self.card_cuentas(html)
-        self.assertIn("💸 Cuentas con otras dueñas", encabezado)
-        for s in esperado:
-            self.assertIn(s, encabezado)
-
-    def test_todo_tarjeta_anais_debe_yareli_le_deben(self):
+    def test_todo_tarjeta_se_paga_en_el_momento(self):
         self.venta_del_dueno(efectivo=0, tarjeta=160)
 
-        # Anais: vendió 100, en su caja 0, en su Clip 160 (debe 60, pero eso
-        # va en la card de cuentas, no en "¿Cuánto llevo yo?").
+        # Anais: vendió 100; los 160 entraron a su Clip y de su caja salieron
+        # 60 (50 a Yareli, 10 a Rosa).
         api, response = self.ver(self.anais)
-        esperado = {"efectivo": 0.0, "tarjeta": 160.0, "total": 100.0}
+        esperado = {"efectivo": -60.0, "tarjeta": 160.0, "total": 100.0}
         self.assertEqual(self.montos(api["mis_ventas"]), esperado)
         self.assertEqual(self.montos(response.context["ventas_hoy_dueno"]), esperado)
+        self.assertEqual(api["mis_ventas"]["saldo"], 0.0)
         html = response.content.decode()
-        for s in ("Total en Efectivo", "Total en Tarjeta", "Total hoy sumao"):
-            self.assertNotIn(s, html)
-        self.assert_sin_saldo_en_cuanto_llevo(html)
-        self.assert_card(response, html, ["Le debes $50.00 a Yareli", "Le debes $10.00 a Rosa", "Debes $60.00"])
+        for s in ("En tu caja (efectivo)", "En tu Clip (tarjeta)", "Vendiste hoy"):
+            self.assertIn(s, html)
+        self.assert_sin_deudas(api, html)
 
-        # Yareli: vendió 50, no le llegó nada (todo entró al Clip de Anais).
+        # Yareli: sus 50 le llegaron en efectivo a su caja.
         api, response = self.ver(self.yareli)
-        esperado = {"efectivo": 0.0, "tarjeta": 0.0, "total": 50.0}
+        esperado = {"efectivo": 50.0, "tarjeta": 0.0, "total": 50.0}
         self.assertEqual(self.montos(api["mis_ventas"]), esperado)
-        self.assertEqual(self.montos(response.context["ventas_hoy_dueno"]), esperado)
-        html = response.content.decode()
-        self.assert_sin_saldo_en_cuanto_llevo(html)
-        self.assert_card(response, html, ["Anais te debe $50.00", "Te deben $50.00"])
-        if response.context.get("mis_deudas"):
-            self.assertNotIn("Debes $", self.card_cuentas(html))
+        self.assert_sin_deudas(api, response.content.decode())
 
-    def test_mixto_sin_saldo(self):
-        # 70 tarjeta + 90 efectivo: Anais 30 caja + 70 Clip = 100 vendido → nadie debe.
+    def test_mixto(self):
+        # 70 tarjeta + 90 efectivo: Anais 30 caja + 70 Clip = 100 vendido.
         self.venta_del_dueno(efectivo=90, tarjeta=70)
         api, response = self.ver(self.anais)
         self.assertEqual(self.montos(api["mis_ventas"]), {"efectivo": 30.0, "tarjeta": 70.0, "total": 100.0})
-        html = response.content.decode()
-        self.assert_sin_saldo_en_cuanto_llevo(html)
-        self.assert_card(response, html, ["Hoy nadie te debe ni le debes"])
-        if response.context.get("mis_deudas"):
-            encabezado = self.card_cuentas(html)
-            self.assertNotIn("Debes $", encabezado)
-            self.assertNotIn("Te deben $", encabezado)
+        self.assert_sin_deudas(api, response.content.decode())

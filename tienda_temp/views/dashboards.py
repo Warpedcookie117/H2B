@@ -13,7 +13,7 @@ from django.utils.timezone import localtime
 from django.contrib.auth.decorators import login_required
 from sucursales.models import Sucursal
 from ventas.models import Venta, VentaDetalle
-from ventas.services.reparto import totales_caja
+from ventas.services.reparto import CONCEPTO_SIN_REGISTRO, totales_caja
 from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
 from inventario.services.filtros_service import filtrar_productos, nombres_filtros, parse_filtros
 
@@ -288,35 +288,48 @@ def dashboard_dueno(request):
     #    DecimalField Django lo envuelve en CAST(... AS NUMERIC) y sigue
     #    truncando. En float el error es de ~1e-12, invisible al redondear
     #    a centavos, y el cálculo es el mismo en SQLite y en Postgres.
+    #    A la responsable de servicios se le suman, aparte, sus servicios y
+    #    el "Prod. sin registro" (en el corte van en su fila): con eso el
+    #    total del mes cuadra con la suma de sus cortes. Misma query.
     # ============================================================
-    ventas_mes_dueno = (
+    mios = Q(producto__dueño=empleado)
+    servicio = Q(producto__isnull=True, atributos_snapshot__tipo="servicio",
+                 venta__caja__sucursal__dueño_servicios=empleado)
+    sin_registro = Q(nombre_snapshot__iexact=f"Servicio: {CONCEPTO_SIN_REGISTRO}")
+    proporcional = (Cast("subtotal", FloatField())
+                    * Cast("venta__total", FloatField())
+                    / Cast("venta__subtotal", FloatField()))
+    mes = (
         VentaDetalle.objects
         .filter(
-            producto__dueño=empleado,
             venta__fecha__month=ahora_local.month,
             venta__fecha__year=ahora_local.year,
             venta__subtotal__gt=0,
         )
-        .aggregate(total=Sum(
-            Cast("subtotal", FloatField())
-            * Cast("venta__total", FloatField())
-            / Cast("venta__subtotal", FloatField())
-        ))
-        .get("total") or 0
+        .filter(mios | servicio)
+        .aggregate(
+            productos=Sum(proporcional, filter=mios),
+            servicios=Sum(proporcional, filter=servicio & ~sin_registro),
+            sin_registro=Sum(proporcional, filter=servicio & sin_registro),
+        )
     )
-    ventas_mes_dueno = Decimal(str(ventas_mes_dueno)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    mes = {k: Decimal(str(v or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for k, v in mes.items()}
+    ventas_mes_dueno = mes["productos"]
+    ventas_mes_total = mes["productos"] + mes["servicios"] + mes["sin_registro"]
 
     # ============================================================
-    # 2b) $ vendido de mis productos AHORITA (hoy) — efectivo/tarjeta.
+    # 2b) $ vendido AHORITA (hoy) — efectivo/tarjeta, su fila del corte
+    #     (con servicios y "Prod. sin registro" si es la responsable).
     #     Se refresca en vivo por polling (dashboard_dueno.js →
     #     /ventas/api/ventas/hoy/), esto solo pinta el valor inicial.
     # ============================================================
-    from ventas.services.corte_service import resumen_ventas_dueno_por_fecha, resumen_ventas_dueno_por_caja
-    ventas_hoy_dueno = resumen_ventas_dueno_por_fecha(empleado, hoy)
+    from ventas.services.corte_service import resumen_ventas_dueno_por_caja, sumar_resumen_dueno
+    mis_por_caja = resumen_ventas_dueno_por_caja(empleado, hoy)
+    ventas_hoy_dueno = sumar_resumen_dueno(mis_por_caja)
     # Lookup por caja_id — se cruza más abajo con TODAS las cajas de la
     # sucursal (aunque este dueño no haya vendido nada ahí hoy, se
     # muestra en $0 para que la lista no "desaparezca" una caja).
-    dueno_por_caja_id = {d["caja_id"]: d for d in resumen_ventas_dueno_por_caja(empleado, hoy)}
+    dueno_por_caja_id = {d["caja_id"]: d for d in mis_por_caja}
 
     # ============================================================
     # 3) Mis productos más vendidos — hoy y última semana.
@@ -391,7 +404,7 @@ def dashboard_dueno(request):
 
             # Desglose de SOLO mis productos en esta caja — en $0 si hoy
             # no vendí nada ahí, para que la caja no "desaparezca" de la lista.
-            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0, "saldo": 0})
+            mis = dueno_por_caja_id.get(caja.id, {"efectivo": 0, "tarjeta": 0, "total": 0, "saldo": 0, "en_caja": 0})
             ventas_hoy_dueno_por_caja.append({
                 "sucursal": sucursal.nombre,
                 "caja": caja.nombre,
@@ -399,6 +412,7 @@ def dashboard_dueno(request):
                 "tarjeta": mis["tarjeta"],
                 "total": mis["total"],
                 "saldo": mis["saldo"],   # > 0 le deben, < 0 debe (cobros en el Clip de otra)
+                "en_caja": mis["en_caja"],   # efectivo ya sin vales y gastos (caja chica)
             })
 
         ventas_por_sucursal.append({
@@ -415,19 +429,24 @@ def dashboard_dueno(request):
         })
 
     # ============================================================
-    # 5) Mis deudas con las otras dueñas (solo las mías; ya no salen
-    #    en el corte). Render inicial: se refresca por polling con
-    #    /ventas/api/ventas/hoy/ ("mis_deudas", misma forma).
+    # 5) Vales y gastos (caja chica): esta semana y la pasada, para
+    #    revisarlos el domingo y corregirlos.
     # ============================================================
-    from ventas.services.deudas_service import deudas_hoy, historial
-    mis_deudas = {"hoy": deudas_hoy(empleado), "historial": historial(empleado)}
+    from caja_chica import api as caja_chica
+    caja_chica_semanas = caja_chica.semanas_para_dashboard(hoy)
 
     # ============================================================
     # CONTEXTO FINAL
     # ============================================================
     context = {
         "productos_dueno": productos_dueno,
-        "ventas_mes_dueno": ventas_mes_dueno,
+        "ventas_mes_dueno": ventas_mes_dueno,              # solo sus productos
+        "ventas_mes_servicios": mes["servicios"],          # responsable de servicios
+        "ventas_mes_sin_registro": mes["sin_registro"],
+        "ventas_mes_total": ventas_mes_total,              # lo que se muestra
+        # Solo a la responsable de servicios se le desglosa productos /
+        # servicios / sin registro (hoy y en el mes); a las demás, no.
+        "es_responsable_servicios": empleado.sucursales_como_responsable_servicios.exists(),
         "ventas_hoy_dueno": ventas_hoy_dueno,              # card "ahorita" (efectivo/tarjeta)
         "ventas_hoy_dueno_por_caja": ventas_hoy_dueno_por_caja,  # mismo, desglosado por caja
         "mes_actual": mes_actual,
@@ -436,7 +455,7 @@ def dashboard_dueno(request):
         "mas_vendidos_tienda_hoy": list(mas_vendidos_tienda_hoy),
         "ventas_por_sucursal": ventas_por_sucursal,       # cards de cajas
         "ventas_chart_sucursal": ventas_chart_sucursal,   # chart de sucursales
-        "mis_deudas": mis_deudas,                          # {"hoy": {...}, "historial": [...]}
+        "caja_chica_semanas": caja_chica_semanas,         # [esta semana, la pasada]
         # Explorador de más vendidos: solo las categorías padre. Las
         # subcategorías y los atributos se piden por AJAX al elegir.
         "categorias_padre": Categoria.objects.filter(padre__isnull=True).order_by("nombre"),

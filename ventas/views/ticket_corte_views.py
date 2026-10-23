@@ -1,5 +1,3 @@
-import logging
-
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.decorators import login_required
@@ -12,13 +10,12 @@ from ventas.services.reparto import (
     totales_caja,
     ventas_para_desglose,
 )
-from ventas.services.deudas_service import registrar_deudas_de_corte, ventas_pendientes_de_corte
+from caja_chica import api as caja_chica
+from ventas.services.corte_service import efectivo_del_corte, ventas_pendientes_de_corte
 from django.utils import timezone
 from django.contrib import messages
 from ventas.models import CorteCaja, Venta
 from sucursales.models import Sucursal, Caja
-
-logger = logging.getLogger(__name__)
 
 
 
@@ -28,8 +25,6 @@ def ticket_corte(request, corte_id):
 
     # Todo sale de reparto.py: Σ filas == totales de la caja, al centavo.
     tot = totales_caja(corte.ventas.all())
-    # Las deudas entre dueñas YA NO van en el corte (lo ve la cajera): son
-    # sensibles y cada dueña las ve en su dashboard (deudas_service).
     filas = desglose_por_dueno(ventas_para_desglose(corte.ventas.all()))
 
     return render(request, "ventas/ticket_corte.html", {
@@ -44,6 +39,8 @@ def ticket_corte(request, corte_id):
         "clips": [f for f in filas if f["tarjeta"] != 0],
         "total_efectivo": tot["efectivo"],
         "total_tarjeta": tot["tarjeta"],
+        # Debe haber por cajón, ya sin los vales y gastos de la caja chica.
+        "efectivo": efectivo_del_corte(corte, filas),
     })
 
 @login_required
@@ -142,9 +139,7 @@ def corte_del_dia(request):
     t0 = timezone.now()
 
     # 3-4. Ventas a incluir: (último corte de esta caja, t0]; si la caja
-    # nunca ha tenido corte, las de hoy (hora local). El criterio vive en
-    # deudas_service para que las deudas "de hoy" del dashboard salgan de
-    # exactamente las mismas ventas que va a tomar este corte.
+    # nunca ha tenido corte, las de hoy (hora local).
     ventas = ventas_pendientes_de_corte(caja, t0)
 
     # Se fija el conjunto UNA vez: el total, el desglose y el M2M salen
@@ -179,16 +174,8 @@ def corte_del_dia(request):
 
         # ⭐ Guardar ventas del corte
         corte.ventas.set(ventas)
-
-        # Deudas entre dueñas → historial del dashboard de cada una. Si esto
-        # falla NO se tumba el corte: el corte es lo importante (la cajera
-        # cierra caja e imprime); registrar_deudas_de_corte usa su propio
-        # atomic (savepoint), así que un error ahí no deja la transacción
-        # rota, y se puede volver a registrar después (es idempotente).
-        try:
-            registrar_deudas_de_corte(corte)
-        except Exception:
-            logger.exception("registrar_deudas_de_corte falló corte=%s", corte.pk)
+        # Vales y gastos de esta caja hasta t0 que no tenían corte.
+        caja_chica.al_cerrar_corte(corte, hasta=t0)
 
     # 8. Imprimir ticket térmico automáticamente
     imprimir_silencioso(generar_texto_ticket(corte))

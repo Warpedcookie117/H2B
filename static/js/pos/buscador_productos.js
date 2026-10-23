@@ -404,6 +404,7 @@ export function initEscaneo() {
             !document.getElementById("modal-consulta-precios")?.classList.contains("pos-modal--hidden") ||
             !document.getElementById("modal-config-impresora")?.classList.contains("pos-modal--hidden") ||
             !document.getElementById("modal-variantes")?.classList.contains("pos-modal--hidden") ||
+            !document.getElementById("modal-compraste")?.classList.contains("pos-modal--hidden") ||
             document.getElementById("modal-servicio")?.style.display === "flex" ||
             document.getElementById("modal-regalo")?.style.display === "flex" ||
             document.getElementById("modal-cobro-rapido")?.style.display === "flex";

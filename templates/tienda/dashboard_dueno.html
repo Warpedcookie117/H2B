@@ -45,16 +45,25 @@
       <button type="button" id="btn-toggle-mes" aria-expanded="false"
               class="w-full text-left flex items-start justify-between gap-3 relative z-10">
         <p class="text-base font-black uppercase tracking-widest">
-          Esto has vendido de tus productos durante este mes
+          {% if es_responsable_servicios %}Esto has vendido durante este mes{% else %}Esto has vendido de tus productos durante este mes{% endif %}
         </p>
         <span id="chevron-mes" class="text-2xl font-black leading-none transition-transform duration-300 flex-shrink-0">▼</span>
       </button>
 
-      <!-- Monto oculto por defecto (max-height:0). El JS lo despliega. -->
+      <!-- Monto oculto por defecto (max-height:0). El JS lo despliega.
+           A la responsable de servicios: total = productos + servicios +
+           sin registro, igual que la suma de sus cortes. -->
       <div id="monto-mes-wrap" class="overflow-hidden transition-all duration-500 ease-out"
            style="max-height:0; opacity:0;">
-        <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_dueno|default:0|floatformat:"0g" }}</p>
+        <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_total|default:0|floatformat:"0g" }}</p>
         <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
+        {% if es_responsable_servicios %}
+        <div class="mt-3 space-y-0.5 text-sm font-bold tabular-nums">
+          <p>Tus productos: ${{ ventas_mes_dueno|floatformat:"2g" }}</p>
+          <p>Servicios: ${{ ventas_mes_servicios|floatformat:"2g" }}</p>
+          <p>Prod. sin registro: ${{ ventas_mes_sin_registro|floatformat:"2g" }}</p>
+        </div>
+        {% endif %}
       </div>
       <p id="monto-mes-hint" class="text-sm font-bold opacity-70 mt-3">👁 Toca para ver el monto</p>
     </div>
@@ -70,23 +79,40 @@
     <div class="border-4 border-black shadow-[8px_8px_0_0_black] bg-[#CCFF00] p-6 relative overflow-hidden">
       <div class="absolute top-0 right-0 w-10 h-10 bg-black opacity-10 rotate-45"></div>
 
+      <!-- Su fila del corte de hoy: a la responsable de servicios se le
+           suman servicios y "Prod. sin registro" (su dinero está en su caja
+           y en su Clip) y se le desglosan debajo de "Vendiste hoy". -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
+          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Vendiste hoy</p>
+          <p id="dueno-ahorita-total" class="text-3xl font-black text-[#FF006E] tabular-nums">${{ ventas_hoy_dueno.total|default:0 }}</p>
+          {% if es_responsable_servicios %}
+          <div class="mt-1 space-y-0.5 text-xs font-bold text-black/70 tabular-nums">
+            <p>Tus productos: $<span id="dueno-ahorita-productos">{{ ventas_hoy_dueno.productos|default:0 }}</span></p>
+            <p>Servicios: $<span id="dueno-ahorita-servicios">{{ ventas_hoy_dueno.servicios|default:0 }}</span></p>
+            <p>Prod. sin registro: $<span id="dueno-ahorita-sin-registro">{{ ventas_hoy_dueno.sin_registro|default:0 }}</span></p>
+          </div>
+          {% endif %}
+        </div>
+        <div>
           <p class="text-xs font-black uppercase text-black/60 tracking-widest">En tu caja (efectivo)</p>
-          <p id="dueno-ahorita-efectivo" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.efectivo|default:0 }}</p>
+          <p id="dueno-ahorita-efectivo" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.en_caja|default:0 }}</p>
+          {% if es_responsable_servicios %}
+          {# Vales y gastos de hoy (caja chica): ya están restados arriba. #}
+          <div class="mt-1 space-y-0.5 text-xs font-bold text-black/70 tabular-nums">
+            <p>Vales y gastos de hoy: -$<span id="dueno-ahorita-salidas">{{ ventas_hoy_dueno.salidas|default:0 }}</span></p>
+            <p id="dueno-ahorita-fondo-linea" {% if not ventas_hoy_dueno.del_fondo %}hidden{% endif %}>Se usaron $<span id="dueno-ahorita-fondo">{{ ventas_hoy_dueno.del_fondo|default:0 }}</span> del fondo</p>
+          </div>
+          {% endif %}
         </div>
         <div>
           <p class="text-xs font-black uppercase text-black/60 tracking-widest">En tu Clip (tarjeta)</p>
           <p id="dueno-ahorita-tarjeta" class="text-3xl font-black text-black tabular-nums">${{ ventas_hoy_dueno.tarjeta|default:0 }}</p>
         </div>
-        <div>
-          <p class="text-xs font-black uppercase text-black/60 tracking-widest">Vendiste hoy</p>
-          <p id="dueno-ahorita-total" class="text-3xl font-black text-[#FF006E] tabular-nums">${{ ventas_hoy_dueno.total|default:0 }}</p>
-        </div>
       </div>
 
-      <!-- Desglose por caja — solo de mis productos. No le afecta si la
-           caja ya se cortó: cuenta por fecha del día, no desde el corte. -->
+      <!-- Desglose por caja (su fila del corte en cada caja). No le afecta si
+           la caja ya se cortó: cuenta por fecha del día, no desde el corte. -->
       <div class="border-t-4 border-black border-dashed mt-5 pt-4">
         <p class="text-xs font-black uppercase text-black/60 tracking-widest mb-2">Desglosado por caja</p>
         <div id="dueno-ahorita-cajas" class="space-y-2">
@@ -95,7 +121,7 @@
                data-dueno-caja-key="{{ c.sucursal }}__{{ c.caja }}">
             <span class="font-black text-xs uppercase text-black">🏬 {{ c.sucursal }} · {{ c.caja }}</span>
             <span class="text-xs font-bold text-gray-700 flex gap-3">
-              <span>💵 <span class="dueno-caja-efectivo">${{ c.efectivo }}</span></span>
+              <span>💵 <span class="dueno-caja-efectivo">${{ c.en_caja }}</span></span>
               <span>💳 <span class="dueno-caja-tarjeta">${{ c.tarjeta }}</span></span>
               <span class="font-black text-[#FF006E]">Σ $<span class="dueno-caja-total">{{ c.total }}</span></span>
             </span>
@@ -108,63 +134,7 @@
     </div>
   </div>
 
-  <!-- CUENTAS CON OTRAS DUEÑAS — sensible: ya NO sale en el corte (lo ve e
-       imprime la cajera), solo aquí. Acordeón nativo <details>: cerrado
-       muestra lo de HOY neteado por persona; abierto, el detalle por caja y
-       los cortes anteriores con "Ya se pagó". dashboard_dueno.js lo repinta
-       con data.mis_deudas del polling sin tocar el atributo open.
-       mis_deudas puede ser None → la card va oculta. -->
-  <div class="relative">
-    <details id="card-cuentas-duenas"
-             class="group border-4 border-black shadow-[8px_8px_0_0_black] bg-white"
-             {% if not mis_deudas %}hidden{% endif %}>
-      <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer select-none bg-[#FFBE0B] p-6
-                      flex items-start justify-between gap-4
-                      focus:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-black">
-        <span class="block min-w-0 space-y-2">
-          <span class="block text-2xl font-extrabold text-black uppercase tracking-wide">💸 Cuentas con otras dueñas</span>
-          <span id="cuentas-resumen" class="block space-y-1 text-base font-black text-black">
-            {% for r in mis_deudas.hoy.resumen %}{% if r.monto < 0 %}
-            <span class="block">Le debes ${{ r.monto|floatformat:2|cut:"-" }} a {{ r.con_nombre }}</span>{% elif r.monto > 0 %}
-            <span class="block">{{ r.con_nombre }} te debe ${{ r.monto|floatformat:2 }}</span>{% endif %}{% empty %}
-            <span class="block">Hoy nadie te debe ni le debes</span>{% endfor %}
-          </span>
-          {% with debes=mis_deudas.hoy.total_debes te_deben=mis_deudas.hoy.total_te_deben %}
-          <span id="cuentas-totales" class="block text-xs font-black uppercase tracking-widest text-black/70"
-                {% if not debes and not te_deben %}hidden{% endif %}>{% if debes %}Debes ${{ debes|floatformat:2 }}{% endif %}{% if debes and te_deben %} · {% endif %}{% if te_deben %}Te deben ${{ te_deben|floatformat:2 }}{% endif %}</span>
-          {% endwith %}
-          <span id="cuentas-previas" class="block text-xs font-bold text-black/70" hidden></span>
-        </span>
-        <span aria-hidden="true"
-              class="text-2xl font-black leading-none transition-transform duration-300 group-open:rotate-180 flex-shrink-0">▼</span>
-      </summary>
-
-      <div class="border-t-4 border-black p-6 space-y-6">
-        {% csrf_token %}
-        <p id="cuentas-aviso" role="status" aria-live="polite"
-           class="bg-[#FF006E] text-white border-2 border-black px-3 py-2 text-sm font-black" hidden></p>
-
-        <section class="space-y-2">
-          <h3 class="text-xs font-black uppercase text-black/60 tracking-widest">Hoy (todavía sin corte)</h3>
-          <p class="text-xs font-bold text-black/60">
-            Puede cambiar con las siguientes ventas. Si ya se pagaron, pícale «Ya se pagó».
-            Cuando la cajera haga el corte de la caja, pasa abajo a «Cortes anteriores».
-          </p>
-          <div id="cuentas-hoy" class="space-y-2">
-            <p class="text-sm font-bold text-black/50">Cargando…</p>
-          </div>
-        </section>
-
-        <section class="space-y-2 border-t-4 border-black border-dashed pt-4">
-          <h3 class="text-xs font-black uppercase text-black/60 tracking-widest">Cortes anteriores</h3>
-          <div id="cuentas-historial" class="space-y-2">
-            <p class="text-sm font-bold text-black/50">Cargando…</p>
-          </div>
-        </section>
-      </div>
-    </details>
-  </div>
-  {{ mis_deudas|json_script:"init-mis-deudas" }}
+  {% include "caja_chica/_dashboard.html" %}
 
   <!-- VENTAS HOY — CARDS POR CAJA -->
   <div class="relative space-y-6">

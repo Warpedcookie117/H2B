@@ -97,12 +97,14 @@ class VentasBaseTestCase(TestCase):
         return {"producto": producto, "cantidad": cantidad, "subtotal": D(0), "tipo": "regalo"}
 
     def crear_venta(self, renglones, efectivo=0, tarjeta=0, descuento_pct=0, caja=None, fecha=None,
-                    subtotal=None):
+                    subtotal=None, pago_en_seco=False):
         """
         Crea Venta + VentaDetalle directo en BD con la MISMA aritmética que
         POSService.crear_venta (descuento sobre el subtotal, cambio =
         efectivo - max(0, total - tarjeta)). `subtotal` permite forzar un
         Venta.subtotal distinto de la suma de renglones (caso ofertas nxprecio).
+        pago_en_seco=False por default: venta con la regla de antes (deuda);
+        POSService marca True todas las ventas nuevas.
         """
         caja = caja or self.caja_anais
         suma = sum((r["subtotal"] for r in renglones), Decimal("0"))
@@ -131,6 +133,7 @@ class VentasBaseTestCase(TestCase):
             pagado_efectivo=efectivo,
             pagado_tarjeta=tarjeta,
             cambio=cambio,
+            pago_en_seco=pago_en_seco,
         )
         for r in renglones:
             if r["tipo"] == "servicio":
