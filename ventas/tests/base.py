@@ -12,6 +12,7 @@ Dos cajas del sistema (computadoras): "Caja Anais" y "Caja Fabiola".
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -52,6 +53,12 @@ def crear_empleado(username, first_name, rol="dueño", prioridad=None):
 # El hasher real tarda ~1.4 s por usuario; en tests no importa la seguridad.
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class VentasBaseTestCase(TestCase):
+
+    def _pre_setup(self):
+        super()._pre_setup()
+        # Los días del mes del dashboard van en caché (corte_service.
+        # resumen_mes_dueno): que no se cuelen de una prueba a otra.
+        cache.clear()
 
     @classmethod
     def setUpTestData(cls):

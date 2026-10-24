@@ -1,5 +1,7 @@
+from datetime import timedelta
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -60,6 +62,25 @@ def resumen_ventas_dueno_por_caja(empleado, fecha):
 
     Devuelve floats (redondeados a 2) porque la consume la API JSON.
     """
+    return _con_caja_chica(empleado, fecha, _ventas_dueno_por_caja(empleado, fecha))
+
+
+def _fila_resumen(por_caja, caja):
+    return por_caja.setdefault(caja.id, {
+        "caja_id": caja.id,
+        "sucursal": caja.sucursal.nombre if caja.sucursal_id else "",
+        "caja": caja.nombre,
+        **{c: Decimal("0") for c in CAMPOS_RESUMEN},
+    })
+
+
+def _ventas_dueno_por_caja(empleado, fecha):
+    """
+    La parte de VENTAS de resumen_ventas_dueno_por_caja: {caja_id: fila} en
+    Decimal, sin la caja chica. Separada para que resumen_mes_dueno pueda
+    guardarla en caché (las ventas de un día cerrado ya no cambian; los
+    vales y gastos sí, se pueden cambiar o borrar desde el dashboard).
+    """
     ventas = ventas_para_desglose(
         Venta.objects
         .filter(fecha__date=fecha, caja__isnull=False)
@@ -71,16 +92,8 @@ def resumen_ventas_dueno_por_caja(empleado, fecha):
 
     por_caja = {}
 
-    def fila_de(caja):
-        return por_caja.setdefault(caja.id, {
-            "caja_id": caja.id,
-            "sucursal": caja.sucursal.nombre if caja.sucursal_id else "",
-            "caja": caja.nombre,
-            **{c: Decimal("0") for c in CAMPOS_RESUMEN},
-        })
-
     for venta in ventas:
-        acc = fila_de(venta.caja)
+        acc = _fila_resumen(por_caja, venta.caja)
 
         for fila in reparto_venta(venta):
             if fila["grupo"].cajon_id != empleado.id:
@@ -96,11 +109,16 @@ def resumen_ventas_dueno_por_caja(empleado, fecha):
             else:
                 acc["servicios"] += fila["total"]
 
+    return por_caja
+
+
+def _con_caja_chica(empleado, fecha, por_caja):
+    """Le suma a las filas de _ventas_dueno_por_caja los vales y gastos del día (modifica por_caja)."""
     salidas = caja_chica.salidas_del_dia(empleado.id, fecha)
     if salidas:
         from sucursales.models import Caja
         for caja in Caja.objects.select_related("sucursal").filter(id__in=salidas):
-            fila_de(caja)["salidas"] = salidas[caja.id]
+            _fila_resumen(por_caja, caja)["salidas"] = salidas[caja.id]
     for d in por_caja.values():
         cajita = caja_chica.CajitaConSalidas(d["efectivo"], gastos=d["salidas"])
         d["en_caja"], d["del_fondo"] = cajita.debe_haber, cajita.del_fondo
@@ -121,6 +139,54 @@ def resumen_ventas_dueno_por_fecha(empleado, fecha):
     resumen_ventas_dueno_por_caja para el desglose caja por caja.
     """
     return sumar_resumen_dueno(resumen_ventas_dueno_por_caja(empleado, fecha))
+
+
+# Días cerrados del mes en caché: recalcular el mes completo en cada carga
+# del dashboard tardaba ~2.7 s para la responsable de servicios (oct-2026,
+# ~7,000 ventas), demasiado para 3 workers.
+_CACHE_DIA_SEGUNDOS = 12 * 60 * 60
+
+
+def resumen_mes_dueno(empleado, hoy):
+    """
+    Tarjeta del mes del dashboard: de `empleado`, del día 1 a `hoy`, lo que
+    le tocó en efectivo en los cortes y lo que entró a su Clip, para que
+    cada dueña lo compare contra el efectivo que tiene en la mano y contra
+    su app de Clip. Cada día es exactamente resumen_ventas_dueno_por_caja
+    (la misma fila del corte), así que la tarjeta cuadra con la de "hoy".
+
+      efectivo: Σ en_caja (ya sin vales y gastos), tarjeta: Σ tarjeta,
+      salidas:  Σ vales y gastos (solo la responsable de servicios),
+      dias:     [{"fecha", "efectivo", "tarjeta", "cajas": [filas]}], del
+                más reciente al más viejo, solo días con algo suyo.
+
+    No incluye "saldo" (tarjeta cobrada en el Clip de otra, solo ventas de
+    antes del pago en seco): no está ni en su caja ni en su Clip.
+    """
+    dias = []
+    for n in range(hoy.day):
+        dia = hoy.replace(day=1) + timedelta(days=n)
+        clave = f"ventas_dueno_dia:{empleado.id}:{dia.isoformat()}"
+        ventas = cache.get(clave) if dia < hoy else None
+        if ventas is None:
+            ventas = _ventas_dueno_por_caja(empleado, dia)
+            if dia < hoy:
+                cache.set(clave, ventas, _CACHE_DIA_SEGUNDOS)
+        filas = _con_caja_chica(empleado, dia, ventas)
+        if filas:
+            dias.append({
+                "fecha": dia,
+                "efectivo": round(sum(f["en_caja"] for f in filas), 2),
+                "tarjeta": round(sum(f["tarjeta"] for f in filas), 2),
+                "cajas": filas,
+            })
+    dias.reverse()
+    return {
+        "efectivo": round(sum(d["efectivo"] for d in dias), 2),
+        "tarjeta": round(sum(d["tarjeta"] for d in dias), 2),
+        "salidas": round(sum(f["salidas"] for d in dias for f in d["cajas"]), 2),
+        "dias": dias,
+    }
 
 
 def generar_corte_para_fecha(caja, fecha):

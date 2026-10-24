@@ -44,26 +44,38 @@
       <!-- Card del mes: colapsada al entrar (discreción). Se revela al tocar. -->
       <button type="button" id="btn-toggle-mes" aria-expanded="false"
               class="w-full text-left flex items-start justify-between gap-3 relative z-10">
-        <p class="text-base font-black uppercase tracking-widest">
-          {% if es_responsable_servicios %}Esto has vendido durante este mes{% else %}Esto has vendido de tus productos durante este mes{% endif %}
-        </p>
+        <p class="text-base font-black uppercase tracking-widest">Tus ventas de {{ ahora|date:"F" }}</p>
         <span id="chevron-mes" class="text-2xl font-black leading-none transition-transform duration-300 flex-shrink-0">▼</span>
       </button>
 
-      <!-- Monto oculto por defecto (max-height:0). El JS lo despliega.
-           A la responsable de servicios: total = productos + servicios +
-           sin registro, igual que la suma de sus cortes. -->
-      <div id="monto-mes-wrap" class="overflow-hidden transition-all duration-500 ease-out"
+      <!-- Oculto por defecto (max-height:0). El JS lo despliega. Dos números
+           que cada dueña revisa contra algo real: el efectivo que tiene en la
+           mano y su app de Clip (corte_service.resumen_mes_dueno). -->
+      <div id="monto-mes-wrap" class="overflow-hidden transition-all duration-500 ease-out relative z-10"
            style="max-height:0; opacity:0;">
-        <p class="text-4xl sm:text-5xl lg:text-7xl font-black mt-3 leading-none break-words tabular-nums">${{ ventas_mes_total|default:0|floatformat:"0g" }}</p>
-        <p class="text-sm font-bold opacity-70 mt-1">MXN</p>
-        {% if es_responsable_servicios %}
-        <div class="mt-3 space-y-0.5 text-sm font-bold tabular-nums">
-          <p>Tus productos: ${{ ventas_mes_dueno|floatformat:"2g" }}</p>
-          <p>Servicios: ${{ ventas_mes_servicios|floatformat:"2g" }}</p>
-          <p>Prod. sin registro: ${{ ventas_mes_sin_registro|floatformat:"2g" }}</p>
+        <div class="mt-4 space-y-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-widest opacity-80">Efectivo</p>
+            <p id="mes-efectivo" class="text-4xl sm:text-5xl font-black leading-none break-words tabular-nums">${{ mes.efectivo|floatformat:"2g" }}</p>
+            <p class="text-sm font-bold opacity-80 mt-1">Lo que te tocó en los cortes</p>
+            {% if es_responsable_servicios and mes.salidas %}
+            <p class="text-sm font-bold opacity-80">Ya le quitamos los vales y gastos del mes: ${{ mes.salidas|floatformat:"2g" }}</p>
+            {% endif %}
+          </div>
+          <div>
+            <p class="text-xs font-black uppercase tracking-widest opacity-80">Tu Clip</p>
+            <p id="mes-tarjeta" class="text-4xl sm:text-5xl font-black leading-none break-words tabular-nums">${{ mes.tarjeta|floatformat:"2g" }}</p>
+            <p class="text-sm font-bold opacity-80 mt-1">Lo que entró a tu terminal</p>
+          </div>
         </div>
-        {% endif %}
+
+        <button type="button" id="btn-efectivo-dia" aria-haspopup="dialog" aria-controls="modal-efectivo-dia"
+                class="mt-5 mb-1 w-full bg-white text-black border-4 border-black shadow-[4px_4px_0_0_black] px-3 py-2
+                       font-black text-sm uppercase tracking-wide transition-all duration-150
+                       hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_0_black]
+                       active:translate-x-1 active:translate-y-1 active:shadow-none">
+          Ver efectivo por día
+        </button>
       </div>
       <p id="monto-mes-hint" class="text-sm font-bold opacity-70 mt-3">👁 Toca para ver el monto</p>
     </div>
@@ -393,6 +405,47 @@
     </div>
   </div>
 
+</div>
+
+<!-- MODAL EFECTIVO POR DÍA (tarjeta del mes). Fuera de la tarjeta: esa se
+     mueve con transform al pasar el mouse y descuadraría un fixed adentro.
+     Entra con animación: el fondo se oscurece y la caja sube y crece. -->
+<div id="modal-efectivo-dia" role="dialog" aria-modal="true" aria-labelledby="titulo-efectivo-dia"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 opacity-0 transition-opacity duration-200">
+  <div data-caja-modal
+       class="bg-white border-4 border-black shadow-[8px_8px_0_0_black] w-full max-w-md max-h-[85vh] flex flex-col
+              translate-y-6 scale-95 transition-transform duration-200 ease-out">
+    <div class="bg-[#8338EC] text-white border-b-4 border-black px-5 py-4">
+      <h2 id="titulo-efectivo-dia" class="text-lg font-black uppercase tracking-widest">Efectivo por día</h2>
+      <p class="text-sm font-bold opacity-80">Lo que te tocó en los cortes de {{ ahora|date:"F" }}</p>
+    </div>
+
+    <ul class="flex-1 overflow-y-auto p-4 space-y-2">
+      {% for d in mes.dias %}
+      <li class="border-2 border-black px-3 py-2">
+        <div class="flex items-center justify-between gap-3 font-black text-sm tabular-nums">
+          <span>{{ d.fecha|date:"D j" }}</span>
+          <span>${{ d.efectivo|floatformat:"2g" }}</span>
+        </div>
+        <p class="text-xs font-bold text-black/60 tabular-nums">
+          {% for c in d.cajas %}{{ c.caja }}: ${{ c.en_caja|floatformat:"2g" }}{% if not forloop.last %} · {% endif %}{% endfor %}
+        </p>
+      </li>
+      {% empty %}
+      <li class="text-sm font-bold text-black/60">Este mes todavía no tienes ventas.</li>
+      {% endfor %}
+    </ul>
+
+    <div class="border-t-4 border-black px-5 py-4 flex items-center justify-between gap-3">
+      <p class="font-black text-sm uppercase tabular-nums">Total: ${{ mes.efectivo|floatformat:"2g" }}</p>
+      <button type="button" data-cerrar-modal
+              class="bg-[#CCFF00] border-4 border-black shadow-[4px_4px_0_0_black] px-4 py-2
+                     font-black text-xs uppercase tracking-widest
+                     active:translate-x-1 active:translate-y-1 active:shadow-none">
+        Cerrar
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Variables para JS -->

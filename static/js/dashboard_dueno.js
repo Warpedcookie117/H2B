@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chartMasVendidosTiendaHoy = initChartBarras("chartMasVendidosTiendaHoy", window.INIT_MAS_VENDIDOS_TIENDA_HOY, "#FFBE0B");
     setInterval(actualizarVentasHoy, 10000);
     initToggleMes();
+    initModalEfectivoDia();
     initExplorador();
 });
 
@@ -273,6 +274,42 @@ function initToggleMes() {
             if (hint) hint.style.display = "";
             btn.setAttribute("aria-expanded", "false");
         }
+    });
+}
+
+// Modal "Efectivo por día" de la tarjeta del mes. Entra animado: el fondo
+// se oscurece y la caja sube y crece. Se cierra con el botón, tocando
+// afuera o con Escape, y el foco regresa al botón que lo abrió.
+function initModalEfectivoDia() {
+    const btn   = document.getElementById("btn-efectivo-dia");
+    const modal = document.getElementById("modal-efectivo-dia");
+    if (!btn || !modal) return;
+    const caja = modal.querySelector("[data-caja-modal]");
+
+    function abrir() {
+        modal.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+        // Un frame con "hidden" ya quitado para que la transición arranque.
+        requestAnimationFrame(() => {
+            modal.classList.replace("opacity-0", "opacity-100");
+            caja.classList.remove("translate-y-6", "scale-95");
+        });
+        modal.querySelector("[data-cerrar-modal]").focus();
+    }
+
+    function cerrar() {
+        modal.classList.replace("opacity-100", "opacity-0");
+        caja.classList.add("translate-y-6", "scale-95");
+        document.body.style.overflow = "";
+        setTimeout(() => modal.classList.add("hidden"), 200);
+        btn.focus();
+    }
+
+    btn.addEventListener("click", abrir);
+    modal.querySelector("[data-cerrar-modal]").addEventListener("click", cerrar);
+    modal.addEventListener("click", (e) => { if (e.target === modal) cerrar(); });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden")) cerrar();
     });
 }
 

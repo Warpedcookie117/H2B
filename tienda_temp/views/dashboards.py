@@ -1,8 +1,7 @@
 import json
-from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Sum, F, Value, Q, FloatField
-from django.db.models.functions import TruncMonth, Coalesce, Cast
+from django.db.models import Sum, F, Value, Q
+from django.db.models.functions import TruncMonth, Coalesce
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
@@ -13,7 +12,7 @@ from django.utils.timezone import localtime
 from django.contrib.auth.decorators import login_required
 from sucursales.models import Sucursal
 from ventas.models import Venta, VentaDetalle
-from ventas.services.reparto import CONCEPTO_SIN_REGISTRO, totales_caja
+from ventas.services.reparto import totales_caja
 from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
 from inventario.services.filtros_service import filtrar_productos, nombres_filtros, parse_filtros
 
@@ -272,59 +271,23 @@ def dashboard_dueno(request):
     productos_dueno = Producto.objects.filter(dueño=empleado, activo=True).count()
 
     # ============================================================
-    # 2) Ventas del mes SOLO de mis productos, YA con descuento.
-    #    Cada renglón mío vale subtotal * venta.total / venta.subtotal:
-    #    su parte del total cobrado (el subtotal del renglón es antes
-    #    del descuento de la venta y lo inflaba).
-    #    Es UNA sola query a propósito: recorrer el mes en Python con
-    #    reparto.py (el reparto exacto a centavos del corte) cargaría a
-    #    los 3 workers de Gunicorn en cada carga del dashboard. El
-    #    divisor venta.subtotal es una aproximación: puede diferir unos
-    #    centavos del reparto exacto (redondeo por venta, ofertas nxprecio
-    #    donde Σ renglones ≠ venta.subtotal). Ventas con subtotal 0 se
-    #    excluyen (división entre 0 y no aportan nada).
-    #    Cast a float: SQLite (local/tests) guarda 600.00 como entero y
-    #    haría división ENTERA (333*900/1000 = 299, no 299.70); con
-    #    DecimalField Django lo envuelve en CAST(... AS NUMERIC) y sigue
-    #    truncando. En float el error es de ~1e-12, invisible al redondear
-    #    a centavos, y el cálculo es el mismo en SQLite y en Postgres.
-    #    A la responsable de servicios se le suman, aparte, sus servicios y
-    #    el "Prod. sin registro" (en el corte van en su fila): con eso el
-    #    total del mes cuadra con la suma de sus cortes. Misma query.
+    # 2) El mes: efectivo que le tocó en los cortes y lo que entró a su
+    #    Clip, día por día (corte_service.resumen_mes_dueno). Es lo que
+    #    cada dueña compara contra lo que tiene en la mano y su app de Clip.
     # ============================================================
-    mios = Q(producto__dueño=empleado)
-    servicio = Q(producto__isnull=True, atributos_snapshot__tipo="servicio",
-                 venta__caja__sucursal__dueño_servicios=empleado)
-    sin_registro = Q(nombre_snapshot__iexact=f"Servicio: {CONCEPTO_SIN_REGISTRO}")
-    proporcional = (Cast("subtotal", FloatField())
-                    * Cast("venta__total", FloatField())
-                    / Cast("venta__subtotal", FloatField()))
-    mes = (
-        VentaDetalle.objects
-        .filter(
-            venta__fecha__month=ahora_local.month,
-            venta__fecha__year=ahora_local.year,
-            venta__subtotal__gt=0,
-        )
-        .filter(mios | servicio)
-        .aggregate(
-            productos=Sum(proporcional, filter=mios),
-            servicios=Sum(proporcional, filter=servicio & ~sin_registro),
-            sin_registro=Sum(proporcional, filter=servicio & sin_registro),
-        )
-    )
-    mes = {k: Decimal(str(v or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) for k, v in mes.items()}
-    ventas_mes_dueno = mes["productos"]
-    ventas_mes_total = mes["productos"] + mes["servicios"] + mes["sin_registro"]
+    from ventas.services.corte_service import resumen_mes_dueno, sumar_resumen_dueno
+    mes = resumen_mes_dueno(empleado, hoy)
 
     # ============================================================
     # 2b) $ vendido AHORITA (hoy) — efectivo/tarjeta, su fila del corte
     #     (con servicios y "Prod. sin registro" si es la responsable).
     #     Se refresca en vivo por polling (dashboard_dueno.js →
     #     /ventas/api/ventas/hoy/), esto solo pinta el valor inicial.
+    #     Es el día de hoy del mes (resumen_ventas_dueno_por_caja), ya
+    #     calculado arriba.
     # ============================================================
-    from ventas.services.corte_service import resumen_ventas_dueno_por_caja, sumar_resumen_dueno
-    mis_por_caja = resumen_ventas_dueno_por_caja(empleado, hoy)
+    hoy_en_mes = mes["dias"][0] if mes["dias"] and mes["dias"][0]["fecha"] == hoy else None
+    mis_por_caja = hoy_en_mes["cajas"] if hoy_en_mes else []
     ventas_hoy_dueno = sumar_resumen_dueno(mis_por_caja)
     # Lookup por caja_id — se cruza más abajo con TODAS las cajas de la
     # sucursal (aunque este dueño no haya vendido nada ahí hoy, se
@@ -440,12 +403,9 @@ def dashboard_dueno(request):
     # ============================================================
     context = {
         "productos_dueno": productos_dueno,
-        "ventas_mes_dueno": ventas_mes_dueno,              # solo sus productos
-        "ventas_mes_servicios": mes["servicios"],          # responsable de servicios
-        "ventas_mes_sin_registro": mes["sin_registro"],
-        "ventas_mes_total": ventas_mes_total,              # lo que se muestra
+        "mes": mes,                                        # card del mes: efectivo / Clip / por día
         # Solo a la responsable de servicios se le desglosa productos /
-        # servicios / sin registro (hoy y en el mes); a las demás, no.
+        # servicios / sin registro (hoy) y los vales del mes; a las demás, no.
         "es_responsable_servicios": empleado.sucursales_como_responsable_servicios.exists(),
         "ventas_hoy_dueno": ventas_hoy_dueno,              # card "ahorita" (efectivo/tarjeta)
         "ventas_hoy_dueno_por_caja": ventas_hoy_dueno_por_caja,  # mismo, desglosado por caja

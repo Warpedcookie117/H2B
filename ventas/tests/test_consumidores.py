@@ -16,6 +16,7 @@ from sucursales.models import Caja
 from ventas.models import CorteCaja, Venta
 from ventas.services.corte_service import (
     generar_corte_para_fecha,
+    resumen_mes_dueno,
     resumen_ventas_dueno_por_caja,
     resumen_ventas_dueno_por_fecha,
 )
@@ -506,7 +507,7 @@ class DashboardDuenoTest(ConsumidoresTestCase):
         self.assertEqual(response.status_code, 200)
         return response
 
-    def test_ventas_del_mes_ya_descontadas(self):
+    def test_mes_efectivo_y_clip_ya_descontados(self):
         primero = self.hoy.replace(day=1)
         # 333 + 667 con 10% → Anais 299.70 (con montos enteros SQLite
         # dividiría entero y daría 299).
@@ -522,16 +523,37 @@ class DashboardDuenoTest(ConsumidoresTestCase):
         self.crear_venta([self.renglon(self.prod_yareli, 500)], efectivo=500,
                          fecha=a_las(self.hoy, 12))
 
-        valor = self.dashboard().context["ventas_mes_dueno"]
+        mes = self.dashboard().context["mes"]
 
-        self.assertIsInstance(valor, Decimal)
-        self.assertEqual(valor, D("549.70"))
-        dias = {primero, self.hoy}
-        esperado = sum(resumen_ventas_dueno_por_fecha(self.anais, d)["total"] for d in dias)
-        self.assertAlmostEqual(float(valor), esperado, delta=0.01)
+        # Efectivo: los 299.70 que le pasaron de la venta del día 1 (Yareli
+        # cobró). Clip: la venta de 250 con tarjeta que cobró ella.
+        self.assertEqual((mes["efectivo"], mes["tarjeta"], mes["salidas"]), (299.70, 250.0, 0))
+        # Cada día es su fila del corte de ese día ("¿Cuánto llevo yo?").
+        dias = sorted({primero, self.hoy}, reverse=True)
+        self.assertEqual([d["fecha"] for d in mes["dias"]], dias)
+        for d in mes["dias"]:
+            esperado = resumen_ventas_dueno_por_fecha(self.anais, d["fecha"])
+            self.assertEqual((d["efectivo"], d["tarjeta"]), (esperado["en_caja"], esperado["tarjeta"]))
 
-    def test_ventas_del_mes_sin_ventas(self):
-        self.assertEqual(self.dashboard().context["ventas_mes_dueno"], CERO)
+    def test_mes_sin_ventas(self):
+        self.assertEqual(self.dashboard().context["mes"],
+                         {"efectivo": 0, "tarjeta": 0, "salidas": 0, "dias": []})
+
+    def test_dias_cerrados_en_cache_vales_en_vivo(self):
+        primero = self.hoy.replace(day=1)
+        dia, hoy = primero + timedelta(days=9), primero + timedelta(days=14)
+        self.crear_venta([self.renglon(self.prod_anais, 100)], efectivo=100, fecha=a_las(dia, 12))
+        self.assertEqual(resumen_mes_dueno(self.anais, hoy)["efectivo"], 100.0)
+
+        # Una venta "nueva" en un día ya cerrado no se vuelve a calcular...
+        self.crear_venta([self.renglon(self.prod_anais, 50)], efectivo=50, fecha=a_las(dia, 13))
+        # ...pero la de hoy sí, y los vales y gastos se leen siempre.
+        self.crear_venta([self.renglon(self.prod_anais, 30)], efectivo=30, fecha=a_las(hoy, 12))
+        with mock.patch("ventas.services.corte_service.caja_chica.salidas_del_dia",
+                        side_effect=lambda _, d: {self.caja_anais.id: D(40)} if d == dia else {}):
+            mes = resumen_mes_dueno(self.anais, hoy)
+        self.assertEqual((mes["efectivo"], mes["salidas"]), (90.0, 40.0))
+        self.assertEqual([(d["fecha"], d["efectivo"]) for d in mes["dias"]], [(hoy, 30.0), (dia, 60.0)])
 
     def test_responsable_de_servicios_ve_su_corte_desglosado(self):
         hoy = a_las(self.hoy, 12)
@@ -546,28 +568,28 @@ class DashboardDuenoTest(ConsumidoresTestCase):
         response = self.dashboard()
         ctx = response.context
         self.assertTrue(ctx["es_responsable_servicios"])
-        self.assertEqual((ctx["ventas_mes_dueno"], ctx["ventas_mes_servicios"], ctx["ventas_mes_sin_registro"]),
-                         (D(180), D(55), D(27)))
-        self.assertEqual(ctx["ventas_mes_total"], D(262))
-        # El mes cuadra con lo que suman sus filas del corte.
+        # El mes cuadra con lo que dicen sus filas del corte: efectivo y Clip.
         filas = {f["nombre"]: f for f in desglose_por_dueno(ventas_para_desglose(Venta.objects.all()))}
-        self.assertEqual(ctx["ventas_mes_total"], filas["Rosa"]["total"])
+        self.assertEqual((ctx["mes"]["efectivo"], ctx["mes"]["tarjeta"]),
+                         (float(filas["Rosa"]["efectivo"]), float(filas["Rosa"]["tarjeta"])))
+        self.assertEqual((ctx["mes"]["efectivo"], ctx["mes"]["tarjeta"]), (252.0, 10.0))
 
         hoy_rosa = ctx["ventas_hoy_dueno"]
         self.assertEqual((hoy_rosa["total"], hoy_rosa["productos"], hoy_rosa["servicios"], hoy_rosa["sin_registro"]),
                          (262.0, 180.0, 55.0, 27.0))
         self.assertEqual(self.client.get(reverse("ventas:api_ventas_hoy")).json()["mis_ventas"], hoy_rosa)
         html = response.content.decode()
-        for s in ("Esto has vendido durante este mes", 'id="dueno-ahorita-servicios"', "Prod. sin registro: $"):
+        for s in ("Tus ventas de", "Lo que te tocó en los cortes", "Ver efectivo por día",
+                  'id="dueno-ahorita-servicios"', "Prod. sin registro: $"):
             self.assertIn(s, html)
 
         # A las demás no se les desglosa nada.
         self.login(self.anais)
         response = self.dashboard()
         self.assertFalse(response.context["es_responsable_servicios"])
-        self.assertEqual(response.context["ventas_mes_total"], D(90))
+        self.assertEqual(response.context["mes"]["efectivo"], 90.0)
         html = response.content.decode()
-        self.assertIn("Esto has vendido de tus productos durante este mes", html)
+        self.assertIn("Tus ventas de", html)
         self.assertNotIn('id="dueno-ahorita-servicios"', html)
 
     def test_dashboard_api_y_corte_coinciden(self):
