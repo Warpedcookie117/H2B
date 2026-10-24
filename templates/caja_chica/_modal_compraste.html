@@ -1,7 +1,9 @@
-{# "¿Compraste algo?" — vales y gastos de la caja chica (app caja_chica).
+{% comment %}
+"¿Compraste algo?" — vales y gastos de la caja chica (app caja_chica).
    Lo maneja static/js/caja_chica/compraste.js; se abre con #btn-compraste
    del encabezado del POS. Todo lo dinámico (nombres, montos) lo pone el JS
-   con textContent. #}
+   con textContent.
+{% endcomment %}
 <div id="modal-compraste" class="pos-modal pos-modal--hidden" role="dialog" aria-modal="true"
      aria-labelledby="cc-titulo">
     <div class="pos-modal-content pos-modal-content--wide pos-animate-scale cc-modal">

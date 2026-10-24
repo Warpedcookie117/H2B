@@ -1,7 +1,9 @@
-{# Vales y gastos (app caja_chica) en el dashboard de las dueñas. Esta semana
+{% comment %}
+Vales y gastos (app caja_chica) en el dashboard de las dueñas. Esta semana
    y la pasada, de lunes a domingo: el domingo se revisan los vales. Cambiar
    el monto o borrar: formularios normales que regresan aquí (#caja-chica).
-   Contexto: caja_chica_semanas = [ResumenSemana esta, ResumenSemana pasada]. #}
+   Contexto: caja_chica_semanas = [ResumenSemana esta, ResumenSemana pasada].
+{% endcomment %}
 {% with esta=caja_chica_semanas.0 %}
 <div id="caja-chica" class="relative">
   <details class="group border-4 border-black shadow-[8px_8px_0_0_black] bg-white">
