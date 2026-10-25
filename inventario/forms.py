@@ -1,5 +1,7 @@
+import json
 import re
 from django import forms
+from inventario.services import presentacion_service
 from inventario.services.atributo_service import AtributoService
 from inventario.services.codigo_service import CodigoService
 from inventario.services.imagen_service import ImagenService
@@ -231,6 +233,10 @@ class ProductoForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.5'})
     )
 
+    # Precios por cantidad (Media docena, Decena, Caja) en JSON; lo llena
+    # static/js/precios_cantidad/tarjeta.js. Solo dueñas, igual que el costo.
+    presentaciones_json = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = Producto
         fields = [
@@ -273,6 +279,7 @@ class ProductoForm(forms.ModelForm):
         es_dueno = getattr(empleado, 'rol', None) == 'dueño'
         if not es_dueno:
             del self.fields['costo']
+            del self.fields['presentaciones_json']
 
         # Dueños
         self.fields['dueño'].queryset = Empleado.objects.filter(rol='dueño')
@@ -354,6 +361,17 @@ class ProductoForm(forms.ModelForm):
         # celular pesan 2–4 MB y ese storage es el que agota el plan gratuito.
         return ImagenService.comprimir(foto)
  
+    def clean_presentaciones_json(self):
+        """Lista de PrecioCantidad validados; [] si no se puso ninguno."""
+        texto = (self.cleaned_data.get("presentaciones_json") or "").strip()
+        if not texto:
+            return []
+        try:
+            filas = json.loads(texto)
+        except ValueError:
+            raise forms.ValidationError("Los precios por caja llegaron mal. Recarga la página.")
+        return presentacion_service.leer_filas(filas)
+
     def clean_subcategoria(self):
         sub = self.cleaned_data.get("subcategoria")
         if not sub or sub.padre is None:

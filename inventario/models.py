@@ -308,8 +308,58 @@ class Producto(models.Model):
                 name='unique_producto_por_firma'
             )
         ]
-        
-        
+
+
+# ============================================================
+# PRECIOS POR CANTIDAD (Media docena, Decena, Caja)
+#
+# Precio de un paquete de piezas del mismo producto, además de menudeo,
+# mayoreo y docena. El inventario sigue en piezas: vender 2 cajas de 24
+# descuenta 48. Los tipos son fijos (nadie escribe nombres); solo la Caja
+# dice cuántas piezas trae. Las reglas viven en
+# inventario/services/presentacion_service.py.
+# ============================================================
+
+class TipoPresentacion(models.TextChoices):
+    MEDIA_DOCENA = "media_docena", "Media docena"
+    DECENA = "decena", "Decena"
+    CAJA = "caja", "Caja"
+
+
+class Presentacion(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="presentaciones")
+    tipo = models.CharField(max_length=20, choices=TipoPresentacion.choices)
+    piezas = models.PositiveIntegerField()
+    precio = models.DecimalField(max_digits=10, decimal_places=1)
+
+    class Meta:
+        ordering = ["piezas", "tipo"]
+        verbose_name = "Precio por cantidad"
+        verbose_name_plural = "Precios por cantidad"
+        constraints = [
+            models.UniqueConstraint(fields=["producto", "tipo", "piezas"], name="presentacion_unica"),
+            models.CheckConstraint(condition=models.Q(precio__gt=0), name="presentacion_precio_positivo"),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(tipo=TipoPresentacion.MEDIA_DOCENA, piezas=6)
+                    | models.Q(tipo=TipoPresentacion.DECENA, piezas=10)
+                    | models.Q(tipo=TipoPresentacion.CAJA, piezas__gte=2)
+                ),
+                name="presentacion_piezas_del_tipo",
+            ),
+        ]
+
+    @property
+    def nombre(self):
+        """'Media docena', 'Decena' o 'Caja de 24': lo que dicen el POS y el ticket."""
+        if self.tipo == TipoPresentacion.CAJA:
+            return f"Caja de {self.piezas}"
+        return self.get_tipo_display()
+
+    def __str__(self):
+        return f"{self.producto_id} · {self.nombre} ${self.precio}"
+
+
 
 
     # Define los atributos que existen para cada subcategoría.

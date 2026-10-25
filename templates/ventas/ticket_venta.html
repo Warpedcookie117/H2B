@@ -151,6 +151,11 @@
           <p class="font-black text-sm uppercase text-black">
             {% if item.nombre_snapshot %}{{ item.nombre_snapshot }}{% elif item.producto %}{{ item.producto.nombre }}{% else %}—{% endif %}
           </p>
+          {% if item.presentacion_nombre %}
+            <span class="inline-block mt-1 border-2 border-black bg-[#FFBE0B] text-black font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
+              {{ item.presentacion_nombre }}{% if item.piezas_por_unidad > 1 %} · {{ item.piezas }} piezas{% endif %}
+            </span>
+          {% endif %}
           {% if item.atributos_snapshot.tipo == "regalo" %}
             <span class="inline-block mt-1 border-2 border-black bg-[#00F5D4] text-black font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
               🎁 PROMOCIÓN — {{ item.atributos_snapshot.promo }}

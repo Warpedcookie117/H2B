@@ -49,7 +49,8 @@ def _sep_punteado():
 
 
 def _detectar_tipo_precio(item):
-    if not item.producto:
+    if not item.producto or item.presentacion_nombre:
+        # Un precio por cantidad (Caja, Media docena…) no es ni menudeo ni mayoreo.
         return "MEN"
     try:
         pu = float(item.precio_unitario)
@@ -102,6 +103,8 @@ def generar_texto_ticket(obj):
             nombre = item.nombre_snapshot or (
                 item.producto.nombre if item.producto else "PRODUCTO ELIMINADO"
             )
+            if item.presentacion_nombre:
+                nombre = f"{nombre} - {item.presentacion_nombre}"
 
             if cfg.mostrar_id_producto:
                 prefijo = f"#{producto_id} "

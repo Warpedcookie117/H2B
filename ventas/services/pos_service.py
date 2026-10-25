@@ -3,6 +3,7 @@ from django.db import transaction
 from ventas.models import Venta, VentaDetalle, Promocion
 from inventario.services.inventario_service import InventarioService
 from inventario.models import Producto
+from inventario.services import presentacion_service
 from ventas.services.ticket_service import generar_texto_ticket
 from sucursales.models import Caja
 
@@ -25,8 +26,13 @@ class POSService:
 
     @staticmethod
     def _cap_regalos(carrito):
-        """Limita la cantidad de cada regalo a los productos disparadores presentes en el carrito."""
-        items_normales = [i for i in carrito if not i.get("es_regalo") and not i.get("es_servicio")]
+        """
+        Limita la cantidad de cada regalo a los productos disparadores presentes en el carrito.
+        Lo vendido por precio por cantidad (Caja, Media docena…) no dispara regalos.
+        """
+        items_normales = [i for i in carrito
+                          if not i.get("es_regalo") and not i.get("es_servicio")
+                          and not i.get("presentacion_id")]
 
         # Precarga categorías de los productos normales
         ids_normales = [int(i["producto_id"]) for i in items_normales if i.get("producto_id")]
@@ -112,6 +118,17 @@ class POSService:
                 })
             else:
                 producto = Producto.objects.get(pk=item["producto_id"])
+                presentacion = None
+                if item.get("presentacion_id"):
+                    # Precio por cantidad: el precio y las piezas salen de la BD,
+                    # nunca del navegador. Si cambió, se avisa en vez de cobrar
+                    # otro total a escondidas.
+                    presentacion = presentacion_service.para_venta(producto.pk, item["presentacion_id"])
+                    if abs(float(presentacion.precio) - precio_unitario) > 0.01:
+                        raise ValueError(
+                            f'"{producto.nombre}": la {presentacion.nombre.lower()} ahora cuesta '
+                            f'${presentacion.precio:,.2f}. Quítala de la cuenta y vuélvela a pasar.'
+                        )
                 detalles.append({
                     "tipo":            "normal",
                     "producto":        producto,
@@ -120,6 +137,8 @@ class POSService:
                     "precio_unitario": precio_unitario,
                     "subtotal":        subtotal_item,
                     "atributos_snap":  None,
+                    "presentacion_nombre": presentacion.nombre if presentacion else None,
+                    "piezas_por_unidad":   presentacion.piezas if presentacion else 1,
                 })
 
         # 2) Descuento — lista blanca contra valores manipulados: el cliente
@@ -213,6 +232,7 @@ class POSService:
                     v.atributo.nombre: v.valor
                     for v in producto.valores_atributo.select_related("atributo").all()
                 }
+                piezas_por_unidad = d.get("piezas_por_unidad", 1)
                 VentaDetalle.objects.create(
                     venta=venta,
                     producto=producto,
@@ -221,11 +241,13 @@ class POSService:
                     cantidad=d["cantidad"],
                     precio_unitario=d["precio_unitario"],
                     subtotal=d["subtotal"],
+                    presentacion_nombre=d.get("presentacion_nombre"),
+                    piezas_por_unidad=piezas_por_unidad,
                 )
                 try:
                     InventarioService.salida_inteligente(
                         producto=producto,
-                        cantidad=d["cantidad"],
+                        cantidad=d["cantidad"] * piezas_por_unidad,
                         empleado=empleado,
                         sucursal=sucursal
                     )

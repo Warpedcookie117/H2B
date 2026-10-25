@@ -3,6 +3,7 @@ import { initCategorias }        from "./categorias.js";
 import { initAtributos }         from "./atributos.js";
 import { initBotonInventario }   from "./boton_inventario_nvproducto.js";
 import { iniciarBarraProgreso }  from "./barra_progreso.js";
+import { initPreciosCantidad }   from "./precios_cantidad.js";
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -96,6 +97,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ============================
+    // 3b. PRECIOS POR CANTIDAD (solo dueñas; null si no hay sección)
+    // ============================
+    const preciosCantidad = initPreciosCantidad({ menudeoInput });
+
+    // ============================
     // 4. PRODUCTO EXISTENTE (AJAX)
     // ============================
     initProductoExistente({
@@ -119,6 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
             actualizarTemporadas(data.temporadas || []);
             bloquearFoto();
             mostrarFoto(data.foto_url);
+            preciosCantidad?.deExistente(data);
 
             botonInventario.verificarInventario(data.producto_id, ubicacionSelect.value);
         },
@@ -141,6 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // No bloqueamos campos — todos editables. Solo el código de barras se
             // mantiene como está (es el que comparten las variantes).
             actualizarTemporadasEditable(plantilla.temporadas || []);
+            preciosCantidad?.deVariante(plantilla);
 
             // Foto: mostrar la plantilla y cargarla en el input para heredarla.
             // El usuario puede cambiarla abriendo el input normalmente.
@@ -179,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         onLimpiar: () => {
             atributos.mostrarAtributosDeSubcategoria(""); // limpia atributos y oculta banner
             form.dataset.modoVariante = "";
+            preciosCantidad?.limpiar();
         }
     });
 

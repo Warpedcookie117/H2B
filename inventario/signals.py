@@ -9,6 +9,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from inventario.templatetags.cloudinary_helpers import foto_mini
 from .models import Inventario, Producto
+from .services.presentacion_service import de_producto
 
 _logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ def _broadcast_producto(producto):
         "categoria_id": producto.categoria_id,
         "categoria_padre_id": producto.categoria_padre_id,
         "activo": producto.activo,
+        "presentaciones": de_producto(producto),
     }
 
     for uid in ubicacion_ids:

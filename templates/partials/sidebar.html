@@ -48,6 +48,13 @@
             <span class="sidebar-text">Promociones</span>
         </a>
 
+        {% if request.user.empleado.rol == 'dueño' %}
+        <a href="{% url 'inventario:lista_precios' %}" class="sidebar-link">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            <span class="sidebar-text">Lista de precios</span>
+        </a>
+        {% endif %}
+
         <hr class="sb-divider">
 
         <!-- CENTRO DE INVENTARIO -->

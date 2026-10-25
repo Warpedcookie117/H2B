@@ -1,4 +1,4 @@
-import { carrito } from "./core.js";
+import { carrito, piezasItem } from "./core.js";
 
 console.log("[POS:precios] Módulo cargado");
 
@@ -8,14 +8,16 @@ console.log("[POS:precios] Módulo cargado");
 // MAY  → 6+ productos (mismo o distinto) con valor total > $80
 // DOC  → 12+ unidades del MISMO producto (solo ese item)
 // MEN  → todo lo demás
+// PRES → precio por cantidad (Caja, Media docena…): precio fijo, no lo
+//        tocan estas reglas; sus piezas sí cuentan para el mayoreo de lo demás
 // ============================================================
 
 export function aplicarPreciosGlobales() {
 
     // --- Paso 1: Calcular modo global (MAY vs MEN) ignorando servicios y regalos ---
     const productos = carrito.filter(p => !p.es_servicio && !p.es_regalo);
-    const totalPiezas = productos.reduce((acc, p) => acc + p.cantidad, 0);
-    const totalValor  = productos.reduce((acc, p) => acc + (p.precios.men * p.cantidad), 0);
+    const totalPiezas = productos.reduce((acc, p) => acc + piezasItem(p), 0);
+    const totalValor  = productos.reduce((acc, p) => acc + (p.precios.men * piezasItem(p)), 0);
 
     let modoGlobal = "MEN";
     if (totalPiezas >= 6 && totalValor > 80) {
@@ -27,6 +29,13 @@ export function aplicarPreciosGlobales() {
     // --- Paso 2: Aplicar a cada item (saltar servicios y regalos) ---
     carrito.forEach(item => {
         if (item.es_servicio || item.es_regalo) return;
+
+        if (item.presentacion) {
+            item.modo_precio     = "PRES";
+            item.modo_resuelto   = "PRES";
+            item.precio_aplicado = Number(item.presentacion.precio);
+            return;
+        }
 
         let modoPrecio = item.modo_precio;
 

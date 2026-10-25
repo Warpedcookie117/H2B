@@ -38,4 +38,5 @@ class InventarioConsumer(AsyncWebsocketConsumer):
             "categoria_id": event["categoria_id"],
             "categoria_padre_id": event["categoria_padre_id"],
             "activo": event["activo"],
+            "presentaciones": event.get("presentaciones", []),
         }))

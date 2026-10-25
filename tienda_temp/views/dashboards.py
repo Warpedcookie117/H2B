@@ -11,7 +11,7 @@ from datetime import timedelta
 from django.utils.timezone import localtime
 from django.contrib.auth.decorators import login_required
 from sucursales.models import Sucursal
-from ventas.models import Venta, VentaDetalle
+from ventas.models import Venta, VentaDetalle, piezas_vendidas
 from ventas.services.reparto import totales_caja
 from inventario.models import Categoria, Inventario, MovimientoInventario, Producto, Ubicacion
 from inventario.services.filtros_service import filtrar_productos, nombres_filtros, parse_filtros
@@ -71,7 +71,7 @@ def dashboard_socio(request):
                 venta__ubicacion__sucursal=sucursal
             )
             .values(nombre=F("producto__nombre"))
-            .annotate(cantidad=Sum("cantidad"))
+            .annotate(cantidad=piezas_vendidas())
             .order_by("-cantidad")
         )
  
@@ -126,14 +126,14 @@ def _mas_vendidos_dueno(empleado, filtro_fecha):
         .exclude(producto__codigo_barras__isnull=True)
         .exclude(producto__codigo_barras="")
         .values(nombre=F("producto__nombre"))
-        .annotate(cantidad=Sum("cantidad"))
+        .annotate(cantidad=piezas_vendidas())
     )
 
     sin_codigo = (
         VentaDetalle.objects
         .filter(producto__dueño=empleado, **filtro_fecha)
         .filter(Q(producto__codigo_barras__isnull=True) | Q(producto__codigo_barras=""))
-        .aggregate(cantidad=Sum("cantidad"))["cantidad"] or 0
+        .aggregate(cantidad=piezas_vendidas())["cantidad"] or 0
     )
 
     servicios = (
@@ -144,7 +144,7 @@ def _mas_vendidos_dueno(empleado, filtro_fecha):
             venta__caja__sucursal__dueño_servicios=empleado,
             **filtro_fecha,
         )
-        .aggregate(cantidad=Sum("cantidad"))["cantidad"] or 0
+        .aggregate(cantidad=piezas_vendidas())["cantidad"] or 0
     )
 
     resultado = list(productos)
@@ -199,7 +199,7 @@ def _mas_vendidos_filtrado(empleado, desde, hasta, filtros, solo_mios=True, limi
     filas = (
         detalles
         .values(nombre=F("producto__nombre"))
-        .annotate(cantidad=Sum("cantidad"), ingreso=Sum("subtotal"))
+        .annotate(cantidad=piezas_vendidas(), ingreso=Sum("subtotal"))
         .order_by("-cantidad")[:limite]
     )
 
@@ -315,7 +315,7 @@ def dashboard_dueno(request):
         VentaDetalle.objects
         .filter(venta__fecha__date=hoy)
         .values(nombre=Coalesce("nombre_snapshot", "producto__nombre", Value("Producto eliminado")))
-        .annotate(cantidad=Sum("cantidad"))
+        .annotate(cantidad=piezas_vendidas())
         .order_by("-cantidad")[:10]
     )
 

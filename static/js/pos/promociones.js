@@ -1,6 +1,6 @@
 // promociones.js — Detección y aplicación de promociones en el POS
 
-import { carrito } from "./core.js";
+import { carrito, piezasItem } from "./core.js";
 import { agregarRegalo } from "./carrito.js";
 import { mostrarAlertaUI } from "./ui.js";
 
@@ -27,7 +27,7 @@ export function initPromociones() {
 
     document.addEventListener("pos:total-actualizado", (e) => {
         console.log(`[POS:promociones] pos:total-actualizado → total=$${e.detail.total.toFixed(2)}`);
-        checkPromocionMonto(e.detail.total);
+        checkPromocionMonto(e.detail.totalPromos ?? e.detail.total);
         checkPromocionMontoCat();
     });
 
@@ -79,7 +79,7 @@ function checkPromocionesCategoria(subcategoria_id, cat_padre_id) {
     let itemIdx = -1;
     for (let i = carrito.length - 1; i >= 0; i--) {
         const it = carrito[i];
-        if (!it.es_regalo && !it.es_servicio &&
+        if (!it.es_regalo && !it.es_servicio && !it.presentacion &&
             (it.subcategoria_id == subcategoria_id || it.cat_padre_id == cat_padre_id)) {
             itemIdx = i;
             break;
@@ -120,7 +120,7 @@ function checkPromocionMontoCat() {
         const catId = promo.categoria_disparadora_id;
         let subtotalCat = 0;
         for (const item of carrito) {
-            if (item.es_regalo || item.es_servicio) continue;
+            if (item.es_regalo || item.es_servicio || item.presentacion) continue;
             if (item.subcategoria_id == catId || item.cat_padre_id == catId) {
                 subtotalCat += (Number(item.precio_aplicado) || 0) * (item.cantidad || 1);
             }
@@ -309,7 +309,7 @@ function _renderOpciones(productos, promo, itemIdx, pendingCount) {
         // Sin stock (piso + bodega, menos lo que ya va en este carrito): al
         // cobrar el servidor rechazaría TODA la venta, así que no se deja escoger.
         // stock null = el servidor no lo calculó (sin sucursal) → no se bloquea.
-        const enCarrito  = carrito.filter(i => i.id === p.id).reduce((s, i) => s + (Number(i.cantidad) || 0), 0);
+        const enCarrito  = carrito.filter(i => i.id === p.id).reduce((s, i) => s + piezasItem(i), 0);
         const sinStock   = p.stock != null && (Number(p.stock) || 0) + bodega - enCarrito <= 0;
 
         const btn = document.createElement("button");

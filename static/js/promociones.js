@@ -263,7 +263,12 @@
     event.preventDefault();
     const form = event.target;
     const url  = ofertaId ? URLS.guardarOferta + ofertaId + '/' : URLS.guardarNuevaOferta;
-    const res  = await fetch(url, { method: 'POST', body: new FormData(form) });
+    // Los selects bloqueados (combo fija el tipo, 2x1 fija "a qué aplica")
+    // NO viajan en el FormData: sin esto el servidor recibía la oferta sin
+    // tipo y respondía "Elige el tipo de descuento" (ningún combo se guardaba).
+    const body = new FormData(form);
+    form.querySelectorAll('select[name]:disabled').forEach(s => body.set(s.name, s.value));
+    const res  = await fetch(url, { method: 'POST', body });
     const data = await res.json();
     if (data.ok) {
       cerrarModal();
@@ -271,7 +276,12 @@
       setTimeout(() => location.reload(), 800);
     } else {
       const errEl = document.getElementById('ofertaFormError');
-      if (errEl) { errEl.textContent = data.msg; errEl.classList.remove('hidden'); }
+      if (errEl) {
+        errEl.textContent = data.msg;
+        errEl.classList.remove('hidden');
+        // El error vive arriba del modal; en el celular el botón está hasta abajo.
+        errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
   }
 

@@ -3,7 +3,7 @@
 import { aplicarPreciosGlobales } from "./precios.js";
 import { aplicarOfertas } from "./ofertas.js";
 import { actualizarTotales } from "./totales.js";
-import { onCarritoActualizado, setLastAddedId } from "./core.js";
+import { onCarritoActualizado, setLastAddedId, piezasItem } from "./core.js";
 
 // Estado global del carrito (viene de core.js)
 import { carrito } from "./core.js";
@@ -23,7 +23,8 @@ export function agregarProducto(id, nombre, precios, stock_piso, stock_bodega, s
         return;
     }
 
-    const existente = carrito.find(p => p.id === id && !p.es_regalo);
+    // Escanear otra vez suma una PIEZA: no se suma al renglón de la caja.
+    const existente = carrito.find(p => p.id === id && !p.es_regalo && !p.presentacion);
 
     if (existente) {
         existente.cantidad++;
@@ -145,6 +146,12 @@ export function cambiarModoPrecio(index, modo) {
         return;
     }
 
+    // MEN/MAY/DOC/AUTO en un renglón de caja lo regresa a piezas.
+    if (carrito[index].presentacion) {
+        elegirPresentacion(index, null, modo);
+        return;
+    }
+
     const anterior = carrito[index].modo_precio;
     carrito[index].modo_precio = modo;
     console.log(`[POS:carrito] cambiarModoPrecio → "${carrito[index].nombre}" idx=${index}: ${anterior} → ${modo}`);
@@ -155,6 +162,81 @@ export function cambiarModoPrecio(index, modo) {
     onCarritoActualizado();
 }
 
+
+
+// ============================================================
+// 4b. Precio por cantidad (Media docena, Decena, Caja)
+// ============================================================
+
+// Pasa el renglón a una presentación (presentacionId) o lo regresa a piezas
+// (null, con modoPieza). La cantidad se conserva: 3 piezas → 3 cajas. Si ya
+// hay otro renglón del mismo producto vendido igual, se juntan.
+export function elegirPresentacion(index, presentacionId, modoPieza = "AUTO") {
+    const item = carrito[index];
+    if (!item || item.es_regalo || item.es_servicio) return;
+
+    const pres = presentacionId == null
+        ? null
+        : (item.precios?.pres || []).find(p => p.id === presentacionId);
+    if (presentacionId != null && !pres) {
+        console.warn(`[POS:carrito] elegirPresentacion → presentación ${presentacionId} no existe en "${item.nombre}"`);
+        return;
+    }
+
+    const destino = carrito.findIndex((p, i) =>
+        i !== index && p.id === item.id && !p.es_regalo && !p.es_servicio &&
+        (p.presentacion?.id ?? null) === (pres?.id ?? null)
+    );
+
+    if (destino >= 0) {
+        carrito[destino].cantidad += item.cantidad;
+        if (!pres) carrito[destino].modo_precio = modoPieza;
+        carrito.splice(index, 1);
+        console.log(`[POS:carrito] elegirPresentacion → "${item.nombre}" juntado con el renglón ${destino}`);
+    } else {
+        item.presentacion      = pres ? { ...pres } : null;
+        item.modo_precio       = pres ? "PRES" : modoPieza;
+        item.oferta_activa     = null;
+        item.precio_sin_oferta = null;
+        if (pres) item.promos_pendientes = [];   // la caja no lleva regalo
+        console.log(`[POS:carrito] elegirPresentacion → "${item.nombre}" ahora ${pres ? pres.nombre : "por pieza"}`);
+    }
+
+    aplicarPreciosGlobales();
+    aplicarOfertas();
+    actualizarTotales();
+    onCarritoActualizado();
+}
+
+// Precios por cantidad de un producto cambiaron (websocket o cuenta
+// pendiente vieja): los renglones toman el precio nuevo, y si una
+// presentación ya no existe ese renglón vuelve a piezas (3 cajas de 24 =
+// 72 piezas) para no perder lo que se iba a vender. Regresa los nombres
+// de las que ya no existen, para avisarle a la cajera.
+export function actualizarPresentaciones(id, lista, { recalcular = true } = {}) {
+    const quitadas = [];
+    for (const item of carrito) {
+        if (item.id !== id || item.es_regalo || item.es_servicio) continue;
+        if (item.precios) item.precios.pres = lista;
+        if (!item.presentacion) continue;
+        const nueva = lista.find(p => p.id === item.presentacion.id);
+        if (nueva) {
+            item.presentacion = { ...nueva };
+        } else {
+            quitadas.push(`${item.nombre} (${item.presentacion.nombre.toLowerCase()})`);
+            item.cantidad     = piezasItem(item);
+            item.presentacion = null;
+            item.modo_precio  = "AUTO";
+        }
+    }
+    if (recalcular) {
+        aplicarPreciosGlobales();
+        aplicarOfertas();
+        actualizarTotales();
+        onCarritoActualizado();
+    }
+    return quitadas;
+}
 
 
 // ============================================================
@@ -270,8 +352,32 @@ export function cargarCarrito(items) {
     console.log(`[POS:carrito] cargarCarrito — cargando ${items.length} items`);
     carrito.length = 0;
     for (const item of items) carrito.push(item);
+
+    // Los precios por cantidad pudieron cambiar desde que se guardó la
+    // cuenta: se toman los de la card de hoy.
+    const quitadas = [];
+    for (const id of new Set(carrito.filter(i => i.presentacion).map(i => i.id))) {
+        const card = document.querySelector(`.producto-item[data-id="${id}"]`);
+        quitadas.push(...actualizarPresentaciones(id, leerPresentaciones(card), { recalcular: false }));
+    }
+    if (quitadas.length) {
+        document.dispatchEvent(new CustomEvent("pos:presentaciones-quitadas", { detail: { quitadas } }));
+    }
+
     aplicarPreciosGlobales();
     aplicarOfertas();
     actualizarTotales();
     onCarritoActualizado();
+}
+
+
+/** Precios por cantidad de una card del POS (data-presentaciones), [] si no tiene. */
+export function leerPresentaciones(card) {
+    if (!card?.dataset.presentaciones) return [];
+    try {
+        const lista = JSON.parse(card.dataset.presentaciones);
+        return Array.isArray(lista) ? lista : [];
+    } catch {
+        return [];
+    }
 }

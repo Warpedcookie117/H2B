@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from inventario.models import Inventario, Producto, Ubicacion
+from inventario.services import presentacion_service
 from sucursales.models import Caja, Sucursal
 from tienda_temp.models import Empleado
 from ventas.models import IdempotencyKey, Oferta, Promocion
@@ -97,7 +98,7 @@ def pos_view(request):
             "id", "nombre", "precio_menudeo", "precio_mayoreo", "precio_docena",
             "foto_url", "codigo_barras", "categoria_id", "categoria_padre_id",
         )
-        .prefetch_related("valores_atributo__atributo")
+        .prefetch_related("valores_atributo__atributo", "presentaciones")
         .order_by("nombre")
     )
 
@@ -109,6 +110,7 @@ def pos_view(request):
             {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
             cls=DjangoJSONEncoder,
         )
+        p.presentaciones_json = _presentaciones_json(p)
         productos_list.append(p)
 
     promociones_data = list(
@@ -258,6 +260,9 @@ def procesar_venta(request):
                     "nombre_servicio": item.get("nombre_servicio", ""),
                     "promo_id":       item.get("promo_id"),
                     "promo_nombre":   item.get("promo_nombre", ""),
+                    # Precio por cantidad (Caja, Media docena…): sin esto la
+                    # caja se cobraría como 1 pieza.
+                    "presentacion_id": item.get("presentacion_id"),
                 })
             except Exception:
                 return respond({"status": "error", "message": "Error en item del carrito."}, status=400)
@@ -490,7 +495,7 @@ def producto_card(request, producto_id):
     try:
         p = (
             Producto.objects
-            .prefetch_related("valores_atributo__atributo")
+            .prefetch_related("valores_atributo__atributo", "presentaciones")
             .get(id=producto_id, activo=True)
         )
     except Producto.DoesNotExist:
@@ -514,5 +519,11 @@ def producto_card(request, producto_id):
         {va.atributo.nombre: va.valor for va in p.valores_atributo.all()},
         cls=DjangoJSONEncoder,
     )
+    p.presentaciones_json = _presentaciones_json(p)
 
     return render(request, "ventas/_producto_card.html", {"p": p})
+
+
+def _presentaciones_json(producto):
+    """Precios por cantidad del producto para data-presentaciones de la card ("[]" si no tiene)."""
+    return json.dumps(presentacion_service.de_producto(producto))

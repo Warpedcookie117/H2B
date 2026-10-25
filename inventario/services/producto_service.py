@@ -2,6 +2,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
+from inventario.services import presentacion_service
 from inventario.services.atributo_service import AtributoService
 from inventario.services.inventario_service import InventarioService
 
@@ -91,6 +92,11 @@ class ProductService:
 
         # Guardar atributos dinámicos
         AtributoService.guardar_valores(producto, request.POST)
+
+        # Precios por cantidad (solo llegan si registra una dueña)
+        presentaciones = cleaned.get("presentaciones_json")
+        if presentaciones:
+            presentacion_service.guardar_de_producto(producto, presentaciones)
 
         # Generar firma única
         firma = ProductService._generar_firma(producto)

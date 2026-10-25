@@ -1,6 +1,6 @@
 // pago.js — Lógica pura del pago
 
-import { carrito, totalConDescuento, descuentoPct, formatearMoneda } from "./core.js";
+import { carrito, totalConDescuento, descuentoPct, formatearMoneda, piezasDeProducto } from "./core.js";
 import { getCookie } from "./core.js";
 import { limpiarCarrito } from "./carrito.js";
 
@@ -54,12 +54,17 @@ export function validarStock() {
         return "No hay productos en el carrito";
     }
 
+    // Por producto, no por renglón: las piezas sueltas y las cajas del mismo
+    // producto salen del mismo inventario.
+    const revisados = new Set();
     for (const item of carrito) {
-        if (item.es_servicio || item.es_regalo) continue;
+        if (item.es_servicio || item.es_regalo || revisados.has(item.id)) continue;
+        revisados.add(item.id);
         const stockTotal = (item.stock_piso || 0) + (item.stock_bodega || 0);
-        if (item.cantidad > stockTotal) {
-            console.warn(`[POS:pago] validarStock FALLÓ — "${item.nombre}" necesita ${item.cantidad} pero solo hay ${stockTotal} (piso=${item.stock_piso} bodega=${item.stock_bodega})`);
-            return `"${item.nombre}" no tiene stock suficiente (piso: ${item.stock_piso}, bodega: ${item.stock_bodega})`;
+        const piezas = piezasDeProducto(item.id);
+        if (piezas > stockTotal) {
+            console.warn(`[POS:pago] validarStock FALLÓ — "${item.nombre}" necesita ${piezas} piezas pero solo hay ${stockTotal} (piso=${item.stock_piso} bodega=${item.stock_bodega})`);
+            return `No alcanzan las piezas de "${item.nombre}": llevas ${piezas} y solo hay ${stockTotal} (piso: ${item.stock_piso}, bodega: ${item.stock_bodega})`;
         }
     }
 
@@ -138,6 +143,9 @@ function carritoParaServidor() {
             producto_id:     p.id,
             cantidad:        Number(p.cantidad) || 1,
             precio_aplicado: Number(p.precio_aplicado) || Number(p.precios?.men) || 0,
+            // Caja / Media docena: el servidor cobra el precio de la BD y
+            // descuenta cantidad × piezas.
+            presentacion_id: p.presentacion?.id ?? null,
         };
     });
 }

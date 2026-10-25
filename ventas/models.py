@@ -127,13 +127,31 @@ class VentaDetalle(models.Model):
     nombre_snapshot = models.CharField(max_length=150, blank=True, null=True)
     atributos_snapshot = models.JSONField(blank=True, null=True)
 
+    # Unidades vendidas: piezas, o cajas si se vendió por precio por cantidad.
+    # Las piezas que salieron del inventario son cantidad × piezas_por_unidad
+    # (para sumarlas en reportes: piezas_vendidas()).
     cantidad = models.PositiveIntegerField()
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
 
+    # Snapshot del precio por cantidad (inventario.Presentacion) con que se vendió.
+    presentacion_nombre = models.CharField(max_length=40, blank=True, null=True)
+    piezas_por_unidad = models.PositiveIntegerField(default=1)
+
+    @property
+    def piezas(self):
+        return self.cantidad * self.piezas_por_unidad
+
     def __str__(self):
         nombre = self.nombre_snapshot or (self.producto.nombre if self.producto else "PRODUCTO ELIMINADO")
+        if self.presentacion_nombre:
+            nombre = f"{nombre} — {self.presentacion_nombre}"
         return f"{nombre} x{self.cantidad}"
+
+
+def piezas_vendidas():
+    """Sum de piezas vendidas: una caja de 24 cuenta 24, no 1. Para reportes de VentaDetalle."""
+    return models.Sum(models.F("cantidad") * models.F("piezas_por_unidad"))
     
     
     

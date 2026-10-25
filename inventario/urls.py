@@ -74,6 +74,9 @@ from .views.reabastecimiento import (
     pdf_orden_reabastecimiento,
 )
 
+# Precios por cantidad (Media docena, Decena, Caja)
+from .views import presentaciones
+
 # Reportes
 from .views.reportes import (
     reportes,
@@ -201,4 +204,12 @@ urlpatterns = [
     path('reportes/', reportes, name='reportes'),
     path('reportes/pdf/', reporte_pdf, name='reporte_pdf'),
     path('exportar-criticos/', exportar_criticos, name='exportar_criticos'),
+
+    # ============================
+    # PRECIOS POR CANTIDAD (solo dueñas)
+    # ============================
+    path("lista-precios/", presentaciones.lista_precios, name="lista_precios"),
+    path("api/precios-cantidad/buscar/", presentaciones.buscar_producto, name="precios_cantidad_buscar"),
+    path("api/precios-cantidad/ultimo/", presentaciones.ultimo_registrado, name="precios_cantidad_ultimo"),
+    path("api/precios-cantidad/guardar/", presentaciones.guardar_lista, name="precios_cantidad_guardar"),
 ]

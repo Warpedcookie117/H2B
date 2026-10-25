@@ -14,6 +14,7 @@
     data-subcategoria="{{ p.categoria_id }}"
     data-cat-padre="{{ p.categoria_padre_id }}"
     data-atributos="{{ p.atributos_json }}"
+    data-presentaciones="{{ p.presentaciones_json|default:'[]' }}"
     draggable="true"
 >
     <div class="pos-producto-img">

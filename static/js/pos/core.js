@@ -10,6 +10,25 @@ export let carrito = [];
 
 
 // ============================================================
+// 1b. Precios por cantidad (Media docena, Decena, Caja)
+// ============================================================
+// Un renglón vendido por precio por cantidad trae item.presentacion =
+// {id, tipo, piezas, precio, nombre}; su cantidad son cajas, no piezas.
+
+/** Piezas que salen del inventario por este renglón (3 cajas de 24 = 72). */
+export function piezasItem(item) {
+    return (Number(item.cantidad) || 0) * (item.presentacion?.piezas || 1);
+}
+
+/** Piezas de un producto en todo el carrito (sueltas + cajas), para el stock. */
+export function piezasDeProducto(id) {
+    return carrito
+        .filter(i => i.id === id && !i.es_regalo && !i.es_servicio)
+        .reduce((s, i) => s + piezasItem(i), 0);
+}
+
+
+// ============================================================
 // 2. Estado del descuento
 // ============================================================
 

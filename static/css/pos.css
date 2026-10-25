@@ -597,6 +597,11 @@
 .pos-modo-btn--may  { background: var(--pos-azul);    color: var(--pos-blanco); }
 .pos-modo-btn--doc  { background: var(--pos-morado);  color: var(--pos-blanco); }
 .pos-modo-btn--auto { background: var(--pos-amarillo); color: var(--pos-negro); }
+/* Precios por caja: cada tipo su color (botón y aviso del renglón) */
+.pos-pres--caja         { background: #06D6A0; color: var(--pos-negro); }
+.pos-pres--media_docena { background: #FB5607; color: var(--pos-blanco); }
+.pos-pres--decena       { background: #00BBF9; color: var(--pos-negro); }
+.pos-pres-badge         { font-size: .65rem; }
 
 .pos-modo-btn--activo {
   border-width: 4px;

@@ -151,6 +151,46 @@
     </div>
     {% endif %}
 
+    {% if form.presentaciones_json %}
+    <!-- PRECIOS POR CANTIDAD (solo dueñas). Lo maneja static/js/nuevo_producto/precios_cantidad.js -->
+    <div id="precios-cantidad"
+         class="border-4 border-black shadow-[4px_4px_0_0_black] bg-[#FFF7E0] p-4 space-y-3"
+         data-url-buscar="{% url 'inventario:precios_cantidad_buscar' %}"
+         data-url-ultimo="{% url 'inventario:precios_cantidad_ultimo' %}">
+      <div>
+        <p class="label-90s">¿Lo vendes por caja o por media docena? <span class="normal-case font-semibold text-gray-400">(opcional)</span></p>
+        <p class="text-xs font-bold text-black/60">
+          Pícale al que uses y ponle su precio. Si no lo vendes así, déjalo vacío.
+        </p>
+      </div>
+
+      <div id="pc-editor"></div>
+      <ul id="pc-errores" class="hidden text-xs font-black text-[#B5005A] space-y-1"></ul>
+
+      <div id="pc-copiar-box" class="border-t-2 border-black/20 pt-3 space-y-2">
+        <label for="pc-copiar" class="block text-xs font-black text-black">
+          ¿Otro producto tiene el precio que quieres poner? Escanéalo y aquí te los pongo editables
+        </label>
+        <input type="text" id="pc-copiar" autocomplete="off" autocorrect="off" autocapitalize="off"
+               spellcheck="false" placeholder="Código o nombre" style="font-size:16px"
+               class="w-full border-2 border-black px-3 py-2 font-semibold bg-white">
+        <p id="pc-copiar-mensaje" class="hidden text-xs font-bold"></p>
+        <div id="pc-copiar-resultados" class="space-y-1"></div>
+
+        <div id="pc-ultimo" class="hidden flex flex-wrap items-center gap-2 text-xs font-bold">
+          <span>Usar los del último que registraste:</span>
+          <span id="pc-ultimo-texto" class="font-black"></span>
+          <button type="button" id="pc-ultimo-usar"
+                  class="btn-90s border-2 border-black shadow-[2px_2px_0_0_black] bg-[#06D6A0] text-black font-black text-xs uppercase px-3 py-1">
+            Usar
+          </button>
+        </div>
+      </div>
+
+      {{ form.presentaciones_json }}
+    </div>
+    {% endif %}
+
     <!-- DUEÑO -->
     <div class="space-y-1">
       <label class="label-90s">{{ form.dueño.label }}</label>

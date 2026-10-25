@@ -104,6 +104,17 @@ function buscarYMostrar(texto) {
     document.getElementById("consulta-may").textContent = `$${may.toFixed(2)}`;
     document.getElementById("consulta-doc").textContent = doc && doc > 0 ? `$${doc.toFixed(2)}` : "N/A";
 
+    // Precios por cantidad (Caja, Media docena…), si el producto tiene.
+    const paquetesEl = document.getElementById("consulta-paquetes");
+    if (paquetesEl) {
+        let paquetes = [];
+        try { paquetes = JSON.parse(producto.dataset.presentaciones || "[]"); } catch { paquetes = []; }
+        paquetesEl.textContent = paquetes
+            .map(p => `${p.nombre} a $${Number(p.precio).toFixed(2)}`)
+            .join("   ·   ");
+        paquetesEl.hidden = paquetes.length === 0;
+    }
+
     document.getElementById("consulta-stock-piso").textContent = producto.dataset.stockPiso || "0";
     document.getElementById("consulta-stock-bodega").textContent = producto.dataset.stockBodega || "0";
 

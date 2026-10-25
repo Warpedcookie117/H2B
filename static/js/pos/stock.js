@@ -1,6 +1,7 @@
 // stock.js — Stock en tiempo real via WebSocket (sin polling periódico)
 
 import { carrito } from "./core.js";
+import { actualizarPresentaciones } from "./carrito.js";
 import { cargarImagenCard, refrescarGrid } from "./paginacion.js";
 
 console.log("[POS:stock] Módulo cargado");
@@ -83,11 +84,11 @@ function aplicarCambioStock(productoId, pisoNuevo, bodegaNuevo = null) {
         insertarCardNueva(id);
     }
 
-    const itemCarrito = carrito.find(i => i.id === id);
-    if (itemCarrito) {
+    // Todos los renglones del producto (piezas y cajas van en renglones aparte).
+    carrito.filter(i => i.id === id).forEach(itemCarrito => {
         itemCarrito.stock_piso = pisoNuevo;
         if (bodegaNuevo !== null) itemCarrito.stock_bodega = bodegaNuevo;
-    }
+    });
 }
 
 // Stock que quedó de lo recién vendido (llave `stock` de la respuesta del
@@ -134,6 +135,17 @@ function aplicarCambioProducto(d) {
     if (d.categoria_id != null)          card.dataset.subcategoria = d.categoria_id;
     if (d.categoria_padre_id != null)    card.dataset.catPadre = d.categoria_padre_id;
     if (d.atributos_json !== undefined)  card.dataset.atributos = d.atributos_json;
+
+    // Precios por cantidad: la card y los renglones del carrito toman los nuevos.
+    if (Array.isArray(d.presentaciones)) {
+        card.dataset.presentaciones = JSON.stringify(d.presentaciones);
+        if (carrito.some(i => i.id === id && !i.es_regalo && !i.es_servicio)) {
+            const quitadas = actualizarPresentaciones(id, d.presentaciones);
+            if (quitadas.length) {
+                document.dispatchEvent(new CustomEvent("pos:presentaciones-quitadas", { detail: { quitadas } }));
+            }
+        }
+    }
 
     // Texto visible
     const nombreEl = card.querySelector(".pos-producto-nombre");

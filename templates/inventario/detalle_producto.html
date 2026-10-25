@@ -372,6 +372,38 @@
     </div>
   </div>
 
+  <!-- PRECIOS POR CANTIDAD — las dueñas los cambian; los demás solo los ven.
+       Lo maneja static/js/precios_cantidad/detalle.js -->
+  <div id="precios-cantidad-detalle"
+       class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden"
+       data-producto-id="{{ producto.id }}"
+       data-menudeo="{{ producto.precio_menudeo }}"
+       data-puede-editar="{% if permisos.precios %}1{% endif %}"
+       data-url-guardar="{% url 'inventario:precios_cantidad_guardar' %}">
+    <div class="bg-[#FFBE0B] border-b-4 border-black px-6 py-4">
+      <p class="font-black text-black uppercase tracking-widest text-base">Precio por caja y media docena</p>
+      <p class="text-black/70 font-semibold text-xs mt-0.5">
+        Si lo vendes por caja, media docena o decena, aquí va su precio.
+      </p>
+    </div>
+    <div class="bg-white p-6 space-y-3">
+      <div id="pcd-editor"></div>
+      <ul id="pcd-errores" class="hidden text-xs font-black text-[#B5005A] space-y-1"></ul>
+      {% if permisos.precios %}
+      <div class="flex flex-wrap items-center gap-3">
+        <button type="button" id="pcd-guardar" disabled
+                class="btn-90s border-4 border-black shadow-[4px_4px_0_0_black] bg-[#06D6A0]
+                       text-black font-black text-sm uppercase tracking-widest px-6 py-3
+                       disabled:opacity-40 disabled:cursor-not-allowed">
+          Guardar precios
+        </button>
+        <p id="pcd-mensaje" class="hidden text-xs font-black"></p>
+      </div>
+      {% endif %}
+    </div>
+    {{ presentaciones|json_script:"pcd-datos" }}
+  </div>
+
   <!-- COSTO — dueño edita, demás ven "¿Qué te importa?" -->
   <div class="border-4 border-black shadow-[6px_6px_0_0_black] overflow-hidden">
 
@@ -618,4 +650,5 @@ function previewFotoDetalle(input) {
 
 {% block scripts %}
 <script src="{% static 'js/detalle_producto.js' %}"></script>
+<script type="module" src="{% static 'js/precios_cantidad/detalle.js' %}"></script>
 {% endblock %}

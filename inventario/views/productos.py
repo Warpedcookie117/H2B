@@ -16,6 +16,7 @@ from inventario.services.imagen_service import ImagenService
 from inventario.templatetags.cloudinary_helpers import foto_master
 from tienda_temp.models import Empleado
 from inventario.services.producto_service import ProductService
+from inventario.services import presentacion_service
 from inventario.services.codigo_service import CodigoService
 from inventario.services.etiqueta_service import EtiquetaService
 from django.contrib import messages
@@ -515,6 +516,7 @@ def detalle_producto(request, producto_id):
         "subcategorias": subcategorias,
         "dueños": dueños,
         "atributos_todos": atributos_todos,
+        "presentaciones": presentacion_service.de_producto(producto),
     })
 
 
@@ -946,7 +948,7 @@ def buscar_producto_por_codigo(request):
     productos = list(
         Producto.objects
         .select_related('categoria', 'categoria__padre', 'dueño')
-        .prefetch_related('temporada')
+        .prefetch_related('temporada', 'presentaciones')
         .filter(codigo_barras__in=codigos_buscar, activo=True)
         .order_by('nombre', 'id')
     )
@@ -1004,6 +1006,7 @@ def buscar_producto_por_codigo(request):
             'subcategoria_id': subcategoria.id if subcategoria else None,
             'subcategoria_nombre': subcategoria.nombre if subcategoria else None,
             'atributos': atributos_list,
+            'presentaciones': presentacion_service.de_producto(producto),
         })
 
     return JsonResponse({

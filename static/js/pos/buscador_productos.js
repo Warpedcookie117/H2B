@@ -1,7 +1,7 @@
 // buscador_productos.js
 
 import { normalizar } from "./core.js";
-import { agregarProducto } from "./carrito.js";
+import { agregarProducto, leerPresentaciones } from "./carrito.js";
 import { setFiltro, clearFiltro, cargarImagenCard } from "./paginacion.js";
 
 console.log("[POS:buscador] Módulo cargado");
@@ -299,6 +299,7 @@ export function initDragDrop() {
             men: parseFloat(item.dataset.men),
             may: parseFloat(item.dataset.may),
             doc: parseFloat(item.dataset.doc),
+            pres: leerPresentaciones(item),
             stock_piso: parseInt(item.dataset.stockPiso),
             stock_bodega: parseInt(item.dataset.stockBodega),
             subcategoria_id: item.dataset.subcategoria ? parseInt(item.dataset.subcategoria) : null,
@@ -316,7 +317,7 @@ export function initDragDrop() {
 
         agregarProducto(
             id, nombre,
-            { men: precios.men, may: precios.may, doc: precios.doc },
+            { men: precios.men, may: precios.may, doc: precios.doc, pres: precios.pres || [] },
             precios.stock_piso, precios.stock_bodega,
             precios.subcategoria_id, precios.cat_padre_id,
             precios.atributos || {},
@@ -536,7 +537,8 @@ function agregarDesdeCard(card, cantidad = 1) {
     const precios = {
         men: parseFloat(card.dataset.men),
         may: parseFloat(card.dataset.may),
-        doc: parseFloat(card.dataset.doc)
+        doc: parseFloat(card.dataset.doc),
+        pres: leerPresentaciones(card),
     };
 
     const stock_piso    = parseInt(card.dataset.stockPiso    || card.dataset.stock_piso);

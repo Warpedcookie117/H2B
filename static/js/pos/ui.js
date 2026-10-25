@@ -12,12 +12,15 @@ import {
     clearLastAddedId,
     formatearMoneda,
     parsearMonto,
+    piezasItem,
+    piezasDeProducto,
 } from "./core.js";
 
 import {
     cambiarCantidad,
     eliminarProducto,
     cambiarModoPrecio,
+    elegirPresentacion,
     agregarServicio,
     agregarCobroRapido,
 } from "./carrito.js";
@@ -54,6 +57,14 @@ export function initUI() {
         console.log("[POS:ui] onCarritoActualizado → renderCarritoUI + actualizarTotales");
         renderCarritoUI();
         actualizarTotales();
+    });
+
+    // Una caja que estaba en el carrito ya no se vende así: el renglón volvió a piezas.
+    document.addEventListener("pos:presentaciones-quitadas", (e) => {
+        const quitadas = e.detail?.quitadas || [];
+        if (quitadas.length) {
+            mostrarAlertaUI(`Ya no se vende así: ${quitadas.join(", ")}. Lo cambié a piezas sueltas.`, "error");
+        }
     });
 
     // Redibuja el carrito cuando promociones.js actualiza promos_pendientes
@@ -190,9 +201,11 @@ function renderCarritoUI() {
                 </div>
             `;
         } else {
+            const pres = item.presentacion;
+            const nombreRenglon = pres ? `${item.nombre} (${pres.nombre.toLowerCase()})` : item.nombre;
             div.innerHTML = `
                 <div class="pos-carrito-item-header">
-                    <span class="pos-carrito-item-nombre">${item.nombre}</span>
+                    <span class="pos-carrito-item-nombre">${nombreRenglon}</span>
                     <button class="pos-carrito-item-btn-eliminar" data-idx="${index}">✕</button>
                 </div>
 
@@ -208,6 +221,7 @@ function renderCarritoUI() {
                 </div>
 
                 <div>${resolverBadge(item)}</div>
+                ${pres ? `<div>${renderPresentacionBadge(item)}</div>` : ''}
                 ${item.oferta_activa ? `<div>${renderOfertaBadge(item)}</div>` : ''}
 
                 <div class="pos-modo-botones">
@@ -259,14 +273,30 @@ function renderOfertaBadge(item) {
     return `<span class="pos-stock-badge" style="background:#FF006E;color:#fff;font-size:.65rem;">🏷️ ${o.nombre}${detalle ? ' · ' + detalle : ''}</span>`;
 }
 
+// "2 cajas a $550.00 cada una · Salen 48 piezas"
+const UNIDAD = {
+    caja:         ["caja", "cajas"],
+    media_docena: ["media docena", "medias docenas"],
+    decena:       ["decena", "decenas"],
+};
+function renderPresentacionBadge(item) {
+    const p = item.presentacion;
+    const [una, varias] = UNIDAD[p.tipo] || [p.nombre.toLowerCase(), p.nombre.toLowerCase()];
+    const unidad = item.cantidad === 1 ? una : varias;
+    return `<span class="pos-stock-badge pos-pres-badge pos-pres--${p.tipo}">` +
+           `${item.cantidad} ${unidad} a $${formatearMoneda(p.precio)} cada una · Salen ${piezasItem(item)} piezas</span>`;
+}
+
+// Las piezas se cuentan por producto: sueltas + cajas de todos sus renglones.
 function resolverBadge(item) {
-    if (item.cantidad <= item.stock_piso) {
+    const piezas = piezasDeProducto(item.id);
+    if (piezas <= item.stock_piso) {
         return `<span class="pos-stock-badge pos-stock-badge--piso">Se descontará de Piso</span>`;
     }
-    if (item.cantidad <= item.stock_bodega) {
+    if (piezas <= item.stock_bodega) {
         return `<span class="pos-stock-badge pos-stock-badge--bodega">Se descontará de Bodega</span>`;
     }
-    if (item.cantidad <= (item.stock_piso || 0) + (item.stock_bodega || 0)) {
+    if (piezas <= (item.stock_piso || 0) + (item.stock_bodega || 0)) {
         return `<span class="pos-stock-badge pos-stock-badge--split">Alcanza entre ambas — bodega primero</span>`;
     }
     return `<span class="pos-stock-badge pos-stock-badge--sin-stock">No hay stock suficiente</span>`;
@@ -285,10 +315,9 @@ function renderBotonesPrecio(item, index) {
         AUTO: "pos-modo-btn pos-modo-btn--auto"
     };
 
-    return ["MEN", "MAY", "DOC", "AUTO"].map(m => {
-        if (m === "DOC" && (!item.precios.doc || item.precios.doc <= 0)) {
-            return `<button class="pos-modo-btn pos-modo-btn--disabled" disabled>DOC</button>`;
-        }
+    const botones = ["MEN", "MAY", "DOC", "AUTO"].map(m => {
+        // DOC solo sale si el producto tiene precio docena.
+        if (m === "DOC" && (!item.precios.doc || item.precios.doc <= 0)) return "";
 
         const activo   = item.modo_precio === m;
         const resuelto = item.modo_resuelto === m;
@@ -302,6 +331,17 @@ function renderBotonesPrecio(item, index) {
 
         return `<button class="${clases}" data-modo="${m}" data-idx="${index}">${m}</button>`;
     }).join("");
+
+    // Un botón por cada precio por cantidad del producto.
+    const presentaciones = (item.precios.pres || []).map(p => {
+        let clases = `pos-modo-btn pos-modo-btn--pres pos-pres--${p.tipo}`;
+        if (item.presentacion?.id === p.id) clases += " pos-modo-btn--activo pos-modo-btn--resuelto";
+        const texto = p.tipo === "caja" ? `CAJA DE ${p.piezas}` : p.nombre.toUpperCase();
+        return `<button class="${clases}" data-pres="${p.id}" data-idx="${index}" ` +
+               `title="${p.nombre} a $${formatearMoneda(p.precio)}">${texto}</button>`;
+    }).join("");
+
+    return botones + presentaciones;
 }
 
 
@@ -319,8 +359,10 @@ function _promosDeItem(item) {
     );
 }
 
-// Añade `cantidad` al badge de pendientes del ítem (sin abrir modal)
+// Añade `cantidad` al badge de pendientes del ítem (sin abrir modal).
+// Lo vendido por caja/media docena no lleva regalo.
 function _addPendienteItem(item, cantidad = 1) {
+    if (item.presentacion) return;
     const promos = _promosDeItem(item);
     if (!promos.length) return;
     if (!item.promos_pendientes) item.promos_pendientes = [];
@@ -339,7 +381,7 @@ function _addPendienteDesdeRegalo(regaloItem) {
     if (!promo?.categoria_disparadora_id) return;
     const catId = promo.categoria_disparadora_id;
     const trig  = carrito.find(i =>
-        !i.es_regalo && !i.es_servicio &&
+        !i.es_regalo && !i.es_servicio && !i.presentacion &&
         (i.subcategoria_id == catId || i.cat_padre_id == catId)
     );
     if (!trig) return;
@@ -406,7 +448,7 @@ function bindCarritoListeners() {
             const item = carrito[idx];
             console.log(`[POS:ui] ✕ eliminar → idx=${idx} item="${item?.nombre}"`);
             if (!item) return;
-            if (!item.es_regalo && !item.es_servicio) {
+            if (!item.es_regalo && !item.es_servicio && !item.presentacion) {
                 const { subcategoria_id, cat_padre_id } = item;
                 eliminarProducto(idx);
                 cascadeRegalo(subcategoria_id, cat_padre_id, Infinity, -1);
@@ -447,7 +489,7 @@ function bindCarritoListeners() {
             const prevQty = item.cantidad;
             cambiarCantidad(idx, prevQty - 1);
             const newQty  = carrito[idx]?.cantidad ?? prevQty;
-            if (newQty < prevQty) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, 1, idx);
+            if (newQty < prevQty && !item.presentacion) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, 1, idx);
         };
     });
 
@@ -463,13 +505,28 @@ function bindCarritoListeners() {
             const newQty = carrito[idx]?.cantidad ?? newVal;
             const decr   = prevQty - newQty;
             const incr   = newQty  - prevQty;
-            if (decr > 0) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, decr, idx);
+            if (decr > 0 && !item.presentacion) cascadeRegalo(item.subcategoria_id, item.cat_padre_id, decr, idx);
             if (incr > 0) _addPendienteItem(item, incr);
         };
     });
 
     document.querySelectorAll("[data-modo]").forEach(btn => {
         btn.onclick = () => cambiarModoPrecio(parseInt(btn.dataset.idx), btn.dataset.modo);
+    });
+
+    // CAJA 24 / MEDIA DOCENA / DECENA — la caja no lleva los regalos de la pieza.
+    document.querySelectorAll("[data-pres]").forEach(btn => {
+        btn.onclick = () => {
+            const idx    = parseInt(btn.dataset.idx);
+            const item   = carrito[idx];
+            const presId = parseInt(btn.dataset.pres);
+            if (!item || item.presentacion?.id === presId) return;
+            const { subcategoria_id, cat_padre_id, cantidad } = item;
+            const eraPieza = !item.presentacion;
+            // Sin aviso aparte: la etiqueta de color del renglón ya dice cómo se cobra.
+            elegirPresentacion(idx, presId);
+            if (eraPieza) cascadeRegalo(subcategoria_id, cat_padre_id, cantidad, -1);
+        };
     });
 }
 

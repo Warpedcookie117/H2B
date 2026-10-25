@@ -8,7 +8,7 @@ export function aplicarOfertas() {
     const ofertas = window.OFERTAS || [];
 
     carrito.forEach(i => {
-        if (_esElegible(i)) { i.oferta_activa = null; i.precio_sin_oferta = null; }
+        if (_esElegible(i) || i.presentacion) { i.oferta_activa = null; i.precio_sin_oferta = null; }
     });
 
     if (!ofertas.length) return;
@@ -33,8 +33,10 @@ export function initOfertas() {
     console.log(`[POS:ofertas] initOfertas — ofertas disponibles: ${(window.OFERTAS || []).length}`);
 }
 
+// Lo vendido por precio por cantidad (Caja, Media docena…) ya trae su precio
+// especial: no recibe ofertas ni cuenta para armar un 2x1 o un combo.
 function _esElegible(item) {
-    return !item.es_servicio && !item.es_regalo;
+    return !item.es_servicio && !item.es_regalo && !item.presentacion;
 }
 
 function _matchesCategoria(item, oferta) {

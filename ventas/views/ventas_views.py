@@ -28,7 +28,7 @@ def ventas_por_cajero(request):
 
         resumen[cajero]["total"] += float(venta.total)
         resumen[cajero]["tickets"] += 1
-        resumen[cajero]["productos"] += sum(d.cantidad for d in venta.detalles.all())
+        resumen[cajero]["productos"] += sum(d.piezas for d in venta.detalles.all())
 
     return render(request, "reportes/ventas_por_cajero.html", {"resumen": resumen})
 
