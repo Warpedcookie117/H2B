@@ -173,7 +173,7 @@ MEDIA_URL = '/media/'
 
 STORAGES = {
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "main.storage.StaticConVersiones",
     },
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
