@@ -20,3 +20,6 @@ media/productos/
 # Agente POS — binarios compilados (el código fuente sí va a git)
 pos_agent/build/
 pos_agent/dist/
+
+# Claude Code — archivos locales del asistente (no van a git)
+.claude/

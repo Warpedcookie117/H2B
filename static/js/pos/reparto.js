@@ -112,8 +112,7 @@ const COLOR_POR_NOMBRE = {
     anais:   "#FF006E",   // rosa
     ana:     "#D62828",   // rojizo (Fabiola)
     fabiola: "#D62828",
-    yareli:  "#3A86FF",   // azul
-    yare:    "#3A86FF",
+    kimberly: "#3A86FF",  // azul (la familia le dice "Yareli")
 };
 const COLORES_OTRAS = ["#8338EC", "#FF9F1C", "#8D5524", "#4A4E69"];   // morado, ámbar, café, pizarra
 
@@ -155,12 +154,30 @@ function _pintarPagos(cont, r, clip, nombreClip) {
     cont.append(fila);
 }
 
+// Letra negra o blanca, la que se lea mejor sobre el color de la dueña
+function _letraSobre(hex) {
+    const canal = i => {
+        const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+    const luz = 0.2126 * canal(1) + 0.7152 * canal(3) + 0.0722 * canal(5);
+    return luz > 0.179 ? "var(--pos-negro)" : "var(--pos-blanco)";
+}
+
 // La feria es de $290.00. Tómala de la caja de Anais   ← la que más vendió
+// El anuncio va del color de esa dueña (el mismo de su franja en las cards),
+// para que la cajera sepa de qué caja sacar la feria con solo ver el color.
 function _pintarFeria(cont, r, receptora) {
     if (!_hayMonto(r.cambio)) return;
     const partes = ["La feria es de ", _monto(r.cambio), "."];
     if (receptora) partes.push(" Tómala de la caja de ", _duena(receptora));
-    cont.append(_parrafo("feria", partes));
+    const p = _parrafo("feria", partes);
+    if (receptora) {
+        const color = _colorDuena(r.receptora);
+        p.style.setProperty("--pos-franja", color);
+        p.style.setProperty("--pos-feria-letra", _letraSobre(color));
+    }
+    cont.append(p);
 }
 
 // De la caja de Anais

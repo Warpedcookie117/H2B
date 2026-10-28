@@ -1341,17 +1341,20 @@
 .pos-resultado-reparto__caja .pos-resultado-reparto__cifra { color: var(--pos-verde); }
 .pos-resultado-reparto__pago--tarjeta .pos-resultado-reparto__cifra { color: var(--pos-azul); }
 
-/* La feria es de $290.00. Tómala de la caja de Anais */
+/* La feria es de $290.00. Tómala de la caja de Anais
+   Va del color de la dueña de cuya caja sale (reparto.js pone --pos-franja y
+   --pos-feria-letra); sin dueña se queda amarillo. */
 .pos-resultado-reparto__feria {
   padding: 0.45rem 0.6rem;
   border: 3px solid var(--pos-negro);
   box-shadow: var(--pos-sombra-sm);
-  background: var(--pos-amarillo);
+  background: var(--pos-franja, var(--pos-amarillo));
+  color: var(--pos-feria-letra, var(--pos-negro));
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.6;
 }
-.pos-resultado-reparto__feria .pos-resultado-reparto__duena { background: var(--pos-blanco); }
+.pos-resultado-reparto__feria .pos-resultado-reparto__duena { background: var(--pos-blanco); color: var(--pos-negro); }
 
 .pos-resultado-reparto__aviso {
   padding: 0.4rem 0.5rem;
